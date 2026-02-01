@@ -1,0 +1,558 @@
+"use client"
+
+import { useState } from "react"
+import { useLanguage } from "@/contexts/language-context"
+import { useGame, PROFILE_ICONS } from "@/contexts/game-context"
+import Image from "next/image"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  ArrowLeft,
+  Globe,
+  User,
+  Copy,
+  Check,
+  Edit2,
+  Save,
+  Mail,
+  Lock,
+  LogIn,
+  LogOut,
+  Cloud,
+  CloudOff,
+  Settings,
+  Sparkles,
+} from "lucide-react"
+
+interface SettingsScreenProps {
+  onBack: () => void
+}
+
+type TabType = "language" | "account"
+
+export default function SettingsScreen({ onBack }: SettingsScreenProps) {
+  const { t, language, setLanguage } = useLanguage()
+  const {
+    playerId,
+    playerProfile,
+    updatePlayerProfile,
+    accountAuth,
+    loginAccount,
+    registerAccount,
+    logoutAccount,
+    saveProgressManually,
+  } = useGame()
+  const [activeTab, setActiveTab] = useState<TabType>("language")
+  const [copied, setCopied] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editName, setEditName] = useState(playerProfile.name)
+  const [editTitle, setEditTitle] = useState(playerProfile.title)
+  const [editAvatarUrl, setEditAvatarUrl] = useState(playerProfile.avatarUrl || "")
+  const [showIconPicker, setShowIconPicker] = useState(false)
+
+  const [authMode, setAuthMode] = useState<"login" | "register">("login")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [authError, setAuthError] = useState("")
+  const [authLoading, setAuthLoading] = useState(false)
+  const [saveMessage, setSaveMessage] = useState("")
+
+  const handleCopyId = () => {
+    navigator.clipboard.writeText(playerId)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleSaveProfile = () => {
+    updatePlayerProfile({ 
+      name: editName, 
+      title: editTitle,
+      avatarUrl: editAvatarUrl || undefined
+    })
+    setIsEditing(false)
+    setShowIconPicker(false)
+  }
+
+  const handleLogin = async () => {
+    setAuthError("")
+    setAuthLoading(true)
+    const result = await loginAccount(email, password)
+    setAuthLoading(false)
+    if (!result.success) {
+      setAuthError(result.error || "Erro ao fazer login")
+    } else {
+      setEmail("")
+      setPassword("")
+    }
+  }
+
+  const handleRegister = async () => {
+    setAuthError("")
+    if (password !== confirmPassword) {
+      setAuthError("As senhas nao coincidem")
+      return
+    }
+    setAuthLoading(true)
+    const result = await registerAccount(email, password)
+    setAuthLoading(false)
+    if (!result.success) {
+      setAuthError(result.error || "Erro ao registrar")
+    } else {
+      setEmail("")
+      setPassword("")
+      setConfirmPassword("")
+    }
+  }
+
+  const handleManualSave = () => {
+    saveProgressManually()
+    setSaveMessage("Progresso salvo!")
+    setTimeout(() => setSaveMessage(""), 3000)
+  }
+
+  const formatLastSaved = (dateString: string | null) => {
+    if (!dateString) return "Nunca"
+    const date = new Date(dateString)
+    return date.toLocaleString("pt-BR")
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-900 via-cyan-900/10 to-black">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[...Array(20)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-cyan-400/20 rounded-full animate-float"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 5}s`,
+              animationDuration: `${3 + Math.random() * 4}s`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Header */}
+      <div className="relative z-10 flex items-center justify-between p-4 bg-gradient-to-r from-black/80 via-cyan-900/30 to-black/80 border-b border-cyan-500/30 backdrop-blur-sm">
+        <Button onClick={onBack} variant="ghost" className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10">
+          <ArrowLeft className="mr-2 h-5 w-5" />
+          {t("back")}
+        </Button>
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 via-blue-300 to-cyan-400 bg-clip-text text-transparent flex items-center gap-2">
+          <Settings className="w-6 h-6 text-cyan-400" />
+          {t("settings")}
+        </h1>
+        <div className="w-20" />
+      </div>
+
+      {/* Tabs */}
+      <div className="relative z-10 flex border-b border-slate-700/50">
+        <button
+          onClick={() => setActiveTab("language")}
+          className={`flex-1 py-4 px-4 font-medium transition-all ${
+            activeTab === "language"
+              ? "text-cyan-400 border-b-2 border-cyan-400 bg-cyan-400/10"
+              : "text-slate-400 hover:text-white hover:bg-white/5"
+          }`}
+        >
+          <Globe className="w-4 h-4 inline mr-2" />
+          {t("language")}
+        </button>
+        <button
+          onClick={() => setActiveTab("account")}
+          className={`flex-1 py-4 px-4 font-medium transition-all ${
+            activeTab === "account"
+              ? "text-amber-400 border-b-2 border-amber-400 bg-amber-400/10"
+              : "text-slate-400 hover:text-white hover:bg-white/5"
+          }`}
+        >
+          <User className="w-4 h-4 inline mr-2" />
+          Conta
+        </button>
+      </div>
+
+      {/* Settings content */}
+      <div className="relative z-10 flex-1 p-4 overflow-y-auto">
+        <div className="max-w-md mx-auto space-y-4">
+          {activeTab === "language" && (
+            <div className="bg-gradient-to-r from-slate-800/80 to-cyan-900/30 rounded-2xl p-6 border border-cyan-500/30 backdrop-blur-sm">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg">
+                  <Globe className="w-5 h-5 text-white" />
+                </div>
+                <h2 className="text-xl font-bold text-white">{t("language")}</h2>
+              </div>
+
+              <div className="grid gap-3">
+                {[
+                  { code: "pt", flag: "🇧🇷", label: t("portuguese") },
+                  { code: "en", flag: "🇺🇸", label: t("english") },
+                  { code: "ja", flag: "🇯🇵", label: t("japanese") },
+                ].map((lang) => (
+                  <Button
+                    key={lang.code}
+                    onClick={() => setLanguage(lang.code as "pt" | "en" | "ja")}
+                    className={`w-full justify-start py-4 text-lg ${
+                      language === lang.code
+                        ? "bg-gradient-to-r from-cyan-600 to-blue-600 border-2 border-cyan-400/50 shadow-lg shadow-cyan-500/30"
+                        : "bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50"
+                    }`}
+                  >
+                    <span className="text-2xl mr-3">{lang.flag}</span>
+                    {lang.label}
+                    {language === lang.code && <Check className="w-5 h-5 ml-auto" />}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "account" && (
+            <>
+              {/* Cloud Save Section */}
+              <div className="bg-gradient-to-r from-emerald-900/40 to-teal-900/40 rounded-2xl p-6 border border-emerald-500/40 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-5">
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ${
+                      accountAuth.isLoggedIn
+                        ? "bg-gradient-to-br from-emerald-500 to-teal-600"
+                        : "bg-gradient-to-br from-slate-600 to-slate-700"
+                    }`}
+                  >
+                    {accountAuth.isLoggedIn ? (
+                      <Cloud className="w-5 h-5 text-white" />
+                    ) : (
+                      <CloudOff className="w-5 h-5 text-white" />
+                    )}
+                  </div>
+                  <h2 className="text-xl font-bold text-white">
+                    {accountAuth.isLoggedIn ? "Conta Conectada" : "Conectar Conta"}
+                  </h2>
+                </div>
+
+                {accountAuth.isLoggedIn ? (
+                  <div className="space-y-4">
+                    <div className="bg-black/30 rounded-xl p-4 border border-emerald-500/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Mail className="w-4 h-4 text-emerald-400" />
+                        <span className="text-slate-400 text-sm">Email:</span>
+                      </div>
+                      <p className="text-white font-medium">{accountAuth.email}</p>
+                    </div>
+
+                    <div className="bg-black/30 rounded-xl p-4 border border-emerald-500/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Cloud className="w-4 h-4 text-emerald-400" />
+                        <span className="text-slate-400 text-sm">Ultimo salvamento:</span>
+                      </div>
+                      <p className="text-white font-medium">{formatLastSaved(accountAuth.lastSaved)}</p>
+                      <p className="text-xs text-slate-500 mt-1">Salvamento automatico a cada 30 segundos</p>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={handleManualSave}
+                        className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 border border-emerald-400/50"
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        Salvar Agora
+                      </Button>
+                      <Button
+                        onClick={logoutAccount}
+                        variant="outline"
+                        className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500/20 bg-transparent"
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Sair
+                      </Button>
+                    </div>
+
+                    {saveMessage && (
+                      <p className="text-emerald-400 text-center text-sm animate-pulse bg-emerald-500/20 py-2 rounded-lg">
+                        {saveMessage}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-slate-400 text-sm">
+                      Conecte sua conta para salvar seu progresso permanentemente na nuvem.
+                    </p>
+
+                    {/* Auth Mode Toggle */}
+                    <div className="flex rounded-xl overflow-hidden border border-slate-600">
+                      <button
+                        onClick={() => setAuthMode("login")}
+                        className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                          authMode === "login"
+                            ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
+                            : "bg-slate-800 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        Entrar
+                      </button>
+                      <button
+                        onClick={() => setAuthMode("register")}
+                        className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                          authMode === "register"
+                            ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
+                            : "bg-slate-800 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        Registrar
+                      </button>
+                    </div>
+
+                    {/* Email Input */}
+                    <div>
+                      <label className="text-sm text-slate-400 block mb-2">Email</label>
+                      <div className="relative">
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                        <Input
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="seu@email.com"
+                          className="pl-12 bg-slate-900/80 border-emerald-500/30 text-white py-3"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Password Input */}
+                    <div>
+                      <label className="text-sm text-slate-400 block mb-2">Senha</label>
+                      <div className="relative">
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                        <Input
+                          type="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="******"
+                          className="pl-12 bg-slate-900/80 border-emerald-500/30 text-white py-3"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Confirm Password (Register only) */}
+                    {authMode === "register" && (
+                      <div>
+                        <label className="text-sm text-slate-400 block mb-2">Confirmar Senha</label>
+                        <div className="relative">
+                          <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                          <Input
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="******"
+                            className="pl-12 bg-slate-900/80 border-emerald-500/30 text-white py-3"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Error Message */}
+                    {authError && (
+                      <p className="text-red-400 text-sm text-center bg-red-500/20 py-2 rounded-lg">{authError}</p>
+                    )}
+
+                    {/* Submit Button */}
+                    <Button
+                      onClick={authMode === "login" ? handleLogin : handleRegister}
+                      disabled={authLoading}
+                      className="w-full bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 border border-emerald-400/50 py-3"
+                    >
+                      {authLoading ? (
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <LogIn className="w-4 h-4 mr-2" />
+                          {authMode === "login" ? "Entrar" : "Criar Conta"}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Player ID Section */}
+              <div className="bg-gradient-to-r from-amber-900/40 to-yellow-900/40 rounded-2xl p-6 border border-amber-500/40 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center shadow-lg">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                  <h2 className="text-xl font-bold text-white">ID do Jogador</h2>
+                </div>
+                <p className="text-slate-400 text-sm mb-4">
+                  Use este ID para que outros jogadores possam te adicionar como amigo.
+                </p>
+                <div className="flex items-center gap-3">
+                  <code className="flex-1 bg-black/50 px-5 py-4 rounded-xl text-xl font-mono text-amber-300 tracking-wider border border-amber-500/30">
+                    {playerId}
+                  </code>
+                  <Button
+                    onClick={handleCopyId}
+                    variant="outline"
+                    className="border-amber-500/50 text-amber-400 hover:bg-amber-500/20 bg-transparent px-4 py-4"
+                  >
+                    {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Profile Section */}
+              <div className="bg-gradient-to-r from-slate-800/80 to-cyan-900/30 rounded-2xl p-6 border border-cyan-500/30 backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg">
+                      <Sparkles className="w-5 h-5 text-white" />
+                    </div>
+                    <h2 className="text-xl font-bold text-white">Perfil</h2>
+                  </div>
+                  {!isEditing ? (
+                    <Button
+                      onClick={() => {
+                        setIsEditing(true)
+                        setEditName(playerProfile.name)
+                        setEditTitle(playerProfile.title)
+                        setEditAvatarUrl(playerProfile.avatarUrl || "")
+                      }}
+                      variant="ghost"
+                      size="sm"
+                      className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/20"
+                    >
+                      <Edit2 className="w-4 h-4 mr-1" />
+                      Editar
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleSaveProfile}
+                      size="sm"
+                      className="bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400"
+                    >
+                      <Save className="w-4 h-4 mr-1" />
+                      Salvar
+                    </Button>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  {/* Avatar Section */}
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Foto de Perfil</label>
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <div className="w-20 h-20 rounded-full overflow-hidden border-[3px] border-cyan-400/50 shadow-lg">
+                          {(isEditing ? editAvatarUrl : playerProfile.avatarUrl) ? (
+                            <Image
+                              src={isEditing ? editAvatarUrl : playerProfile.avatarUrl || "/placeholder.svg"}
+                              alt="Avatar"
+                              width={80}
+                              height={80}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center">
+                              <User className="w-8 h-8 text-slate-400" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {isEditing && (
+                        <Button
+                          onClick={() => setShowIconPicker(!showIconPicker)}
+                          variant="outline"
+                          size="sm"
+                          className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/20 bg-transparent"
+                        >
+                          <Edit2 className="w-4 h-4 mr-1" />
+                          Trocar
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Icon Picker */}
+                    {isEditing && showIconPicker && (
+                      <div className="mt-4 p-4 bg-black/30 rounded-xl border border-cyan-500/20">
+                        <p className="text-slate-400 text-sm mb-3">Selecione um avatar:</p>
+                        <div className="grid grid-cols-3 gap-3">
+                          {PROFILE_ICONS.map((icon) => (
+                            <button
+                              key={icon.id}
+                              onClick={() => {
+                                setEditAvatarUrl(icon.image)
+                                setShowIconPicker(false)
+                              }}
+                              className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all duration-200 ${
+                                editAvatarUrl === icon.image
+                                  ? "border-cyan-400 scale-105 shadow-lg shadow-cyan-500/40"
+                                  : "border-slate-600 hover:border-slate-400"
+                              }`}
+                            >
+                              <Image
+                                src={icon.image || "/placeholder.svg"}
+                                alt={icon.name}
+                                fill
+                                className="object-cover"
+                              />
+                              {editAvatarUrl === icon.image && (
+                                <div className="absolute inset-0 bg-cyan-400/20 flex items-center justify-center">
+                                  <Check className="w-6 h-6 text-white" />
+                                </div>
+                              )}
+                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1">
+                                <p className="text-white text-[10px] font-medium text-center truncate">{icon.name}</p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Nome</label>
+                    {isEditing ? (
+                      <Input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="bg-slate-900/80 border-cyan-500/30 text-white"
+                        maxLength={20}
+                      />
+                    ) : (
+                      <p className="text-white font-medium text-lg">{playerProfile.name}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Titulo</label>
+                    {isEditing ? (
+                      <Input
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        className="bg-slate-900/80 border-cyan-500/30 text-white"
+                        maxLength={30}
+                      />
+                    ) : (
+                      <p className="text-cyan-400 font-medium">{playerProfile.title}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-400 block mb-2">Level</label>
+                    <p className="text-white font-medium text-lg">{playerProfile.level}</p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Credits */}
+          <div className="mt-8 text-center text-slate-500 text-sm py-4">
+            <p className="font-medium">2025 Gear Perks Oficial Card Game</p>
+            <p>Made in BRAZIL</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
