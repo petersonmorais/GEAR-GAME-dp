@@ -29,6 +29,7 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
 
   const MIN_CARDS = 10
   const MAX_CARDS = 20
+  const MAX_COPIES_PER_CARD = 4 // Maximum copies of same card allowed in deck
 
   // Count how many copies of each card the player owns in collection
   const getOwnedCopies = (cardName: string) => {
@@ -62,20 +63,30 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
     return deckCards.filter((c) => c.name === cardName).length
   }
 
+  // Get the maximum allowed copies for a card (minimum between deck limit and owned count)
+  const getMaxAllowedCopies = (cardName: string) => {
+    const ownedCopies = getOwnedCopies(cardName)
+    return Math.min(MAX_COPIES_PER_CARD, ownedCopies)
+  }
+
   // Centralized validation function
-  const canAddCardToDeck = (card: Card): { canAdd: boolean; reason?: string } => {
-    if (deckCards.length >= MAX_CARDS) {
-      return { canAdd: false, reason: "Deck cheio" }
-    }
-    
+  const canAddCardToDeck = (card: Card): { canAdd: boolean; reason?: string; maxAllowed: number } => {
     const copiesInDeck = getCardCopiesInDeck(card.name)
-    const ownedCopies = getOwnedCopies(card.name)
+    const maxAllowed = getMaxAllowedCopies(card.name)
     
-    if (copiesInDeck >= ownedCopies) {
-      return { canAdd: false, reason: `Limite atingido (${copiesInDeck}/${ownedCopies})` }
+    if (deckCards.length >= MAX_CARDS) {
+      return { canAdd: false, reason: "Deck cheio", maxAllowed }
     }
     
-    return { canAdd: true }
+    if (copiesInDeck >= maxAllowed) {
+      const ownedCopies = getOwnedCopies(card.name)
+      const limitReason = ownedCopies < MAX_COPIES_PER_CARD 
+        ? `Voce possui apenas ${ownedCopies}` 
+        : `Maximo de ${MAX_COPIES_PER_CARD} copias por deck`
+      return { canAdd: false, reason: limitReason, maxAllowed }
+    }
+    
+    return { canAdd: true, maxAllowed }
   }
 
   const addCardToDeck = (card: Card) => {
@@ -368,9 +379,8 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
             <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 gap-2">
               {filteredCards.map((card) => {
                 const copiesInDeck = getCardCopiesInDeck(card.name)
-                const ownedCopies = getOwnedCopies(card.name)
-                const { canAdd } = canAddCardToDeck(card)
-                const isAtLimit = copiesInDeck >= ownedCopies
+                const { canAdd, maxAllowed, reason } = canAddCardToDeck(card)
+                const isAtLimit = copiesInDeck >= maxAllowed
 
                 return (
                   <div
@@ -387,15 +397,15 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
                             ? "ring-1 ring-purple-400"
                             : ""
                     }`}
-                    title={!canAdd ? (isAtLimit ? `Limite atingido (${copiesInDeck}/${ownedCopies})` : "Deck cheio") : `Adicionar (${copiesInDeck}/${ownedCopies})`}
+                    title={!canAdd ? reason : `Clique para adicionar (${copiesInDeck}/${maxAllowed})`}
                   >
                     <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
                     
-                    {/* Copies indicator: X/Y (in deck / owned) */}
+                    {/* Copies indicator: X/Y (in deck / max allowed) */}
                     <div className={`absolute top-1 right-1 text-white text-xs px-1.5 py-0.5 rounded-full font-bold shadow-lg ${
                       isAtLimit ? "bg-red-600" : copiesInDeck > 0 ? "bg-indigo-600" : "bg-slate-700/80"
                     }`}>
-                      {copiesInDeck}/{ownedCopies}
+                      {copiesInDeck}/{maxAllowed}
                     </div>
 
                     {/* Lock icon when at limit */}
