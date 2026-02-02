@@ -160,19 +160,23 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       
       // Get ORIGINAL DP (base dp, not currentDp which may have buffs/debuffs)
       const dpBonus = enemyUnit.dp
+      const allyCurrentDp = allyUnit.currentDp || allyUnit.dp
+      const newDp = allyCurrentDp + dpBonus
+      
+      console.log("[v0] Amplificador de Poder: Enemy DP =", dpBonus, "Ally currentDP =", allyCurrentDp, "New DP =", newDp)
       
       context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         if (newUnitZone[allyIndex]) {
           newUnitZone[allyIndex] = {
             ...newUnitZone[allyIndex]!,
-            currentDp: (newUnitZone[allyIndex]!.currentDp || newUnitZone[allyIndex]!.dp) + dpBonus,
+            currentDp: newDp,
           }
         }
         return { ...prev, unitZone: newUnitZone }
       })
       
-      return { success: true, message: `+${dpBonus} DP aplicado!` }
+      return { success: true, message: `+${dpBonus} DP aplicado! (${allyCurrentDp} -> ${newDp})` }
     },
   },
   
@@ -198,19 +202,34 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         return { success: false, message: "Nao ha dano para curar" }
       }
       
+      const newLife = Math.min(currentLife + healAmount, maxLife)
+      console.log("[v0] Bandagem Restauradora: Current LP =", currentLife, "Heal =", healAmount, "New LP =", newLife)
+      
       context.setPlayerField((prev) => ({
         ...prev,
-        life: Math.min(prev.life + healAmount, maxLife),
+        life: newLife,
       }))
       
-      return { success: true, message: `+${healAmount} LP restaurado!` }
+      return { success: true, message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})` }
     },
   },
 }
 
+// Helper function to extract base card ID (removes deck timestamp suffix)
+const getBaseCardId = (cardId: string): string => {
+  // Card IDs in deck are formatted as: "original-id-deck-timestamp"
+  // We need to extract just "original-id"
+  const deckSuffixIndex = cardId.lastIndexOf("-deck-")
+  if (deckSuffixIndex !== -1) {
+    return cardId.substring(0, deckSuffixIndex)
+  }
+  return cardId
+}
+
 // Helper function to get effect for a card
 const getFunctionCardEffect = (cardId: string): FunctionCardEffect | null => {
-  return FUNCTION_CARD_EFFECTS[cardId] || null
+  const baseId = getBaseCardId(cardId)
+  return FUNCTION_CARD_EFFECTS[baseId] || null
 }
 
 // Helper to check if a Function card can be activated
