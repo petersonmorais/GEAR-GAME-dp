@@ -1379,10 +1379,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
   // Save account auth state to localStorage
   useEffect(() => {
     localStorage.setItem("gear-perks-auth", JSON.stringify(accountAuth))
-    if (accountAuth.isLoggedIn) {
-      // Update lastSaved when accountAuth changes and user is logged in
-      setAccountAuth((prev) => ({ ...prev, lastSaved: new Date().toISOString() }))
-    }
   }, [accountAuth])
 
   useEffect(() => {
