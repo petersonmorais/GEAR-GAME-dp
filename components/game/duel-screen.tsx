@@ -1543,19 +1543,40 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   }
 
   const placeCard = (zone: "unit" | "function", slotIndex: number, forcedCardIndex?: number) => {
-    if (!isPlayerTurn) return
-    if (phase !== "main") return
+    console.log("[v0] placeCard called - zone:", zone, "slotIndex:", slotIndex, "forcedCardIndex:", forcedCardIndex)
+    console.log("[v0] isPlayerTurn:", isPlayerTurn, "phase:", phase)
+    
+    if (!isPlayerTurn) {
+      console.log("[v0] BLOCKED: Not player turn")
+      return
+    }
+    if (phase !== "main") {
+      console.log("[v0] BLOCKED: Not main phase")
+      return
+    }
 
     const cardIndex = forcedCardIndex ?? (draggedHandCard?.index ?? selectedHandCard)
-    if (cardIndex === null || cardIndex === undefined) return
+    console.log("[v0] cardIndex resolved to:", cardIndex)
+    if (cardIndex === null || cardIndex === undefined) {
+      console.log("[v0] BLOCKED: No card index")
+      return
+    }
     
     const cardToPlace = playerField.hand[cardIndex]
-    if (!cardToPlace) return
+    console.log("[v0] cardToPlace:", cardToPlace?.name, "type:", cardToPlace?.type, "id:", cardToPlace?.id)
+    if (!cardToPlace) {
+      console.log("[v0] BLOCKED: No card to place")
+      return
+    }
 
     // Scenario cards can ONLY be played in the Scenario zone
-    if (cardToPlace.type === "scenario") return
+    if (cardToPlace.type === "scenario") {
+      console.log("[v0] BLOCKED: Scenario card cannot be placed here")
+      return
+    }
 
     const isUnit = isUnitCard(cardToPlace)
+    console.log("[v0] isUnit:", isUnit)
     if (zone === "unit" && isUnit) {
       if (playerField.unitZone[slotIndex] !== null) return
 
@@ -1580,7 +1601,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       if (playerField.functionZone[slotIndex] !== null) return
 
       // Get the effect configuration for this card
+      console.log("[v0] Card placed in function zone:", cardToPlace.id, cardToPlace.name)
+      console.log("[v0] Base card ID:", getBaseCardId(cardToPlace.id))
       const effect = getFunctionCardEffect(cardToPlace.id)
+      console.log("[v0] Effect found:", effect ? effect.name : "NONE")
       
       if (effect) {
         // Create effect context
