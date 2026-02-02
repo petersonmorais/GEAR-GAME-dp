@@ -88,6 +88,140 @@ interface DeckWithImages extends GameDeck {
   playmatImage?: string
 }
 
+// ==========================================
+// CENTRALIZED FUNCTION CARD EFFECT SYSTEM
+// ==========================================
+
+interface FunctionCardEffect {
+  id: string
+  name: string
+  requiresTargets: boolean
+  targetConfig?: {
+    enemyUnits?: number // Number of enemy units to select
+    allyUnits?: number // Number of ally units to select  
+  }
+  canActivate: (context: EffectContext) => { canActivate: boolean; reason?: string }
+  resolve: (context: EffectContext, targets?: EffectTargets) => EffectResult
+}
+
+interface EffectContext {
+  playerField: FieldState
+  enemyField: FieldState
+  setPlayerField: React.Dispatch<React.SetStateAction<FieldState>>
+  setEnemyField: React.Dispatch<React.SetStateAction<FieldState>>
+}
+
+interface EffectTargets {
+  enemyUnitIndices?: number[]
+  allyUnitIndices?: number[]
+}
+
+interface EffectResult {
+  success: boolean
+  message?: string
+  cardToDiscard?: GameCard
+}
+
+// Registry of all Function card effects
+const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
+  "amplificador-de-poder": {
+    id: "amplificador-de-poder",
+    name: "Amplificador de Poder",
+    requiresTargets: true,
+    targetConfig: {
+      enemyUnits: 1,
+      allyUnits: 1,
+    },
+    canActivate: (context) => {
+      const hasEnemyUnits = context.enemyField.unitZone.some((u) => u !== null)
+      const hasPlayerUnits = context.playerField.unitZone.some((u) => u !== null)
+      
+      if (!hasEnemyUnits) {
+        return { canActivate: false, reason: "Nenhuma unidade inimiga no campo" }
+      }
+      if (!hasPlayerUnits) {
+        return { canActivate: false, reason: "Nenhuma unidade aliada no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      if (!targets?.enemyUnitIndices?.length || !targets?.allyUnitIndices?.length) {
+        return { success: false, message: "Alvos invalidos" }
+      }
+      
+      const enemyIndex = targets.enemyUnitIndices[0]
+      const allyIndex = targets.allyUnitIndices[0]
+      const enemyUnit = context.enemyField.unitZone[enemyIndex]
+      const allyUnit = context.playerField.unitZone[allyIndex]
+      
+      if (!enemyUnit || !allyUnit) {
+        return { success: false, message: "Unidades nao encontradas" }
+      }
+      
+      // Get ORIGINAL DP (base dp, not currentDp which may have buffs/debuffs)
+      const dpBonus = enemyUnit.dp
+      
+      context.setPlayerField((prev) => {
+        const newUnitZone = [...prev.unitZone]
+        if (newUnitZone[allyIndex]) {
+          newUnitZone[allyIndex] = {
+            ...newUnitZone[allyIndex]!,
+            currentDp: (newUnitZone[allyIndex]!.currentDp || newUnitZone[allyIndex]!.dp) + dpBonus,
+          }
+        }
+        return { ...prev, unitZone: newUnitZone }
+      })
+      
+      return { success: true, message: `+${dpBonus} DP aplicado!` }
+    },
+  },
+  
+  "bandagem-restauradora": {
+    id: "bandagem-restauradora",
+    name: "Bandagem Restauradora",
+    requiresTargets: false,
+    canActivate: (context) => {
+      const currentLife = context.playerField.life
+      const maxLife = 20 // Max LP
+      
+      if (currentLife >= maxLife) {
+        return { canActivate: false, reason: "LP ja esta no maximo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      const currentLife = context.playerField.life
+      const maxLife = 20
+      const healAmount = Math.min(2, maxLife - currentLife) // Heal up to 2, but don't exceed max
+      
+      if (healAmount <= 0) {
+        return { success: false, message: "Nao ha dano para curar" }
+      }
+      
+      context.setPlayerField((prev) => ({
+        ...prev,
+        life: Math.min(prev.life + healAmount, maxLife),
+      }))
+      
+      return { success: true, message: `+${healAmount} LP restaurado!` }
+    },
+  },
+}
+
+// Helper function to get effect for a card
+const getFunctionCardEffect = (cardId: string): FunctionCardEffect | null => {
+  return FUNCTION_CARD_EFFECTS[cardId] || null
+}
+
+// Helper to check if a Function card can be activated
+const canActivateFunctionCard = (cardId: string, context: EffectContext): { canActivate: boolean; reason?: string } => {
+  const effect = getFunctionCardEffect(cardId)
+  if (!effect) {
+    return { canActivate: true } // Unknown cards can be placed normally
+  }
+  return effect.canActivate(context)
+}
+
 // Function to get playmat for a deck
 // REMOVED: const getPlaymatForDeck = (deck: DeckWithImages): { image: string } | null => {
 //   if (!deck.playmatImage) return null
@@ -224,6 +358,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   } | null>(null)
   const [inspectedCard, setInspectedCard] = useState<GameCard | null>(null)
   const [graveyardView, setGraveyardView] = useState<"player" | "enemy" | null>(null)
+  const [effectFeedback, setEffectFeedback] = useState<{ active: boolean; message: string; type: "success" | "error" } | null>(null)
 
   const cardPressTimer = useRef<NodeJS.Timeout | null>(null)
   const draggedCardRef = useRef<HTMLDivElement>(null)
@@ -238,6 +373,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const playerCardsRef = useRef<(HTMLDivElement | null)[]>([]) // Added for player unit zone refs
 
   const gameResultRecordedRef = useRef(false)
+
+  // Helper to show effect feedback
+  const showEffectFeedback = useCallback((message: string, type: "success" | "error") => {
+    setEffectFeedback({ active: true, message, type })
+    setTimeout(() => setEffectFeedback(null), 2000)
+  }, [])
   
   // If mode is "player", show the multiplayer lobby system
   if (mode === "player" && !showOnlineDuel) {
@@ -1422,11 +1563,28 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     } else if (zone === "function") {
       if (playerField.functionZone[slotIndex] !== null) return
 
-      if (cardToPlace.id === "amplificador-de-poder") {
-        const hasEnemyUnits = enemyField.unitZone.some((u) => u !== null)
-        const hasPlayerUnits = playerField.unitZone.some((u) => u !== null)
-
-        if (hasEnemyUnits && hasPlayerUnits) {
+      // Get the effect configuration for this card
+      const effect = getFunctionCardEffect(cardToPlace.id)
+      
+      if (effect) {
+        // Create effect context
+        const effectContext: EffectContext = {
+          playerField,
+          enemyField,
+          setPlayerField,
+          setEnemyField,
+        }
+        
+        // Check if card can be activated
+        const { canActivate, reason } = effect.canActivate(effectContext)
+        if (!canActivate) {
+          // Card cannot be activated - show feedback
+        showEffectFeedback(`${cardToPlace.name}: ${reason}`, "error")
+          return // Card cannot be played
+        }
+        
+        // If effect requires targets, enter selection mode
+        if (effect.requiresTargets && effect.targetConfig) {
           setItemSelectionMode({
             active: true,
             itemCard: cardToPlace,
@@ -1437,12 +1595,31 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             ...prev,
             hand: prev.hand.filter((_, i) => i !== cardIndex),
           }))
-          setSelectedHandCard(null) // Clear selection if using drag-drop
-          setDraggedHandCard(null) // Clear drag state
+          setSelectedHandCard(null)
+          setDraggedHandCard(null)
           return
+        }
+        
+        // Effect doesn't require targets - resolve immediately
+        const result = effect.resolve(effectContext)
+        if (result.success) {
+          // Show visual feedback
+          showEffectFeedback(`${cardToPlace.name}: ${result.message}`, "success")
+          // Send card to graveyard after resolution
+          setPlayerField((prev) => ({
+            ...prev,
+            hand: prev.hand.filter((_, i) => i !== cardIndex),
+            graveyard: [...prev.graveyard, cardToPlace],
+          }))
+          setSelectedHandCard(null)
+          setDraggedHandCard(null)
+          return
+        } else {
+          showEffectFeedback(`${cardToPlace.name}: ${result.message || "Falha ao ativar"}`, "error")
         }
       }
 
+      // Fallback: place card in function zone without effect
       setPlayerField((prev) => {
         const newFunctionZone = [...prev.functionZone]
         newFunctionZone[slotIndex] = cardToPlace
@@ -2031,7 +2208,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     const enemyUnit = enemyField.unitZone[index]
     if (!enemyUnit) return
 
-    console.log("[v0] Selected enemy unit at index", index, "with DP:", enemyUnit.dp)
+
 
     setItemSelectionMode((prev) => ({
       ...prev,
@@ -2043,33 +2220,41 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const handleAllyUnitSelect = (index: number) => {
     if (!itemSelectionMode.active || itemSelectionMode.step !== "selectAlly") return
     if (itemSelectionMode.selectedEnemyIndex === null) return
+    if (!itemSelectionMode.itemCard) return
 
-    const enemyUnit = enemyField.unitZone[itemSelectionMode.selectedEnemyIndex]
     const allyUnit = playerField.unitZone[index]
-    if (!enemyUnit || !allyUnit) return
+    if (!allyUnit) return
 
-    const dpBonus = enemyUnit.dp
-    console.log("[v0] Applying", dpBonus, "DP bonus to ally unit at index", index)
-
-    setPlayerField((prev) => {
-      const newUnitZone = [...prev.unitZone]
-      if (newUnitZone[index]) {
-        newUnitZone[index] = {
-          ...newUnitZone[index]!,
-          currentDp: (newUnitZone[index]!.currentDp || newUnitZone[index]!.dp) + dpBonus,
-        }
+    // Use centralized effect resolver
+    const effect = getFunctionCardEffect(itemSelectionMode.itemCard.id)
+    if (effect) {
+      const effectContext: EffectContext = {
+        playerField,
+        enemyField,
+        setPlayerField,
+        setEnemyField,
       }
-      const newGraveyard = [...prev.graveyard]
-      if (itemSelectionMode.itemCard) {
-        newGraveyard.push(itemSelectionMode.itemCard)
+      
+      const targets: EffectTargets = {
+        enemyUnitIndices: [itemSelectionMode.selectedEnemyIndex],
+        allyUnitIndices: [index],
       }
-      return {
-        ...prev,
-        unitZone: newUnitZone,
-        graveyard: newGraveyard,
+      
+      const result = effect.resolve(effectContext, targets)
+      
+      if (result.success) {
+        // Show visual feedback
+        showEffectFeedback(`${itemSelectionMode.itemCard.name}: ${result.message}`, "success")
+        // Send card to graveyard after successful resolution
+        setPlayerField((prev) => ({
+          ...prev,
+          graveyard: [...prev.graveyard, itemSelectionMode.itemCard!],
+        }))
+      } else {
+        showEffectFeedback(`${itemSelectionMode.itemCard.name}: ${result.message || "Falha"}`, "error")
       }
-    })
-
+    }
+    
     setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null })
   }
 
@@ -2987,23 +3172,34 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         </div>
       )}
 
-      {itemSelectionMode.active && (
-        <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-40">
-          <div className="bg-gradient-to-b from-slate-800 to-slate-900 p-5 rounded-xl border-2 border-yellow-500/50 text-center shadow-2xl">
-            <h3 className="text-yellow-400 font-bold text-lg mb-3">Amplificador de Poder</h3>
+      {/* Effect Feedback Toast */}
+      {effectFeedback && (
+        <div className={`fixed top-1/3 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl text-white font-bold text-lg shadow-2xl animate-pulse ${
+          effectFeedback.type === "success" 
+            ? "bg-gradient-to-r from-green-600 to-emerald-600 border-2 border-green-400" 
+            : "bg-gradient-to-r from-red-600 to-rose-600 border-2 border-red-400"
+        }`}>
+          {effectFeedback.message}
+        </div>
+      )}
+
+      {itemSelectionMode.active && itemSelectionMode.itemCard && (
+        <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-40 pointer-events-none">
+          <div className="bg-gradient-to-b from-slate-800 to-slate-900 p-5 rounded-xl border-2 border-yellow-500/50 text-center shadow-2xl pointer-events-auto">
+            <h3 className="text-yellow-400 font-bold text-lg mb-3">{itemSelectionMode.itemCard.name}</h3>
             {itemSelectionMode.step === "selectEnemy" ? (
-              <p className="text-white text-sm">Clique em uma unidade INIMIGA para absorver o DP original</p>
+              <p className="text-white text-sm">Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para absorver o DP original</p>
             ) : (
               <p className="text-white text-sm">
-                Clique em uma unidade SUA para receber +
-                {enemyField.unitZone[itemSelectionMode.selectedEnemyIndex!]?.dp || 0} DP
+                Clique em uma unidade <span className="text-cyan-400 font-bold">SUA</span> para receber{" "}
+                <span className="text-green-400 font-bold">+{enemyField.unitZone[itemSelectionMode.selectedEnemyIndex!]?.dp || 0} DP</span>
               </p>
             )}
             <Button
               onClick={cancelItemSelection}
               size="sm"
               variant="outline"
-              className="mt-4 bg-transparent text-white border-white/50 hover:bg-white/10"
+              className="mt-4 bg-transparent text-white border-white/50 hover:bg-white/10 pointer-events-auto"
             >
               Cancelar
             </Button>
