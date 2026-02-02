@@ -389,6 +389,7 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
     setTimeout(() => setPhase(4), 4000)
     setTimeout(() => {
       setPhase(5)
+      setRevealIndex(0)
       setShowResults(true)
       setIsOpening(false)
       addToCollection(pulledCards)
