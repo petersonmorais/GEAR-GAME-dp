@@ -88,6 +88,140 @@ interface DeckWithImages extends GameDeck {
   playmatImage?: string
 }
 
+// ==========================================
+// CENTRALIZED FUNCTION CARD EFFECT SYSTEM
+// ==========================================
+
+interface FunctionCardEffect {
+  id: string
+  name: string
+  requiresTargets: boolean
+  targetConfig?: {
+    enemyUnits?: number // Number of enemy units to select
+    allyUnits?: number // Number of ally units to select  
+  }
+  canActivate: (context: EffectContext) => { canActivate: boolean; reason?: string }
+  resolve: (context: EffectContext, targets?: EffectTargets) => EffectResult
+}
+
+interface EffectContext {
+  playerField: FieldState
+  enemyField: FieldState
+  setPlayerField: React.Dispatch<React.SetStateAction<FieldState>>
+  setEnemyField: React.Dispatch<React.SetStateAction<FieldState>>
+}
+
+interface EffectTargets {
+  enemyUnitIndices?: number[]
+  allyUnitIndices?: number[]
+}
+
+interface EffectResult {
+  success: boolean
+  message?: string
+  cardToDiscard?: GameCard
+}
+
+// Registry of all Function card effects
+const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
+  "amplificador-de-poder": {
+    id: "amplificador-de-poder",
+    name: "Amplificador de Poder",
+    requiresTargets: true,
+    targetConfig: {
+      enemyUnits: 1,
+      allyUnits: 1,
+    },
+    canActivate: (context) => {
+      const hasEnemyUnits = context.enemyField.unitZone.some((u) => u !== null)
+      const hasPlayerUnits = context.playerField.unitZone.some((u) => u !== null)
+      
+      if (!hasEnemyUnits) {
+        return { canActivate: false, reason: "Nenhuma unidade inimiga no campo" }
+      }
+      if (!hasPlayerUnits) {
+        return { canActivate: false, reason: "Nenhuma unidade aliada no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      if (!targets?.enemyUnitIndices?.length || !targets?.allyUnitIndices?.length) {
+        return { success: false, message: "Alvos invalidos" }
+      }
+      
+      const enemyIndex = targets.enemyUnitIndices[0]
+      const allyIndex = targets.allyUnitIndices[0]
+      const enemyUnit = context.enemyField.unitZone[enemyIndex]
+      const allyUnit = context.playerField.unitZone[allyIndex]
+      
+      if (!enemyUnit || !allyUnit) {
+        return { success: false, message: "Unidades nao encontradas" }
+      }
+      
+      // Get ORIGINAL DP (base dp, not currentDp which may have buffs/debuffs)
+      const dpBonus = enemyUnit.dp
+      
+      context.setPlayerField((prev) => {
+        const newUnitZone = [...prev.unitZone]
+        if (newUnitZone[allyIndex]) {
+          newUnitZone[allyIndex] = {
+            ...newUnitZone[allyIndex]!,
+            currentDp: (newUnitZone[allyIndex]!.currentDp || newUnitZone[allyIndex]!.dp) + dpBonus,
+          }
+        }
+        return { ...prev, unitZone: newUnitZone }
+      })
+      
+      return { success: true, message: `+${dpBonus} DP aplicado!` }
+    },
+  },
+  
+  "bandagem-restauradora": {
+    id: "bandagem-restauradora",
+    name: "Bandagem Restauradora",
+    requiresTargets: false,
+    canActivate: (context) => {
+      const currentLife = context.playerField.life
+      const maxLife = 20 // Max LP
+      
+      if (currentLife >= maxLife) {
+        return { canActivate: false, reason: "LP ja esta no maximo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      const currentLife = context.playerField.life
+      const maxLife = 20
+      const healAmount = Math.min(2, maxLife - currentLife) // Heal up to 2, but don't exceed max
+      
+      if (healAmount <= 0) {
+        return { success: false, message: "Nao ha dano para curar" }
+      }
+      
+      context.setPlayerField((prev) => ({
+        ...prev,
+        life: Math.min(prev.life + healAmount, maxLife),
+      }))
+      
+      return { success: true, message: `+${healAmount} LP restaurado!` }
+    },
+  },
+}
+
+// Helper function to get effect for a card
+const getFunctionCardEffect = (cardId: string): FunctionCardEffect | null => {
+  return FUNCTION_CARD_EFFECTS[cardId] || null
+}
+
+// Helper to check if a Function card can be activated
+const canActivateFunctionCard = (cardId: string, context: EffectContext): { canActivate: boolean; reason?: string } => {
+  const effect = getFunctionCardEffect(cardId)
+  if (!effect) {
+    return { canActivate: true } // Unknown cards can be placed normally
+  }
+  return effect.canActivate(context)
+}
+
 // Function to get playmat for a deck
 // REMOVED: const getPlaymatForDeck = (deck: DeckWithImages): { image: string } | null => {
 //   if (!deck.playmatImage) return null
@@ -1422,11 +1556,27 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     } else if (zone === "function") {
       if (playerField.functionZone[slotIndex] !== null) return
 
-      if (cardToPlace.id === "amplificador-de-poder") {
-        const hasEnemyUnits = enemyField.unitZone.some((u) => u !== null)
-        const hasPlayerUnits = playerField.unitZone.some((u) => u !== null)
-
-        if (hasEnemyUnits && hasPlayerUnits) {
+      // Get the effect configuration for this card
+      const effect = getFunctionCardEffect(cardToPlace.id)
+      
+      if (effect) {
+        // Create effect context
+        const effectContext: EffectContext = {
+          playerField,
+          enemyField,
+          setPlayerField,
+          setEnemyField,
+        }
+        
+        // Check if card can be activated
+        const { canActivate, reason } = effect.canActivate(effectContext)
+        if (!canActivate) {
+          console.log("[v0] Cannot activate", cardToPlace.name, "-", reason)
+          return // Card cannot be played
+        }
+        
+        // If effect requires targets, enter selection mode
+        if (effect.requiresTargets && effect.targetConfig) {
           setItemSelectionMode({
             active: true,
             itemCard: cardToPlace,
@@ -1437,12 +1587,28 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             ...prev,
             hand: prev.hand.filter((_, i) => i !== cardIndex),
           }))
-          setSelectedHandCard(null) // Clear selection if using drag-drop
-          setDraggedHandCard(null) // Clear drag state
+          setSelectedHandCard(null)
+          setDraggedHandCard(null)
+          return
+        }
+        
+        // Effect doesn't require targets - resolve immediately
+        const result = effect.resolve(effectContext)
+        if (result.success) {
+          console.log("[v0] Effect resolved:", result.message)
+          // Send card to graveyard after resolution
+          setPlayerField((prev) => ({
+            ...prev,
+            hand: prev.hand.filter((_, i) => i !== cardIndex),
+            graveyard: [...prev.graveyard, cardToPlace],
+          }))
+          setSelectedHandCard(null)
+          setDraggedHandCard(null)
           return
         }
       }
 
+      // Fallback: place card in function zone without effect
       setPlayerField((prev) => {
         const newFunctionZone = [...prev.functionZone]
         newFunctionZone[slotIndex] = cardToPlace
@@ -2043,32 +2209,37 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const handleAllyUnitSelect = (index: number) => {
     if (!itemSelectionMode.active || itemSelectionMode.step !== "selectAlly") return
     if (itemSelectionMode.selectedEnemyIndex === null) return
+    if (!itemSelectionMode.itemCard) return
 
-    const enemyUnit = enemyField.unitZone[itemSelectionMode.selectedEnemyIndex]
     const allyUnit = playerField.unitZone[index]
-    if (!enemyUnit || !allyUnit) return
+    if (!allyUnit) return
 
-    const dpBonus = enemyUnit.dp
-    console.log("[v0] Applying", dpBonus, "DP bonus to ally unit at index", index)
-
-    setPlayerField((prev) => {
-      const newUnitZone = [...prev.unitZone]
-      if (newUnitZone[index]) {
-        newUnitZone[index] = {
-          ...newUnitZone[index]!,
-          currentDp: (newUnitZone[index]!.currentDp || newUnitZone[index]!.dp) + dpBonus,
-        }
+    // Use centralized effect resolver
+    const effect = getFunctionCardEffect(itemSelectionMode.itemCard.id)
+    if (effect) {
+      const effectContext: EffectContext = {
+        playerField,
+        enemyField,
+        setPlayerField,
+        setEnemyField,
       }
-      const newGraveyard = [...prev.graveyard]
-      if (itemSelectionMode.itemCard) {
-        newGraveyard.push(itemSelectionMode.itemCard)
+      
+      const targets: EffectTargets = {
+        enemyUnitIndices: [itemSelectionMode.selectedEnemyIndex],
+        allyUnitIndices: [index],
       }
-      return {
-        ...prev,
-        unitZone: newUnitZone,
-        graveyard: newGraveyard,
+      
+      const result = effect.resolve(effectContext, targets)
+      console.log("[v0] Effect resolved:", result.message)
+      
+      if (result.success) {
+        // Send card to graveyard after successful resolution
+        setPlayerField((prev) => ({
+          ...prev,
+          graveyard: [...prev.graveyard, itemSelectionMode.itemCard!],
+        }))
       }
-    })
+    }
 
     setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null })
   }
