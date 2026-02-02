@@ -163,8 +163,6 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       const allyCurrentDp = allyUnit.currentDp || allyUnit.dp
       const newDp = allyCurrentDp + dpBonus
       
-      console.log("[v0] Amplificador de Poder: Enemy DP =", dpBonus, "Ally currentDP =", allyCurrentDp, "New DP =", newDp)
-      
       context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         if (newUnitZone[allyIndex]) {
@@ -203,7 +201,6 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       }
       
       const newLife = Math.min(currentLife + healAmount, maxLife)
-      console.log("[v0] Bandagem Restauradora: Current LP =", currentLife, "Heal =", healAmount, "New LP =", newLife)
       
       context.setPlayerField((prev) => ({
         ...prev,
