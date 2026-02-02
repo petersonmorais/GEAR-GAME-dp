@@ -29,17 +29,24 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
 
   const MIN_CARDS = 10
   const MAX_CARDS = 20
-  const MAX_COPIES = 4
 
+  // Count how many copies of each card the player owns in collection
+  const getOwnedCopies = (cardName: string) => {
+    return collection.filter((c) => c.name === cardName).length
+  }
+
+  // Get unique cards with their owned count
   const uniqueCards = collection.reduce(
     (acc, card) => {
       const baseId = card.id.split("-").slice(0, -2).join("-") || card.id
       if (!acc[baseId]) {
-        acc[baseId] = card
+        acc[baseId] = { ...card, ownedCount: 1 }
+      } else {
+        acc[baseId].ownedCount = (acc[baseId].ownedCount || 1) + 1
       }
       return acc
     },
-    {} as Record<string, Card>,
+    {} as Record<string, Card & { ownedCount: number }>,
   )
 
   const availableCards = Object.values(uniqueCards)
@@ -55,9 +62,25 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
     return deckCards.filter((c) => c.name === cardName).length
   }
 
+  // Centralized validation function
+  const canAddCardToDeck = (card: Card): { canAdd: boolean; reason?: string } => {
+    if (deckCards.length >= MAX_CARDS) {
+      return { canAdd: false, reason: "Deck cheio" }
+    }
+    
+    const copiesInDeck = getCardCopiesInDeck(card.name)
+    const ownedCopies = getOwnedCopies(card.name)
+    
+    if (copiesInDeck >= ownedCopies) {
+      return { canAdd: false, reason: `Limite atingido (${copiesInDeck}/${ownedCopies})` }
+    }
+    
+    return { canAdd: true }
+  }
+
   const addCardToDeck = (card: Card) => {
-    if (deckCards.length >= MAX_CARDS) return
-    if (getCardCopiesInDeck(card.name) >= MAX_COPIES) return
+    const { canAdd } = canAddCardToDeck(card)
+    if (!canAdd) return
     setDeckCards((prev) => [...prev, { ...card, id: `${card.id}-deck-${Date.now()}` }])
   }
 
@@ -345,14 +368,16 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
             <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 gap-2">
               {filteredCards.map((card) => {
                 const copiesInDeck = getCardCopiesInDeck(card.name)
-                const canAdd = copiesInDeck < MAX_COPIES && deckCards.length < MAX_CARDS
+                const ownedCopies = getOwnedCopies(card.name)
+                const { canAdd } = canAddCardToDeck(card)
+                const isAtLimit = copiesInDeck >= ownedCopies
 
                 return (
                   <div
                     key={card.id}
                     onClick={() => canAdd && addCardToDeck(card)}
-                    className={`relative aspect-[3/4] rounded-lg overflow-hidden shadow-lg cursor-pointer transform hover:scale-110 hover:z-10 transition-all duration-200 ${
-                      !canAdd ? "opacity-40 grayscale" : ""
+                    className={`relative aspect-[3/4] rounded-lg overflow-hidden shadow-lg transition-all duration-200 ${
+                      canAdd ? "cursor-pointer transform hover:scale-110 hover:z-10" : "cursor-not-allowed opacity-50 grayscale"
                     } ${
                       card.rarity === "LR"
                         ? "ring-2 ring-red-400"
@@ -362,11 +387,23 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
                             ? "ring-1 ring-purple-400"
                             : ""
                     }`}
+                    title={!canAdd ? (isAtLimit ? `Limite atingido (${copiesInDeck}/${ownedCopies})` : "Deck cheio") : `Adicionar (${copiesInDeck}/${ownedCopies})`}
                   >
                     <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
-                    {copiesInDeck > 0 && (
-                      <div className="absolute top-1 right-1 bg-indigo-600 text-white text-xs px-1.5 py-0.5 rounded-full font-bold shadow-lg">
-                        {copiesInDeck}/{MAX_COPIES}
+                    
+                    {/* Copies indicator: X/Y (in deck / owned) */}
+                    <div className={`absolute top-1 right-1 text-white text-xs px-1.5 py-0.5 rounded-full font-bold shadow-lg ${
+                      isAtLimit ? "bg-red-600" : copiesInDeck > 0 ? "bg-indigo-600" : "bg-slate-700/80"
+                    }`}>
+                      {copiesInDeck}/{ownedCopies}
+                    </div>
+
+                    {/* Lock icon when at limit */}
+                    {isAtLimit && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                        <div className="bg-red-600 rounded-full p-1.5">
+                          <X className="w-4 h-4 text-white" />
+                        </div>
                       </div>
                     )}
                   </div>
