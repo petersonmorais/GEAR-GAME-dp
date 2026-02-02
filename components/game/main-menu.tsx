@@ -16,7 +16,6 @@ import {
   Coins,
   X,
   Sparkles,
-  Crown,
   Star,
 } from "lucide-react"
 import Image from "next/image"
@@ -159,19 +158,7 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
       </div>
 
       {/* Top bar */}
-      <div className="fixed top-0 left-0 right-0 p-4 flex justify-between items-center z-40">
-        {/* Player level badge */}
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
-              <Crown className="w-6 h-6 text-white" />
-            </div>
-            <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold text-white border-2 border-slate-900">
-              1
-            </div>
-          </div>
-        </div>
-
+      <div className="fixed top-0 left-0 right-0 p-4 flex justify-end items-center z-40">
         {/* Coins and Player Profile display */}
         <div className="flex flex-col items-end gap-2">
           {/* Coins */}
