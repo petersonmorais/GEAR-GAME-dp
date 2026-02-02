@@ -13,6 +13,14 @@ interface GachaScreenProps {
 
 type BannerType = "fsg" | "anl" | "friendship"
 
+interface PackData {
+  id: number
+  cards: Card[]
+  isOpened: boolean
+  isRevealing: boolean
+  highestRarity: "R" | "SR" | "UR" | "LR"
+}
+
 const BANNERS = {
   fsg: {
     name: "Fundadores da Santa Guerra",
@@ -55,6 +63,13 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number>()
   const containerRef = useRef<HTMLDivElement>(null)
+  
+  // New pack-based animation states
+  const [packs, setPacks] = useState<PackData[]>([])
+  const [currentPackIndex, setCurrentPackIndex] = useState(0)
+  const [packPhase, setPackPhase] = useState<"entering" | "shaking" | "opening" | "revealing" | "done">("entering")
+  const [cardRevealIndex, setCardRevealIndex] = useState(-1)
+  const [pullCount, setPullCount] = useState(0)
 
   const COST_SINGLE = 1
   const COST_MULTI = 10
@@ -62,6 +77,16 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
   const FP_COST = 50
 
   const banner = BANNERS[currentBanner]
+
+  // Get pack rarity color based on highest card
+  const getPackGlowColor = (rarity: string) => {
+    switch (rarity) {
+      case "LR": return "rgba(239, 68, 68, 0.8)"
+      case "UR": return "rgba(251, 191, 36, 0.8)"
+      case "SR": return "rgba(168, 85, 247, 0.7)"
+      default: return "rgba(100, 116, 139, 0.5)"
+    }
+  }
 
   const drawParticles = useCallback(() => {
     const canvas = canvasRef.current
@@ -101,184 +126,57 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
     }
 
     const particles: Particle[] = []
-    let portalRadius = 0
-    let meteorY = -100
     let time = 0
 
     const animate = () => {
       time++
 
       // Clear with fade effect
-      ctx.fillStyle = phase === 3 ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0.08)"
+      ctx.fillStyle = packPhase === "opening" ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.05)"
       ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-      // Phase 1: Portal opening with orbiting particles
-      if (phase === 1) {
-        portalRadius = Math.min(portalRadius + 2, 200)
-
-        // Draw portal rings
-        for (let i = 0; i < 3; i++) {
-          const ringRadius = portalRadius - i * 30
-          if (ringRadius > 0) {
-            ctx.beginPath()
-            ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2)
-            ctx.strokeStyle = tierColors[i % tierColors.length]
-            ctx.lineWidth = 3 - i
-            ctx.globalAlpha = 0.6 - i * 0.15
-            ctx.stroke()
-          }
-        }
-
-        // Orbiting particles
-        if (time % 2 === 0) {
-          const angle = Math.random() * Math.PI * 2
-          particles.push({
-            x: centerX + Math.cos(angle) * (portalRadius + 50),
-            y: centerY + Math.sin(angle) * (portalRadius + 50),
-            vx: 0,
-            vy: 0,
-            size: 2 + Math.random() * 3,
-            color: tierColors[Math.floor(Math.random() * tierColors.length)],
-            alpha: 1,
-            life: 80,
-            type: "orb",
-            angle: angle,
-            radius: portalRadius + 50,
-            speed: 0.03 + Math.random() * 0.02,
-          })
-        }
-
-        particles.forEach((p, i) => {
-          if (p.type === "orb" && p.angle !== undefined && p.radius !== undefined && p.speed !== undefined) {
-            p.angle += p.speed
-            p.radius -= 0.8
-            p.x = centerX + Math.cos(p.angle) * p.radius
-            p.y = centerY + Math.sin(p.angle) * p.radius
-            p.life--
-
-            if (p.radius < 20 || p.life <= 0) {
-              particles.splice(i, 1)
-            }
-          }
+      // Ambient particles during all phases
+      if (particles.length < 80 && time % 3 === 0) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: canvas.height + 10,
+          vx: (Math.random() - 0.5) * 2,
+          vy: -2 - Math.random() * 3,
+          size: 2 + Math.random() * 4,
+          color: tierColors[Math.floor(Math.random() * tierColors.length)],
+          alpha: 0.8,
+          life: 180,
+          type: "spark",
         })
       }
 
-      // Phase 2: Meteor descending
-      if (phase === 2) {
-        meteorY = Math.min(meteorY + 8, centerY)
-
-        // Draw meteor trail
-        const gradient = ctx.createLinearGradient(centerX, meteorY - 200, centerX, meteorY)
-        gradient.addColorStop(0, "transparent")
-        gradient.addColorStop(1, tierColors[0])
-
-        ctx.beginPath()
-        ctx.moveTo(centerX - 30, meteorY - 200)
-        ctx.lineTo(centerX + 30, meteorY - 200)
-        ctx.lineTo(centerX + 15, meteorY)
-        ctx.lineTo(centerX - 15, meteorY)
-        ctx.closePath()
-        ctx.fillStyle = gradient
-        ctx.globalAlpha = 0.8
-        ctx.fill()
-
-        // Meteor glow
-        const glowGradient = ctx.createRadialGradient(centerX, meteorY, 0, centerX, meteorY, 80)
-        glowGradient.addColorStop(0, tierColors[0])
-        glowGradient.addColorStop(0.5, tierColors[1] || tierColors[0])
-        glowGradient.addColorStop(1, "transparent")
-
-        ctx.beginPath()
-        ctx.arc(centerX, meteorY, 80, 0, Math.PI * 2)
-        ctx.fillStyle = glowGradient
-        ctx.globalAlpha = 0.9
-        ctx.fill()
-
-        // Meteor core
-        ctx.beginPath()
-        ctx.arc(centerX, meteorY, 25, 0, Math.PI * 2)
-        ctx.fillStyle = "#fff"
-        ctx.globalAlpha = 1
-        ctx.fill()
-
-        // Sparks from meteor
-        if (time % 2 === 0) {
-          for (let i = 0; i < 3; i++) {
-            particles.push({
-              x: centerX + (Math.random() - 0.5) * 40,
-              y: meteorY,
-              vx: (Math.random() - 0.5) * 8,
-              vy: -Math.random() * 5 - 2,
-              size: 2 + Math.random() * 3,
-              color: tierColors[Math.floor(Math.random() * tierColors.length)],
-              alpha: 1,
-              life: 30,
-              type: "spark",
-            })
-          }
-        }
-      }
-
-      // Phase 3: Impact explosion
-      if (phase === 3) {
-        // Massive explosion
-        if (time < 15) {
-          for (let i = 0; i < 40; i++) {
-            const angle = Math.random() * Math.PI * 2
-            const speed = 5 + Math.random() * 20
-            particles.push({
-              x: centerX,
-              y: centerY,
-              vx: Math.cos(angle) * speed,
-              vy: Math.sin(angle) * speed,
-              size: 3 + Math.random() * 10,
-              color: tierColors[Math.floor(Math.random() * tierColors.length)],
-              alpha: 1,
-              life: 50,
-              type: "spark",
-            })
-          }
-        }
-
-        // Expanding shockwave rings
-        if (time < 30) {
-          const ringRadius = time * 20
-          ctx.beginPath()
-          ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2)
-          ctx.strokeStyle = tierColors[0]
-          ctx.lineWidth = Math.max(1, 20 - time * 0.5)
-          ctx.globalAlpha = Math.max(0, 1 - time * 0.03)
-          ctx.stroke()
-        }
-      }
-
-      // Phase 4+: Ambient particles floating up
-      if (phase >= 4) {
-        if (particles.length < 60 && time % 5 === 0) {
+      // Opening explosion particles
+      if (packPhase === "opening" && time < 20) {
+        for (let i = 0; i < 15; i++) {
+          const angle = Math.random() * Math.PI * 2
+          const speed = 8 + Math.random() * 15
           particles.push({
-            x: Math.random() * canvas.width,
-            y: canvas.height + 10,
-            vx: (Math.random() - 0.5) * 1.5,
-            vy: -1.5 - Math.random() * 2,
-            size: 2 + Math.random() * 4,
+            x: centerX,
+            y: centerY,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            size: 4 + Math.random() * 8,
             color: tierColors[Math.floor(Math.random() * tierColors.length)],
-            alpha: 0.7,
-            life: 150,
+            alpha: 1,
+            life: 60,
             type: "spark",
           })
         }
       }
 
-      // Update and draw all particles
+      // Update and draw particles
       particles.forEach((p, i) => {
-        if (p.type === "spark") {
-          p.x += p.vx
-          p.y += p.vy
-          p.vx *= 0.98
-          p.vy *= 0.98
-          p.alpha -= 0.015
-          p.life--
-        }
+        p.x += p.vx
+        p.y += p.vy
+        p.vx *= 0.98
+        p.vy *= 0.98
+        p.alpha -= 0.008
+        p.life--
 
         if (p.life <= 0 || p.alpha <= 0) {
           particles.splice(i, 1)
@@ -286,14 +184,13 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         }
 
         const safeSize = Math.max(0.1, p.size)
-
-        // Draw particle
         ctx.beginPath()
         ctx.arc(p.x, p.y, safeSize, 0, Math.PI * 2)
         ctx.fillStyle = p.color
         ctx.globalAlpha = Math.max(0, p.alpha)
         ctx.fill()
 
+        // Glow effect
         const glowSize = safeSize * 3
         if (glowSize > 0) {
           const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowSize)
@@ -312,10 +209,10 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
     }
 
     animate()
-  }, [phase, rarityTier])
+  }, [packPhase, rarityTier])
 
   useEffect(() => {
-    if (phase >= 1 && phase <= 5) {
+    if (isOpening || showResults) {
       drawParticles()
     }
 
@@ -324,24 +221,62 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         cancelAnimationFrame(animationRef.current)
       }
     }
-  }, [phase, drawParticles])
+  }, [isOpening, showResults, drawParticles])
 
+  // Card reveal animation
   useEffect(() => {
-    if (phase === 5 && revealIndex < openedCards.length) {
+    if (packPhase === "revealing" && cardRevealIndex < CARDS_PER_PACK) {
       const timer = setTimeout(() => {
-        setRevealIndex((prev) => prev + 1)
-      }, 120)
+        setCardRevealIndex((prev) => prev + 1)
+      }, 300)
       return () => clearTimeout(timer)
     }
-  }, [phase, revealIndex, openedCards.length])
+  }, [packPhase, cardRevealIndex])
 
+  // Auto advance to next pack or finish
   useEffect(() => {
-    if (phase === 3) {
-      setScreenShake(true)
-      const timer = setTimeout(() => setScreenShake(false), 500)
+    if (packPhase === "revealing" && cardRevealIndex >= CARDS_PER_PACK) {
+      const timer = setTimeout(() => {
+        if (currentPackIndex < packs.length - 1) {
+          // Move to next pack
+          setCurrentPackIndex((prev) => prev + 1)
+          setPackPhase("entering")
+          setCardRevealIndex(-1)
+        } else {
+          // All packs opened - show final results
+          setPackPhase("done")
+          setShowResults(true)
+          setIsOpening(false)
+        }
+      }, 800)
       return () => clearTimeout(timer)
     }
-  }, [phase])
+  }, [packPhase, cardRevealIndex, currentPackIndex, packs.length])
+
+  // Pack phase progression
+  useEffect(() => {
+    if (!isOpening || packs.length === 0) return
+
+    if (packPhase === "entering") {
+      const timer = setTimeout(() => setPackPhase("shaking"), 600)
+      return () => clearTimeout(timer)
+    }
+    if (packPhase === "shaking") {
+      setScreenShake(true)
+      const timer = setTimeout(() => {
+        setScreenShake(false)
+        setPackPhase("opening")
+      }, 800)
+      return () => clearTimeout(timer)
+    }
+    if (packPhase === "opening") {
+      const timer = setTimeout(() => {
+        setPackPhase("revealing")
+        setCardRevealIndex(0)
+      }, 600)
+      return () => clearTimeout(timer)
+    }
+  }, [packPhase, isOpening, packs.length])
 
   const pullGacha = (count: number) => {
     const totalCost = count === 1 ? COST_SINGLE : COST_MULTI
@@ -349,51 +284,70 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
 
     setCoins(coins - totalCost)
     setIsOpening(true)
-    setPhase(1)
+    setPullCount(count)
+    setCurrentPackIndex(0)
+    setPackPhase("entering")
+    setCardRevealIndex(-1)
     setRevealIndex(-1)
 
-    const totalCards = count === 1 ? CARDS_PER_PACK : CARDS_PER_PACK * 10
-    const pulledCards: Card[] = []
+    const numPacks = count
+    const newPacks: PackData[] = []
+    const allPulledCards: Card[] = []
 
-    for (let i = 0; i < totalCards; i++) {
-      const rand = Math.random() * 100
-      let targetRarity: "R" | "SR" | "UR" | "LR"
+    for (let packNum = 0; packNum < numPacks; packNum++) {
+      const packCards: Card[] = []
+      
+      for (let i = 0; i < CARDS_PER_PACK; i++) {
+        const rand = Math.random() * 100
+        let targetRarity: "R" | "SR" | "UR" | "LR"
 
-      if (rand < 0.5) targetRarity = "LR"
-      else if (rand < 5) targetRarity = "UR"
-      else if (rand < 30) targetRarity = "SR"
-      else targetRarity = "R"
+        if (rand < 0.5) targetRarity = "LR"
+        else if (rand < 5) targetRarity = "UR"
+        else if (rand < 30) targetRarity = "SR"
+        else targetRarity = "R"
 
-      let availableCards = allCards.filter((c) => c.rarity === targetRarity)
-      if (availableCards.length === 0) {
-        availableCards = allCards
+        let availableCards = allCards.filter((c) => c.rarity === targetRarity)
+        if (availableCards.length === 0) {
+          availableCards = allCards
+        }
+
+        const randomCard = availableCards[Math.floor(Math.random() * availableCards.length)]
+        const card = { ...randomCard, id: `${randomCard.id}-${Date.now()}-${packNum}-${i}` }
+        packCards.push(card)
+        allPulledCards.push(card)
       }
 
-      const randomCard = availableCards[Math.floor(Math.random() * availableCards.length)]
-      pulledCards.push({ ...randomCard, id: `${randomCard.id}-${Date.now()}-${i}` })
+      // Determine highest rarity in pack
+      const rarities = ["R", "SR", "UR", "LR"] as const
+      let highestRarity: "R" | "SR" | "UR" | "LR" = "R"
+      for (const card of packCards) {
+        if (rarities.indexOf(card.rarity) > rarities.indexOf(highestRarity)) {
+          highestRarity = card.rarity
+        }
+      }
+
+      newPacks.push({
+        id: packNum,
+        cards: packCards,
+        isOpened: false,
+        isRevealing: false,
+        highestRarity,
+      })
     }
 
-    const hasLR = pulledCards.some((c) => c.rarity === "LR")
-    const hasUR = pulledCards.some((c) => c.rarity === "UR")
-    const hasSR = pulledCards.some((c) => c.rarity === "SR")
+    // Set overall rarity tier
+    const hasLR = allPulledCards.some((c) => c.rarity === "LR")
+    const hasUR = allPulledCards.some((c) => c.rarity === "UR")
+    const hasSR = allPulledCards.some((c) => c.rarity === "SR")
 
     if (hasLR) setRarityTier("legendary")
     else if (hasUR) setRarityTier("epic")
     else if (hasSR) setRarityTier("rare")
     else setRarityTier("normal")
 
-    setOpenedCards(pulledCards)
-
-    setTimeout(() => setPhase(2), 1800)
-    setTimeout(() => setPhase(3), 3200)
-    setTimeout(() => setPhase(4), 4000)
-    setTimeout(() => {
-      setPhase(5)
-      setRevealIndex(0)
-      setShowResults(true)
-      setIsOpening(false)
-      addToCollection(pulledCards)
-    }, 4800)
+    setPacks(newPacks)
+    setOpenedCards(allPulledCards)
+    addToCollection(allPulledCards)
   }
 
   const pullFriendshipGacha = () => {
@@ -419,10 +373,6 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
     }, 3200)
   }
 
-  const skipToResults = () => {
-    setRevealIndex(openedCards.length)
-  }
-
   const closeResults = () => {
     setShowResults(false)
     setOpenedCards([])
@@ -430,6 +380,11 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
     setPhase(0)
     setRevealIndex(-1)
     setRarityTier("normal")
+    setPacks([])
+    setCurrentPackIndex(0)
+    setPackPhase("entering")
+    setCardRevealIndex(-1)
+    setPullCount(0)
   }
 
   const getRarityColor = (rarity: string) => {
@@ -456,19 +411,6 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
       default:
         return "none"
     }
-  }
-
-  const getRarityText = () => {
-    if (rarityTier === "legendary") return "LENDARIO!"
-    if (rarityTier === "epic") return "ULTRA RARO!"
-    return null
-  }
-
-  const getTierColor = () => {
-    if (rarityTier === "legendary") return "from-red-500 via-amber-400 to-yellow-400"
-    if (rarityTier === "epic") return "from-amber-400 via-yellow-400 to-amber-300"
-    if (rarityTier === "rare") return "from-purple-400 to-pink-400"
-    return "from-slate-400 to-slate-300"
   }
 
   return (
@@ -639,301 +581,323 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
       </div>
 
       {/* Cinematic Opening Overlay */}
-      {(isOpening || showResults) && (
-        <div ref={containerRef} className={`fixed inset-0 z-50 bg-black ${screenShake ? "animate-shake" : ""}`}>
+      {(isOpening || showResults) && currentBanner !== "friendship" && (
+        <div ref={containerRef} className={`fixed inset-0 z-50 bg-gradient-to-b from-slate-900 via-black to-slate-900 ${screenShake ? "animate-shake" : ""}`}>
           {/* Canvas for particle system */}
           <canvas ref={canvasRef} className="absolute inset-0" />
 
-          {/* Phase 1: Portal with pack */}
-          {phase === 1 && currentBanner !== "friendship" && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative w-48 h-72" style={{ animation: "floatSlow 3s ease-in-out infinite" }}>
-                {/* Glow behind pack */}
-                <div
-                  className={`absolute inset-0 rounded-xl blur-3xl bg-gradient-to-r ${getTierColor()}`}
-                  style={{ opacity: 0.5, transform: "scale(1.2)" }}
-                />
-                <Image
-                  src={banner.packImage || "/placeholder.svg"}
-                  alt="Pack"
-                  fill
-                  className="object-contain relative z-10"
-                  style={{
-                    filter: `drop-shadow(0 0 30px ${rarityTier === "legendary" ? "#fbbf24" : rarityTier === "epic" ? "#f59e0b" : "#8b5cf6"})`,
-                  }}
-                />
+          {/* Pack counter */}
+          {packs.length > 1 && packPhase !== "done" && (
+            <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30">
+              <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-full border border-white/20">
+                <span className="text-white font-bold text-lg">
+                  Pack {currentPackIndex + 1} / {packs.length}
+                </span>
               </div>
-              <p className="absolute bottom-40 text-xl text-white/80 tracking-widest">ABRINDO PORTAL...</p>
             </div>
           )}
 
-          {/* Phase 1: Friendship heart */}
-          {phase === 1 && currentBanner === "friendship" && (
-            <div className="absolute inset-0 flex items-center justify-center">
+          {/* Skip button */}
+          {packPhase !== "done" && (
+            <Button
+              onClick={() => {
+                setPackPhase("done")
+                setShowResults(true)
+                setIsOpening(false)
+              }}
+              className="absolute top-6 right-6 z-30 bg-white/10 hover:bg-white/20 border border-white/30"
+            >
+              Pular Tudo
+            </Button>
+          )}
+
+          {/* Pack Opening Animation */}
+          {packPhase !== "done" && packs[currentPackIndex] && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              {/* Current Pack */}
               <div className="relative">
+                {/* Pack glow based on highest rarity */}
                 <div
-                  className={`absolute inset-0 blur-3xl ${rarityTier === "legendary" ? "bg-amber-500" : "bg-pink-500"}`}
-                  style={{ opacity: 0.5, transform: "scale(2)" }}
-                />
-                <Heart
-                  className={`relative w-32 h-32 ${
-                    rarityTier === "legendary" ? "text-amber-400 fill-amber-400" : "text-pink-400 fill-pink-400"
-                  }`}
+                  className="absolute inset-0 blur-3xl rounded-3xl transition-all duration-500"
                   style={{
-                    animation: "heartbeat 1s ease-in-out infinite",
-                    filter: `drop-shadow(0 0 40px currentColor)`,
+                    background: getPackGlowColor(packs[currentPackIndex].highestRarity),
+                    opacity: packPhase === "opening" ? 1 : 0.6,
+                    transform: packPhase === "opening" ? "scale(2)" : "scale(1.3)",
                   }}
                 />
-              </div>
-            </div>
-          )}
 
-          {/* Phase 2: Meteor descending with pack */}
-          {phase === 2 && currentBanner !== "friendship" && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative w-56 h-80" style={{ animation: "descendFast 0.8s ease-in forwards" }}>
+                {/* Pack image */}
                 <div
-                  className={`absolute inset-0 rounded-xl blur-3xl bg-gradient-to-r ${getTierColor()}`}
-                  style={{ opacity: 0.8, transform: "scale(1.5)" }}
-                />
-                <Image
-                  src={banner.packImage || "/placeholder.svg"}
-                  alt="Pack"
-                  fill
-                  className="object-contain relative z-10"
+                  className="relative w-52 h-80 transition-all duration-500"
                   style={{
-                    filter: `drop-shadow(0 0 50px ${rarityTier === "legendary" ? "#fbbf24" : "#f59e0b"})`,
+                    animation:
+                      packPhase === "entering"
+                        ? "packEnter 0.6s ease-out forwards"
+                        : packPhase === "shaking"
+                          ? "packShake 0.1s ease-in-out infinite"
+                          : packPhase === "opening"
+                            ? "packOpen 0.6s ease-out forwards"
+                            : undefined,
                   }}
-                />
-              </div>
-              <p className="absolute bottom-40 text-2xl font-bold text-white tracking-widest animate-pulse">
-                PREPARANDO...
-              </p>
-            </div>
-          )}
-
-          {/* Phase 2: Friendship intensify */}
-          {phase === 2 && currentBanner === "friendship" && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative">
-                <div
-                  className={`absolute inset-0 blur-3xl ${rarityTier === "legendary" ? "bg-amber-500" : "bg-pink-500"}`}
-                  style={{ opacity: 0.9, transform: "scale(2.5)" }}
-                />
-                <Heart
-                  className={`relative w-40 h-40 ${
-                    rarityTier === "legendary" ? "text-amber-400 fill-amber-400" : "text-pink-400 fill-pink-400"
-                  }`}
-                  style={{
-                    animation: "heartPound 0.15s infinite",
-                    filter: `drop-shadow(0 0 60px currentColor)`,
-                  }}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Phase 3: Explosion with rarity text */}
-          {phase === 3 && (
-            <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-              {/* White flash */}
-              <div className="absolute inset-0 bg-white" style={{ animation: "flashOut 0.5s ease-out forwards" }} />
-
-              {/* Radial burst lines */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                {[...Array(16)].map((_, i) => (
-                  <div
-                    key={i}
-                    className={`absolute h-[200vh] w-2 bg-gradient-to-t from-transparent ${
-                      rarityTier === "legendary"
-                        ? "via-amber-400"
-                        : rarityTier === "epic"
-                          ? "via-yellow-400"
-                          : "via-purple-400"
-                    } to-transparent`}
+                >
+                  <Image
+                    src={banner.packImage || "/placeholder.svg"}
+                    alt="Pack"
+                    fill
+                    className="object-contain drop-shadow-2xl"
                     style={{
-                      transform: `rotate(${i * 22.5}deg)`,
-                      animation: "burstLine 0.8s ease-out forwards",
-                      opacity: 0,
-                      animationDelay: `${i * 0.02}s`,
+                      filter: `drop-shadow(0 0 40px ${getPackGlowColor(packs[currentPackIndex].highestRarity)})`,
                     }}
                   />
+                </div>
+
+                {/* Opening burst effect */}
+                {packPhase === "opening" && (
+                  <>
+                    <div className="absolute inset-0 bg-white rounded-3xl" style={{ animation: "flashOut 0.4s ease-out forwards" }} />
+                    {[...Array(12)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="absolute left-1/2 top-1/2 w-1 h-32 bg-gradient-to-t from-transparent via-white to-transparent"
+                        style={{
+                          transform: `rotate(${i * 30}deg) translateY(-50%)`,
+                          transformOrigin: "center bottom",
+                          animation: "burstRay 0.5s ease-out forwards",
+                          opacity: 0,
+                          animationDelay: `${i * 0.02}s`,
+                        }}
+                      />
+                    ))}
+                  </>
+                )}
+              </div>
+
+              {/* Pack text */}
+              <p
+                className="mt-8 text-2xl font-bold text-white/90 tracking-wider"
+                style={{ animation: "fadeIn 0.3s ease-out forwards" }}
+              >
+                {packPhase === "entering" && "Preparando pack..."}
+                {packPhase === "shaking" && "Abrindo..."}
+                {packPhase === "opening" && (
+                  <span className={`${
+                    packs[currentPackIndex].highestRarity === "LR" ? "text-red-400" :
+                    packs[currentPackIndex].highestRarity === "UR" ? "text-amber-400" :
+                    packs[currentPackIndex].highestRarity === "SR" ? "text-purple-400" : "text-slate-400"
+                  }`}>
+                    {packs[currentPackIndex].highestRarity === "LR" && "LENDARIO!"}
+                    {packs[currentPackIndex].highestRarity === "UR" && "ULTRA RARO!"}
+                    {packs[currentPackIndex].highestRarity === "SR" && "SUPER RARO!"}
+                    {packs[currentPackIndex].highestRarity === "R" && "Cartas obtidas!"}
+                  </span>
+                )}
+              </p>
+
+              {/* Cards reveal for current pack */}
+              {packPhase === "revealing" && (
+                <div className="mt-8 flex gap-4 justify-center" style={{ animation: "cardsSlideUp 0.4s ease-out forwards" }}>
+                  {packs[currentPackIndex].cards.map((card, idx) => {
+                    const isRevealed = idx <= cardRevealIndex
+                    return (
+                      <div
+                        key={`${card.id}-reveal-${idx}`}
+                        className="relative w-24 h-36 md:w-28 md:h-40 rounded-xl overflow-hidden"
+                        style={{
+                          opacity: isRevealed ? 1 : 0,
+                          transform: isRevealed 
+                            ? "scale(1) rotateY(0deg) translateY(0)" 
+                            : "scale(0.6) rotateY(180deg) translateY(30px)",
+                          transition: "all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                          boxShadow: isRevealed ? getRarityGlow(card.rarity) : "none",
+                        }}
+                      >
+                        {/* Shine effect */}
+                        {isRevealed && (
+                          <div
+                            className="absolute inset-0 z-20 bg-gradient-to-r from-transparent via-white/60 to-transparent pointer-events-none"
+                            style={{
+                              transform: "translateX(-100%)",
+                              animation: "shineAcross 0.5s ease-out forwards",
+                              animationDelay: "0.1s",
+                            }}
+                          />
+                        )}
+
+                        <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
+
+                        {/* Rarity badge */}
+                        <div
+                          className={`absolute bottom-0 left-0 right-0 py-1.5 text-center text-sm font-bold bg-gradient-to-r ${getRarityColor(card.rarity)} text-white`}
+                        >
+                          {card.rarity}
+                        </div>
+
+                        {/* LR rainbow border */}
+                        {card.rarity === "LR" && isRevealed && (
+                          <div
+                            className="absolute inset-0 rounded-xl pointer-events-none"
+                            style={{
+                              background: "linear-gradient(90deg, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #8b5cf6, #ef4444)",
+                              backgroundSize: "200% 100%",
+                              animation: "rainbowShift 2s linear infinite",
+                              padding: "3px",
+                              WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                              WebkitMaskComposite: "xor",
+                              maskComposite: "exclude",
+                            }}
+                          />
+                        )}
+
+                        {/* UR golden glow */}
+                        {card.rarity === "UR" && isRevealed && (
+                          <div
+                            className="absolute inset-0 rounded-xl pointer-events-none border-2 border-amber-400/80"
+                            style={{ animation: "pulseGlow 1.5s ease-in-out infinite" }}
+                          />
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Final Results Grid */}
+          {packPhase === "done" && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-4" style={{ animation: "fadeIn 0.4s ease-out forwards" }}>
+              <h2 className="text-3xl font-bold text-white mb-6">
+                {pullCount === 1 ? "Cartas Obtidas" : `${pullCount} Packs Abertos!`}
+              </h2>
+
+              {/* All cards grouped by pack */}
+              <div className="max-h-[65vh] overflow-y-auto w-full max-w-5xl">
+                {packs.map((pack, packIdx) => (
+                  <div key={pack.id} className="mb-6">
+                    {packs.length > 1 && (
+                      <p className="text-slate-400 text-sm mb-2 pl-2">Pack {packIdx + 1}</p>
+                    )}
+                    <div className="flex gap-3 justify-center flex-wrap">
+                      {pack.cards.map((card, cardIdx) => (
+                        <div
+                          key={`${card.id}-final-${cardIdx}`}
+                          className="relative w-20 h-28 md:w-24 md:h-32 rounded-xl overflow-hidden transition-transform hover:scale-110 hover:z-10"
+                          style={{
+                            boxShadow: getRarityGlow(card.rarity),
+                            animation: `cardPopIn 0.3s ease-out forwards`,
+                            animationDelay: `${(packIdx * 4 + cardIdx) * 0.05}s`,
+                            opacity: 0,
+                          }}
+                        >
+                          <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
+                          <div
+                            className={`absolute bottom-0 left-0 right-0 py-1 text-center text-xs font-bold bg-gradient-to-r ${getRarityColor(card.rarity)} text-white`}
+                          >
+                            {card.rarity}
+                          </div>
+
+                          {card.rarity === "LR" && (
+                            <div
+                              className="absolute inset-0 rounded-xl pointer-events-none"
+                              style={{
+                                background: "linear-gradient(90deg, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #8b5cf6, #ef4444)",
+                                backgroundSize: "200% 100%",
+                                animation: "rainbowShift 2s linear infinite",
+                                padding: "2px",
+                                WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                                WebkitMaskComposite: "xor",
+                                maskComposite: "exclude",
+                              }}
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
 
-              {/* Rarity announcement */}
-              {getRarityText() && (
-                <div
-                  className="relative z-20"
-                  style={{ animation: "slamIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards" }}
-                >
-                  <h1
-                    className={`text-6xl md:text-8xl font-black tracking-tighter bg-gradient-to-r ${getTierColor()} bg-clip-text text-transparent`}
-                    style={{
-                      textShadow: "0 0 80px currentColor",
-                      WebkitTextStroke: "2px rgba(255,255,255,0.3)",
-                    }}
-                  >
-                    {getRarityText()}
-                  </h1>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Phase 4: Transition / FP Result */}
-          {phase === 4 && fpReward && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center" style={{ animation: "scaleIn 0.4s ease-out forwards" }}>
-                <p className={`text-5xl font-black mb-8 ${fpReward >= 3000 ? "text-amber-400" : "text-pink-400"}`}>
-                  {fpReward >= 3000 ? "SORTE GRANDE!" : "Voce ganhou:"}
-                </p>
-                <div className="relative inline-block">
-                  <div
-                    className={`absolute inset-0 blur-3xl ${
-                      fpReward >= 3000 ? "bg-amber-500" : "bg-amber-600"
-                    } opacity-60`}
-                  />
-                  <div
-                    className={`relative flex items-center gap-6 px-16 py-10 rounded-3xl border-4 ${
-                      fpReward >= 3000
-                        ? "bg-gradient-to-r from-amber-500 to-yellow-500 border-yellow-300"
-                        : "bg-gradient-to-r from-amber-600 to-yellow-600 border-amber-400"
-                    }`}
-                  >
-                    <Image src="/images/icons/gacha-coin.png" alt="Coin" width={96} height={96} className="w-24 h-24 object-contain drop-shadow-2xl" />
-                    <span className="text-6xl font-black text-white">+{fpReward.toLocaleString()}</span>
-                  </div>
-                </div>
-                <p className="mt-6 text-2xl font-bold text-white">Moedas de Gacha!</p>
-                <Button
-                  onClick={closeResults}
-                  className="mt-10 px-12 py-4 text-xl font-bold bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 border-2 border-green-400/50"
-                >
-                  CONFIRMAR
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Phase 5: Card results */}
-          {phase === 5 && !fpReward && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
-              {/* Skip button */}
-              {revealIndex < openedCards.length && (
-                <Button
-                  onClick={skipToResults}
-                  className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 border border-white/30"
-                >
-                  Pular
-                </Button>
-              )}
-
-              {/* Cards grid */}
-              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 max-h-[70vh] overflow-y-auto p-4">
-                {openedCards.map((card, index) => {
-                  const isRevealed = index <= revealIndex
-                  return (
-                    <div
-                      key={`${card.id}-${index}`}
-                      className="relative aspect-[3/4] rounded-xl overflow-hidden cursor-pointer group"
-                      style={{
-                        opacity: isRevealed ? 1 : 0,
-                        transform: isRevealed ? "scale(1) rotateY(0deg)" : "scale(0.5) rotateY(180deg)",
-                        transition: `all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${Math.min(index * 0.08, 0.8)}s`,
-                        boxShadow: isRevealed ? getRarityGlow(card.rarity) : "none",
-                      }}
-                    >
-                      {/* Shine effect */}
-                      {isRevealed && (
-                        <div
-                          className="absolute inset-0 z-20 bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none"
-                          style={{
-                            transform: "translateX(-100%)",
-                            animation: "shineAcross 0.6s ease-out forwards",
-                            animationDelay: `${Math.min(index * 0.08, 0.8) + 0.2}s`,
-                          }}
-                        />
-                      )}
-
-                      <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
-
-                      {/* Rarity bar */}
-                      <div
-                        className={`absolute bottom-0 left-0 right-0 py-1 text-center text-xs font-bold bg-gradient-to-r ${getRarityColor(card.rarity)} text-white`}
-                      >
-                        {card.rarity}
-                      </div>
-
-                      {/* LR rainbow border */}
-                      {card.rarity === "LR" && isRevealed && (
-                        <div
-                          className="absolute inset-0 rounded-xl pointer-events-none"
-                          style={{
-                            background:
-                              "linear-gradient(90deg, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #8b5cf6, #ef4444)",
-                            backgroundSize: "200% 100%",
-                            animation: "rainbowShift 2s linear infinite",
-                            padding: "3px",
-                            WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                            WebkitMaskComposite: "xor",
-                            maskComposite: "exclude",
-                          }}
-                        />
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-
               {/* Confirm button */}
-              {revealIndex >= openedCards.length - 1 && (
-                <Button
-                  onClick={closeResults}
-                  className="mt-8 px-12 py-4 text-xl font-bold bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 border-2 border-green-400/50"
-                  style={{ animation: "scaleIn 0.3s ease-out forwards" }}
-                >
-                  CONFIRMAR
-                </Button>
-              )}
+              <Button
+                onClick={closeResults}
+                className="mt-6 px-12 py-4 text-xl font-bold bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 border-2 border-green-400/50"
+                style={{ animation: "scaleIn 0.3s ease-out forwards", animationDelay: "0.3s", opacity: 0 }}
+              >
+                CONFIRMAR
+              </Button>
             </div>
           )}
         </div>
       )}
 
+      {/* Friendship Gacha Overlay */}
+      {(isOpening || showResults) && currentBanner === "friendship" && fpReward && (
+        <div ref={containerRef} className="fixed inset-0 z-50 bg-gradient-to-b from-pink-900/90 via-black to-rose-900/90">
+          <canvas ref={canvasRef} className="absolute inset-0" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center" style={{ animation: "scaleIn 0.4s ease-out forwards" }}>
+              <p className={`text-5xl font-black mb-8 ${fpReward >= 3000 ? "text-amber-400" : "text-pink-400"}`}>
+                {fpReward >= 3000 ? "SORTE GRANDE!" : "Voce ganhou:"}
+              </p>
+              <div className="relative inline-block">
+                <div
+                  className={`absolute inset-0 blur-3xl ${fpReward >= 3000 ? "bg-amber-500" : "bg-amber-600"} opacity-60`}
+                />
+                <div
+                  className={`relative flex items-center gap-6 px-16 py-10 rounded-3xl border-4 ${
+                    fpReward >= 3000
+                      ? "bg-gradient-to-r from-amber-500 to-yellow-500 border-yellow-300"
+                      : "bg-gradient-to-r from-amber-600 to-yellow-600 border-amber-400"
+                  }`}
+                >
+                  <Image src="/images/icons/gacha-coin.png" alt="Coin" width={96} height={96} className="w-24 h-24 object-contain drop-shadow-2xl" />
+                  <span className="text-6xl font-black text-white">+{fpReward.toLocaleString()}</span>
+                </div>
+              </div>
+              <p className="mt-6 text-2xl font-bold text-white">Moedas de Gacha!</p>
+              <Button
+                onClick={closeResults}
+                className="mt-10 px-12 py-4 text-xl font-bold bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 border-2 border-green-400/50"
+              >
+                CONFIRMAR
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style jsx>{`
-        @keyframes floatSlow {
-          0%, 100% { transform: translateY(0) rotate(-1deg); }
-          50% { transform: translateY(-20px) rotate(1deg); }
+        @keyframes packEnter {
+          0% { transform: translateY(-150px) scale(0.5) rotate(-10deg); opacity: 0; }
+          60% { transform: translateY(20px) scale(1.05) rotate(2deg); opacity: 1; }
+          100% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
         }
-        @keyframes heartbeat {
-          0%, 100% { transform: scale(1); }
-          25% { transform: scale(1.1); }
-          50% { transform: scale(1); }
-          75% { transform: scale(1.05); }
+        @keyframes packShake {
+          0%, 100% { transform: translateX(0) rotate(0deg); }
+          25% { transform: translateX(-8px) rotate(-2deg); }
+          75% { transform: translateX(8px) rotate(2deg); }
         }
-        @keyframes heartPound {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.2); }
+        @keyframes packOpen {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.3); opacity: 1; }
+          100% { transform: scale(0) rotate(180deg); opacity: 0; }
         }
-        @keyframes descendFast {
-          0% { transform: translateY(-100px) scale(0.8); opacity: 0; }
-          100% { transform: translateY(0) scale(1.1); opacity: 1; }
+        @keyframes burstRay {
+          0% { opacity: 0; transform: rotate(var(--r, 0deg)) scaleY(0); }
+          30% { opacity: 1; }
+          100% { opacity: 0; transform: rotate(var(--r, 0deg)) scaleY(3); }
         }
         @keyframes flashOut {
           0% { opacity: 1; }
           100% { opacity: 0; }
         }
-        @keyframes burstLine {
-          0% { opacity: 0; transform: rotate(var(--r, 0deg)) scaleY(0); }
-          50% { opacity: 1; }
-          100% { opacity: 0; transform: rotate(var(--r, 0deg)) scaleY(1); }
+        @keyframes fadeIn {
+          0% { opacity: 0; }
+          100% { opacity: 1; }
         }
-        @keyframes slamIn {
-          0% { transform: scale(3) translateY(-30px); opacity: 0; }
-          60% { transform: scale(0.95); opacity: 1; }
-          80% { transform: scale(1.02); }
-          100% { transform: scale(1); }
+        @keyframes cardsSlideUp {
+          0% { transform: translateY(50px); opacity: 0; }
+          100% { transform: translateY(0); opacity: 1; }
         }
         @keyframes scaleIn {
           0% { transform: scale(0.8); opacity: 0; }
@@ -947,6 +911,15 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
           0% { background-position: 0% 50%; }
           100% { background-position: 200% 50%; }
         }
+        @keyframes pulseGlow {
+          0%, 100% { box-shadow: 0 0 15px rgba(251, 191, 36, 0.5); }
+          50% { box-shadow: 0 0 30px rgba(251, 191, 36, 0.8); }
+        }
+        @keyframes cardPopIn {
+          0% { transform: scale(0) rotate(-10deg); opacity: 0; }
+          60% { transform: scale(1.1) rotate(2deg); }
+          100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
           10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
@@ -954,6 +927,12 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
         }
         .animate-shake {
           animation: shake 0.5s ease-in-out;
+        }
+        @keyframes heartbeat {
+          0%, 100% { transform: scale(1); }
+          25% { transform: scale(1.1); }
+          50% { transform: scale(1); }
+          75% { transform: scale(1.05); }
         }
       `}</style>
     </div>
