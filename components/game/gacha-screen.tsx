@@ -695,66 +695,103 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
 
               {/* Cards reveal for current pack */}
               {packPhase === "revealing" && (
-                <div className="mt-8 flex gap-4 justify-center" style={{ animation: "cardsSlideUp 0.4s ease-out forwards" }}>
+                <div className="mt-8 flex gap-5 justify-center" style={{ animation: "cardsSlideUp 0.4s ease-out forwards" }}>
                   {packs[currentPackIndex].cards.map((card, idx) => {
                     const isRevealed = idx <= cardRevealIndex
                     return (
-                      <div
-                        key={`${card.id}-reveal-${idx}`}
-                        className="relative w-24 h-36 md:w-28 md:h-40 rounded-xl overflow-hidden"
-                        style={{
-                          opacity: isRevealed ? 1 : 0,
-                          transform: isRevealed 
-                            ? "scale(1) rotateY(0deg) translateY(0)" 
-                            : "scale(0.6) rotateY(180deg) translateY(30px)",
-                          transition: "all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                          boxShadow: isRevealed ? getRarityGlow(card.rarity) : "none",
-                        }}
-                      >
-                        {/* Shine effect */}
-                        {isRevealed && (
-                          <div
-                            className="absolute inset-0 z-20 bg-gradient-to-r from-transparent via-white/60 to-transparent pointer-events-none"
-                            style={{
-                              transform: "translateX(-100%)",
-                              animation: "shineAcross 0.5s ease-out forwards",
-                              animationDelay: "0.1s",
-                            }}
-                          />
-                        )}
-
-                        <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
-
-                        {/* Rarity badge */}
+                      <div key={`${card.id}-reveal-${idx}`} className="flex flex-col items-center gap-2">
+                        {/* Card with 3D flip */}
                         <div
-                          className={`absolute bottom-0 left-0 right-0 py-1.5 text-center text-sm font-bold bg-gradient-to-r ${getRarityColor(card.rarity)} text-white`}
+                          className="relative w-24 h-36 md:w-28 md:h-40"
+                          style={{
+                            perspective: "1000px",
+                            opacity: idx <= cardRevealIndex + 1 ? 1 : 0,
+                            transition: "opacity 0.3s ease-out",
+                          }}
+                        >
+                          <div
+                            className="relative w-full h-full"
+                            style={{
+                              transformStyle: "preserve-3d",
+                              transform: isRevealed ? "rotateY(0deg)" : "rotateY(180deg)",
+                              transition: "transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
+                            }}
+                          >
+                            {/* Card Front */}
+                            <div
+                              className="absolute inset-0 overflow-hidden"
+                              style={{
+                                backfaceVisibility: "hidden",
+                                boxShadow: isRevealed ? getRarityGlow(card.rarity) : "none",
+                              }}
+                            >
+                              {/* Shine effect */}
+                              {isRevealed && (
+                                <div
+                                  className="absolute inset-0 z-20 bg-gradient-to-r from-transparent via-white/60 to-transparent pointer-events-none"
+                                  style={{
+                                    transform: "translateX(-100%)",
+                                    animation: "shineAcross 0.5s ease-out forwards",
+                                    animationDelay: "0.3s",
+                                  }}
+                                />
+                              )}
+
+                              <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
+
+                              {/* LR rainbow border */}
+                              {card.rarity === "LR" && isRevealed && (
+                                <div
+                                  className="absolute inset-0 pointer-events-none"
+                                  style={{
+                                    background: "linear-gradient(90deg, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #8b5cf6, #ef4444)",
+                                    backgroundSize: "200% 100%",
+                                    animation: "rainbowShift 2s linear infinite",
+                                    padding: "3px",
+                                    WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                                    WebkitMaskComposite: "xor",
+                                    maskComposite: "exclude",
+                                  }}
+                                />
+                              )}
+
+                              {/* UR golden glow */}
+                              {card.rarity === "UR" && isRevealed && (
+                                <div
+                                  className="absolute inset-0 pointer-events-none border-2 border-amber-400/80"
+                                  style={{ animation: "pulseGlow 1.5s ease-in-out infinite" }}
+                                />
+                              )}
+                            </div>
+
+                            {/* Card Back */}
+                            <div
+                              className="absolute inset-0 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 flex items-center justify-center"
+                              style={{
+                                backfaceVisibility: "hidden",
+                                transform: "rotateY(180deg)",
+                              }}
+                            >
+                              <div className="w-[85%] h-[90%] border-2 border-slate-600 bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center">
+                                <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 border-2 border-amber-400 flex items-center justify-center">
+                                  <span className="text-white font-bold text-lg md:text-xl">G</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Rarity badge below card */}
+                        <div
+                          className={`px-3 py-1 text-center text-sm font-bold bg-gradient-to-r ${getRarityColor(card.rarity)} text-white rounded-md`}
+                          style={{
+                            opacity: isRevealed ? 1 : 0,
+                            transform: isRevealed ? "translateY(0)" : "translateY(-10px)",
+                            transition: "all 0.4s ease-out 0.3s",
+                          }}
                         >
                           {card.rarity}
                         </div>
-
-                        {/* LR rainbow border */}
-                        {card.rarity === "LR" && isRevealed && (
-                          <div
-                            className="absolute inset-0 rounded-xl pointer-events-none"
-                            style={{
-                              background: "linear-gradient(90deg, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #8b5cf6, #ef4444)",
-                              backgroundSize: "200% 100%",
-                              animation: "rainbowShift 2s linear infinite",
-                              padding: "3px",
-                              WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                              WebkitMaskComposite: "xor",
-                              maskComposite: "exclude",
-                            }}
-                          />
-                        )}
-
-                        {/* UR golden glow */}
-                        {card.rarity === "UR" && isRevealed && (
-                          <div
-                            className="absolute inset-0 rounded-xl pointer-events-none border-2 border-amber-400/80"
-                            style={{ animation: "pulseGlow 1.5s ease-in-out infinite" }}
-                          />
-                        )}
                       </div>
                     )
                   })}
@@ -771,45 +808,58 @@ export default function GachaScreen({ onBack }: GachaScreenProps) {
               </h2>
 
               {/* All cards grouped by pack */}
-              <div className="max-h-[65vh] overflow-y-auto w-full max-w-5xl">
+              <div className="max-h-[65vh] overflow-y-auto w-full max-w-5xl px-4">
                 {packs.map((pack, packIdx) => (
-                  <div key={pack.id} className="mb-6">
+                  <div key={pack.id} className="mb-8">
                     {packs.length > 1 && (
-                      <p className="text-slate-400 text-sm mb-2 pl-2">Pack {packIdx + 1}</p>
+                      <p className="text-slate-400 text-sm mb-3 pl-2">Pack {packIdx + 1}</p>
                     )}
-                    <div className="flex gap-3 justify-center flex-wrap">
+                    <div className="flex gap-4 justify-center flex-wrap">
                       {pack.cards.map((card, cardIdx) => (
                         <div
                           key={`${card.id}-final-${cardIdx}`}
-                          className="relative w-20 h-28 md:w-24 md:h-32 rounded-xl overflow-hidden transition-transform hover:scale-110 hover:z-10"
+                          className="flex flex-col items-center gap-1.5"
                           style={{
-                            boxShadow: getRarityGlow(card.rarity),
                             animation: `cardPopIn 0.3s ease-out forwards`,
                             animationDelay: `${(packIdx * 4 + cardIdx) * 0.05}s`,
                             opacity: 0,
                           }}
                         >
-                          <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
                           <div
-                            className={`absolute bottom-0 left-0 right-0 py-1 text-center text-xs font-bold bg-gradient-to-r ${getRarityColor(card.rarity)} text-white`}
+                            className="relative w-20 h-28 md:w-24 md:h-32 overflow-hidden transition-transform hover:scale-110 hover:z-10"
+                            style={{ boxShadow: getRarityGlow(card.rarity) }}
+                          >
+                            <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
+
+                            {card.rarity === "LR" && (
+                              <div
+                                className="absolute inset-0 pointer-events-none"
+                                style={{
+                                  background: "linear-gradient(90deg, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #8b5cf6, #ef4444)",
+                                  backgroundSize: "200% 100%",
+                                  animation: "rainbowShift 2s linear infinite",
+                                  padding: "2px",
+                                  WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                                  WebkitMaskComposite: "xor",
+                                  maskComposite: "exclude",
+                                }}
+                              />
+                            )}
+
+                            {card.rarity === "UR" && (
+                              <div
+                                className="absolute inset-0 pointer-events-none border-2 border-amber-400/80"
+                                style={{ animation: "pulseGlow 1.5s ease-in-out infinite" }}
+                              />
+                            )}
+                          </div>
+
+                          {/* Rarity badge below */}
+                          <div
+                            className={`px-2 py-0.5 text-center text-xs font-bold bg-gradient-to-r ${getRarityColor(card.rarity)} text-white rounded`}
                           >
                             {card.rarity}
                           </div>
-
-                          {card.rarity === "LR" && (
-                            <div
-                              className="absolute inset-0 rounded-xl pointer-events-none"
-                              style={{
-                                background: "linear-gradient(90deg, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #8b5cf6, #ef4444)",
-                                backgroundSize: "200% 100%",
-                                animation: "rainbowShift 2s linear infinite",
-                                padding: "2px",
-                                WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                                WebkitMaskComposite: "xor",
-                                maskComposite: "exclude",
-                              }}
-                            />
-                          )}
                         </div>
                       ))}
                     </div>
