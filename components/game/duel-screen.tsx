@@ -358,6 +358,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   } | null>(null)
   const [inspectedCard, setInspectedCard] = useState<GameCard | null>(null)
   const [graveyardView, setGraveyardView] = useState<"player" | "enemy" | null>(null)
+  const [effectFeedback, setEffectFeedback] = useState<{ active: boolean; message: string; type: "success" | "error" } | null>(null)
 
   const cardPressTimer = useRef<NodeJS.Timeout | null>(null)
   const draggedCardRef = useRef<HTMLDivElement>(null)
@@ -372,6 +373,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const playerCardsRef = useRef<(HTMLDivElement | null)[]>([]) // Added for player unit zone refs
 
   const gameResultRecordedRef = useRef(false)
+
+  // Helper to show effect feedback
+  const showEffectFeedback = useCallback((message: string, type: "success" | "error") => {
+    setEffectFeedback({ active: true, message, type })
+    setTimeout(() => setEffectFeedback(null), 2000)
+  }, [])
   
   // If mode is "player", show the multiplayer lobby system
   if (mode === "player" && !showOnlineDuel) {
@@ -1571,7 +1578,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         // Check if card can be activated
         const { canActivate, reason } = effect.canActivate(effectContext)
         if (!canActivate) {
-          console.log("[v0] Cannot activate", cardToPlace.name, "-", reason)
+          // Card cannot be activated - show feedback
+        showEffectFeedback(`${cardToPlace.name}: ${reason}`, "error")
           return // Card cannot be played
         }
         
@@ -1595,7 +1603,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         // Effect doesn't require targets - resolve immediately
         const result = effect.resolve(effectContext)
         if (result.success) {
-          console.log("[v0] Effect resolved:", result.message)
+          // Show visual feedback
+          showEffectFeedback(`${cardToPlace.name}: ${result.message}`, "success")
           // Send card to graveyard after resolution
           setPlayerField((prev) => ({
             ...prev,
@@ -1605,6 +1614,8 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           setSelectedHandCard(null)
           setDraggedHandCard(null)
           return
+        } else {
+          showEffectFeedback(`${cardToPlace.name}: ${result.message || "Falha ao ativar"}`, "error")
         }
       }
 
@@ -2197,7 +2208,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     const enemyUnit = enemyField.unitZone[index]
     if (!enemyUnit) return
 
-    console.log("[v0] Selected enemy unit at index", index, "with DP:", enemyUnit.dp)
+
 
     setItemSelectionMode((prev) => ({
       ...prev,
@@ -2230,17 +2241,20 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       }
       
       const result = effect.resolve(effectContext, targets)
-      console.log("[v0] Effect resolved:", result.message)
       
       if (result.success) {
+        // Show visual feedback
+        showEffectFeedback(`${itemSelectionMode.itemCard.name}: ${result.message}`, "success")
         // Send card to graveyard after successful resolution
         setPlayerField((prev) => ({
           ...prev,
           graveyard: [...prev.graveyard, itemSelectionMode.itemCard!],
         }))
+      } else {
+        showEffectFeedback(`${itemSelectionMode.itemCard.name}: ${result.message || "Falha"}`, "error")
       }
     }
-
+    
     setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null })
   }
 
@@ -3158,23 +3172,34 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         </div>
       )}
 
-      {itemSelectionMode.active && (
-        <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-40">
-          <div className="bg-gradient-to-b from-slate-800 to-slate-900 p-5 rounded-xl border-2 border-yellow-500/50 text-center shadow-2xl">
-            <h3 className="text-yellow-400 font-bold text-lg mb-3">Amplificador de Poder</h3>
+      {/* Effect Feedback Toast */}
+      {effectFeedback && (
+        <div className={`fixed top-1/3 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl text-white font-bold text-lg shadow-2xl animate-pulse ${
+          effectFeedback.type === "success" 
+            ? "bg-gradient-to-r from-green-600 to-emerald-600 border-2 border-green-400" 
+            : "bg-gradient-to-r from-red-600 to-rose-600 border-2 border-red-400"
+        }`}>
+          {effectFeedback.message}
+        </div>
+      )}
+
+      {itemSelectionMode.active && itemSelectionMode.itemCard && (
+        <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-40 pointer-events-none">
+          <div className="bg-gradient-to-b from-slate-800 to-slate-900 p-5 rounded-xl border-2 border-yellow-500/50 text-center shadow-2xl pointer-events-auto">
+            <h3 className="text-yellow-400 font-bold text-lg mb-3">{itemSelectionMode.itemCard.name}</h3>
             {itemSelectionMode.step === "selectEnemy" ? (
-              <p className="text-white text-sm">Clique em uma unidade INIMIGA para absorver o DP original</p>
+              <p className="text-white text-sm">Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para absorver o DP original</p>
             ) : (
               <p className="text-white text-sm">
-                Clique em uma unidade SUA para receber +
-                {enemyField.unitZone[itemSelectionMode.selectedEnemyIndex!]?.dp || 0} DP
+                Clique em uma unidade <span className="text-cyan-400 font-bold">SUA</span> para receber{" "}
+                <span className="text-green-400 font-bold">+{enemyField.unitZone[itemSelectionMode.selectedEnemyIndex!]?.dp || 0} DP</span>
               </p>
             )}
             <Button
               onClick={cancelItemSelection}
               size="sm"
               variant="outline"
-              className="mt-4 bg-transparent text-white border-white/50 hover:bg-white/10"
+              className="mt-4 bg-transparent text-white border-white/50 hover:bg-white/10 pointer-events-auto"
             >
               Cancelar
             </Button>
