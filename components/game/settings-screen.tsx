@@ -22,6 +22,8 @@ import {
   CloudOff,
   Settings,
   Sparkles,
+  Key,
+  Hash,
 } from "lucide-react"
 
 interface SettingsScreenProps {
@@ -39,6 +41,8 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
     accountAuth,
     loginAccount,
     registerAccount,
+    loginWithCode,
+    registerWithCode,
     logoutAccount,
     saveProgressManually,
   } = useGame()
@@ -51,9 +55,13 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
   const [showIconPicker, setShowIconPicker] = useState(false)
 
   const [authMode, setAuthMode] = useState<"login" | "register">("login")
+  const [authType, setAuthType] = useState<"email" | "code">("email")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [uniqueCode, setUniqueCode] = useState("")
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null)
+  const [codeCopied, setCodeCopied] = useState(false)
   const [authError, setAuthError] = useState("")
   const [authLoading, setAuthLoading] = useState(false)
   const [saveMessage, setSaveMessage] = useState("")
@@ -103,6 +111,63 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
       setPassword("")
       setConfirmPassword("")
     }
+  }
+
+  const handleLoginWithCode = async () => {
+    setAuthError("")
+    if (!uniqueCode.trim()) {
+      setAuthError("Digite o codigo unico")
+      return
+    }
+    setAuthLoading(true)
+    const result = await loginWithCode(uniqueCode, password)
+    setAuthLoading(false)
+    if (!result.success) {
+      setAuthError(result.error || "Erro ao fazer login")
+    } else {
+      setUniqueCode("")
+      setPassword("")
+    }
+  }
+
+  const handleRegisterWithCode = async () => {
+    setAuthError("")
+    if (password !== confirmPassword) {
+      setAuthError("As senhas nao coincidem")
+      return
+    }
+    if (password.length < 6) {
+      setAuthError("Senha deve ter pelo menos 6 caracteres")
+      return
+    }
+    setAuthLoading(true)
+    const result = await registerWithCode(password)
+    setAuthLoading(false)
+    if (!result.success) {
+      setAuthError(result.error || "Erro ao criar conta")
+    } else {
+      setGeneratedCode(result.code || null)
+      setPassword("")
+      setConfirmPassword("")
+    }
+  }
+
+  const handleCopyCode = () => {
+    if (generatedCode) {
+      navigator.clipboard.writeText(generatedCode)
+      setCodeCopied(true)
+      setTimeout(() => setCodeCopied(false), 2000)
+    }
+  }
+
+  const formatCode = (code: string) => {
+    // Format: XXXX-XXXX-XXXX
+    const clean = code.toUpperCase().replace(/[^A-Z0-9]/g, "")
+    const parts = []
+    for (let i = 0; i < clean.length && i < 12; i += 4) {
+      parts.push(clean.slice(i, i + 4))
+    }
+    return parts.join("-")
   }
 
   const handleManualSave = () => {
@@ -234,13 +299,27 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
 
                 {accountAuth.isLoggedIn ? (
                   <div className="space-y-4">
-                    <div className="bg-black/30 rounded-xl p-4 border border-emerald-500/20">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Mail className="w-4 h-4 text-emerald-400" />
-                        <span className="text-slate-400 text-sm">Email:</span>
+                    {accountAuth.email && (
+                      <div className="bg-black/30 rounded-xl p-4 border border-emerald-500/20">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Mail className="w-4 h-4 text-emerald-400" />
+                          <span className="text-slate-400 text-sm">Email:</span>
+                        </div>
+                        <p className="text-white font-medium">{accountAuth.email}</p>
                       </div>
-                      <p className="text-white font-medium">{accountAuth.email}</p>
-                    </div>
+                    )}
+
+                    {accountAuth.uniqueCode && (
+                      <div className="bg-black/30 rounded-xl p-4 border border-emerald-500/20">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Key className="w-4 h-4 text-emerald-400" />
+                          <span className="text-slate-400 text-sm">Codigo Unico:</span>
+                        </div>
+                        <code className="text-emerald-300 font-mono text-lg tracking-wider">
+                          {formatCode(accountAuth.uniqueCode)}
+                        </code>
+                      </div>
+                    )}
 
                     <div className="bg-black/30 rounded-xl p-4 border border-emerald-500/20">
                       <div className="flex items-center gap-2 mb-2">
@@ -275,16 +354,84 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
                       </p>
                     )}
                   </div>
+                ) : generatedCode ? (
+                  /* Show generated code after registration */
+                  <div className="space-y-4">
+                    <div className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 rounded-xl p-6 border border-emerald-400/50">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Key className="w-5 h-5 text-emerald-400" />
+                        <span className="text-emerald-400 font-bold">Conta Criada com Sucesso!</span>
+                      </div>
+                      <p className="text-slate-300 text-sm mb-4">
+                        Guarde este codigo em um lugar seguro. Voce precisara dele junto com sua senha para acessar sua conta.
+                      </p>
+                      <div className="bg-black/50 rounded-xl p-4 border border-emerald-500/30">
+                        <p className="text-slate-400 text-xs mb-2">Seu Codigo Unico:</p>
+                        <code className="text-2xl font-mono text-emerald-300 tracking-widest block text-center">
+                          {formatCode(generatedCode)}
+                        </code>
+                      </div>
+                      <Button
+                        onClick={handleCopyCode}
+                        className="w-full mt-4 bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/50"
+                      >
+                        {codeCopied ? (
+                          <>
+                            <Check className="w-4 h-4 mr-2" />
+                            Copiado!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-4 h-4 mr-2" />
+                            Copiar Codigo
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <Button
+                      onClick={() => setGeneratedCode(null)}
+                      variant="outline"
+                      className="w-full border-slate-600 text-slate-300 hover:bg-slate-800 bg-transparent"
+                    >
+                      Fechar
+                    </Button>
+                  </div>
                 ) : (
                   <div className="space-y-4">
                     <p className="text-slate-400 text-sm">
-                      Conecte sua conta para salvar seu progresso permanentemente na nuvem.
+                      Conecte sua conta para salvar seu progresso permanentemente.
                     </p>
+
+                    {/* Auth Type Toggle (Email or Code) */}
+                    <div className="flex rounded-xl overflow-hidden border border-slate-600">
+                      <button
+                        onClick={() => { setAuthType("email"); setAuthError(""); }}
+                        className={`flex-1 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                          authType === "email"
+                            ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white"
+                            : "bg-slate-800 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        <Mail className="w-4 h-4" />
+                        Email
+                      </button>
+                      <button
+                        onClick={() => { setAuthType("code"); setAuthError(""); }}
+                        className={`flex-1 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                          authType === "code"
+                            ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white"
+                            : "bg-slate-800 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        <Key className="w-4 h-4" />
+                        Codigo Unico
+                      </button>
+                    </div>
 
                     {/* Auth Mode Toggle */}
                     <div className="flex rounded-xl overflow-hidden border border-slate-600">
                       <button
-                        onClick={() => setAuthMode("login")}
+                        onClick={() => { setAuthMode("login"); setAuthError(""); }}
                         className={`flex-1 py-3 text-sm font-medium transition-colors ${
                           authMode === "login"
                             ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
@@ -294,7 +441,7 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
                         Entrar
                       </button>
                       <button
-                        onClick={() => setAuthMode("register")}
+                        onClick={() => { setAuthMode("register"); setAuthError(""); }}
                         className={`flex-1 py-3 text-sm font-medium transition-colors ${
                           authMode === "register"
                             ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
@@ -305,51 +452,113 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
                       </button>
                     </div>
 
-                    {/* Email Input */}
-                    <div>
-                      <label className="text-sm text-slate-400 block mb-2">Email</label>
-                      <div className="relative">
-                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                        <Input
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="seu@email.com"
-                          className="pl-12 bg-slate-900/80 border-emerald-500/30 text-white py-3"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Password Input */}
-                    <div>
-                      <label className="text-sm text-slate-400 block mb-2">Senha</label>
-                      <div className="relative">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                        <Input
-                          type="password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          placeholder="******"
-                          className="pl-12 bg-slate-900/80 border-emerald-500/30 text-white py-3"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Confirm Password (Register only) */}
-                    {authMode === "register" && (
-                      <div>
-                        <label className="text-sm text-slate-400 block mb-2">Confirmar Senha</label>
-                        <div className="relative">
-                          <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                          <Input
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            placeholder="******"
-                            className="pl-12 bg-slate-900/80 border-emerald-500/30 text-white py-3"
-                          />
+                    {/* Email Auth Form */}
+                    {authType === "email" && (
+                      <>
+                        <div>
+                          <label className="text-sm text-slate-400 block mb-2">Email</label>
+                          <div className="relative">
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                            <Input
+                              type="email"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              placeholder="seu@email.com"
+                              className="pl-12 bg-slate-900/80 border-emerald-500/30 text-white py-3"
+                            />
+                          </div>
                         </div>
-                      </div>
+
+                        <div>
+                          <label className="text-sm text-slate-400 block mb-2">Senha</label>
+                          <div className="relative">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                            <Input
+                              type="password"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              placeholder="******"
+                              className="pl-12 bg-slate-900/80 border-emerald-500/30 text-white py-3"
+                            />
+                          </div>
+                        </div>
+
+                        {authMode === "register" && (
+                          <div>
+                            <label className="text-sm text-slate-400 block mb-2">Confirmar Senha</label>
+                            <div className="relative">
+                              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                              <Input
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                placeholder="******"
+                                className="pl-12 bg-slate-900/80 border-emerald-500/30 text-white py-3"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Code Auth Form */}
+                    {authType === "code" && (
+                      <>
+                        {authMode === "login" && (
+                          <div>
+                            <label className="text-sm text-slate-400 block mb-2">Codigo Unico</label>
+                            <div className="relative">
+                              <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                              <Input
+                                type="text"
+                                value={uniqueCode}
+                                onChange={(e) => setUniqueCode(e.target.value.toUpperCase())}
+                                placeholder="XXXX-XXXX-XXXX"
+                                className="pl-12 bg-slate-900/80 border-amber-500/30 text-white py-3 font-mono tracking-wider"
+                                maxLength={14}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {authMode === "register" && (
+                          <div className="bg-amber-500/10 rounded-xl p-4 border border-amber-500/30">
+                            <p className="text-amber-300 text-sm">
+                              Um codigo unico de 12 caracteres sera gerado automaticamente para voce. Guarde-o em um lugar seguro!
+                            </p>
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="text-sm text-slate-400 block mb-2">Senha</label>
+                          <div className="relative">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                            <Input
+                              type="password"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              placeholder="******"
+                              className="pl-12 bg-slate-900/80 border-amber-500/30 text-white py-3"
+                            />
+                          </div>
+                        </div>
+
+                        {authMode === "register" && (
+                          <div>
+                            <label className="text-sm text-slate-400 block mb-2">Confirmar Senha</label>
+                            <div className="relative">
+                              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                              <Input
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                placeholder="******"
+                                className="pl-12 bg-slate-900/80 border-amber-500/30 text-white py-3"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
 
                     {/* Error Message */}
@@ -359,16 +568,28 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
 
                     {/* Submit Button */}
                     <Button
-                      onClick={authMode === "login" ? handleLogin : handleRegister}
+                      onClick={
+                        authType === "email"
+                          ? authMode === "login"
+                            ? handleLogin
+                            : handleRegister
+                          : authMode === "login"
+                            ? handleLoginWithCode
+                            : handleRegisterWithCode
+                      }
                       disabled={authLoading}
-                      className="w-full bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 border border-emerald-400/50 py-3"
+                      className={`w-full py-3 border ${
+                        authType === "email"
+                          ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 border-emerald-400/50"
+                          : "bg-gradient-to-r from-amber-600 to-orange-500 hover:from-amber-500 hover:to-orange-400 border-amber-400/50"
+                      }`}
                     >
                       {authLoading ? (
                         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       ) : (
                         <>
-                          <LogIn className="w-4 h-4 mr-2" />
-                          {authMode === "login" ? "Entrar" : "Criar Conta"}
+                          {authType === "email" ? <LogIn className="w-4 h-4 mr-2" /> : <Key className="w-4 h-4 mr-2" />}
+                          {authMode === "login" ? "Entrar" : authType === "code" ? "Gerar Codigo e Criar Conta" : "Criar Conta"}
                         </>
                       )}
                     </Button>
