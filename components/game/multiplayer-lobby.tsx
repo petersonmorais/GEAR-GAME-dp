@@ -106,8 +106,15 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
         .single()
 
       if (insertError) {
-        console.log("[v0] Error creating room:", insertError.message, insertError.code, insertError.details)
-        setError("Erro ao criar sala. Tente novamente.")
+        console.error("[v0] Error creating room:", JSON.stringify(insertError, null, 2))
+        setError(`Erro ao criar sala: ${insertError.message || "Tente novamente."}`)
+        setIsLoading(false)
+        return
+      }
+      
+      if (!data) {
+        console.error("[v0] No data returned from insert")
+        setError("Erro ao criar sala: dados não retornados")
         setIsLoading(false)
         return
       }

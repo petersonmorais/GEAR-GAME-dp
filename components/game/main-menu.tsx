@@ -198,6 +198,9 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
 
       {/* Logo */}
       <div className="mb-10 relative z-10 text-center">
+        {/* Version number above logo */}
+        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-2">v1.0.1</div>
+        
         <div className="relative inline-block">
           {/* Glow effect behind logo */}
           <div className="absolute inset-0 blur-3xl bg-gradient-to-r from-cyan-500 via-purple-500 to-amber-500 opacity-30 animate-pulse" />
