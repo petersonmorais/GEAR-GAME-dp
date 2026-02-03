@@ -271,6 +271,43 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       return { success: true, message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})` }
     },
   },
+  
+  "cristal-recuperador": {
+    id: "cristal-recuperador",
+    name: "Cristal Recuperador",
+    requiresTargets: false,
+    // This effect needs special handling because it draws a card
+    // We'll mark it as needing post-resolution draw
+    needsDrawAfterResolve: true,
+    canActivate: (context) => {
+      const currentLife = context.playerField.life
+      const maxLife = 20
+      
+      if (currentLife >= maxLife) {
+        return { canActivate: false, reason: "LP ja esta no maximo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      const currentLife = context.playerField.life
+      const maxLife = 20
+      const healAmount = Math.min(3, maxLife - currentLife)
+      const newLife = Math.min(currentLife + healAmount, maxLife)
+      
+      context.setPlayerField((prev) => ({
+        ...prev,
+        life: newLife,
+      }))
+      
+      // Return special flag to indicate we need to draw and potentially heal more
+      return { 
+        success: true, 
+        message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})`,
+        needsDrawAndCheck: true,
+        currentLife: newLife,
+      }
+    },
+  },
 }
 
 // Helper function to extract base card ID (removes deck timestamp suffix)
@@ -1657,8 +1694,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isBandagem = cardToPlace.name === "Bandagem Restauradora"
       const isAdaga = cardToPlace.name === "Adaga Energizada"
       const isBandagensDuplas = cardToPlace.name === "Bandagens Duplas"
+      const isCristalRecuperador = cardToPlace.name === "Cristal Recuperador"
       
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas) {
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador) {
         // Use found effect or fallback to the correct one by name
         let effectToUse = effect
         if (!effectToUse) {
@@ -1666,6 +1704,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           else if (isBandagem) effectToUse = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
           else if (isAdaga) effectToUse = FUNCTION_CARD_EFFECTS["adaga-energizada"]
           else if (isBandagensDuplas) effectToUse = FUNCTION_CARD_EFFECTS["bandagens-duplas"]
+          else if (isCristalRecuperador) effectToUse = FUNCTION_CARD_EFFECTS["cristal-recuperador"]
         }
         
         if (!effectToUse) return // Safety check
@@ -1708,6 +1747,54 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         if (result.success) {
           // Show visual feedback
           showEffectFeedback(`${cardToPlace.name}: ${result.message}`, "success")
+          
+          // Special handling for Cristal Recuperador - draw a card and check if Function type
+          if (result.needsDrawAndCheck) {
+            setTimeout(() => {
+              setPlayerField((prev) => {
+                if (prev.deck.length === 0) {
+                  showEffectFeedback("Deck vazio - nao pode comprar carta", "error")
+                  return {
+                    ...prev,
+                    hand: prev.hand.filter((_, i) => i !== cardIndex),
+                    graveyard: [...prev.graveyard, cardToPlace],
+                  }
+                }
+                
+                const drawnCard = prev.deck[0]
+                const newDeck = prev.deck.slice(1)
+                const newHand = [...prev.hand.filter((_, i) => i !== cardIndex), drawnCard]
+                
+                // Check if drawn card is a Function type (item)
+                const isFunctionCard = drawnCard.type === "item"
+                let finalLife = result.currentLife || prev.life
+                
+                if (isFunctionCard) {
+                  const maxLife = 20
+                  const bonusHeal = Math.min(1, maxLife - finalLife)
+                  finalLife = Math.min(finalLife + bonusHeal, maxLife)
+                  if (bonusHeal > 0) {
+                    showEffectFeedback(`Carta Function comprada! +1 LP bonus! (${finalLife - 1} -> ${finalLife})`, "success")
+                  }
+                } else {
+                  showEffectFeedback(`Comprou: ${drawnCard.name}`, "success")
+                }
+                
+                return {
+                  ...prev,
+                  deck: newDeck,
+                  hand: newHand,
+                  graveyard: [...prev.graveyard, cardToPlace],
+                  life: finalLife,
+                }
+              })
+            }, 500) // Small delay for visual feedback
+            
+            setSelectedHandCard(null)
+            setDraggedHandCard(null)
+            return
+          }
+          
           // Send card to graveyard after resolution
           setPlayerField((prev) => ({
             ...prev,
@@ -2337,10 +2424,12 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isBandagem = itemSelectionMode.itemCard.name === "Bandagem Restauradora"
       const isAdaga = itemSelectionMode.itemCard.name === "Adaga Energizada"
       const isBandagensDuplas = itemSelectionMode.itemCard.name === "Bandagens Duplas"
+      const isCristalRecuperador = itemSelectionMode.itemCard.name === "Cristal Recuperador"
       if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
       else if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
       else if (isAdaga) effect = FUNCTION_CARD_EFFECTS["adaga-energizada"]
       else if (isBandagensDuplas) effect = FUNCTION_CARD_EFFECTS["bandagens-duplas"]
+      else if (isCristalRecuperador) effect = FUNCTION_CARD_EFFECTS["cristal-recuperador"]
     }
     
     if (effect) {
