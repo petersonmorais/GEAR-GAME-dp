@@ -1728,34 +1728,50 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return { success: false, error: "Senha deve ter pelo menos 6 caracteres" }
     }
 
-    const supabase = createClient()
+    let supabase
+    try {
+      supabase = createClient()
+      console.log("[v0] Supabase client created successfully")
+    } catch (clientError) {
+      console.error("[v0] Failed to create Supabase client:", clientError)
+      return { success: false, error: "Erro de conexao com o servidor. Verifique sua internet." }
+    }
+    
     const code = generateUniqueCode()
     const passwordHash = await simpleHash(password)
+    
+    // Generate a valid UUID for user_id
+    const userUUID = crypto.randomUUID()
 
     // Try to save to Supabase
     try {
+      console.log("[v0] Registering with code:", code, "userUUID:", userUUID)
+      console.log("[v0] Supabase URL configured:", !!process.env.NEXT_PUBLIC_SUPABASE_URL)
+      
       // First, save the unique code
-      const { error: codeError } = await supabase.from("unique_codes").insert({
-        user_id: playerId,
+      const { data: codeData, error: codeError } = await supabase.from("unique_codes").insert({
+        user_id: userUUID,
         code,
         password_hash: passwordHash,
-      })
+      }).select().single()
+
+      console.log("[v0] unique_codes insert result:", { data: codeData, error: codeError })
 
       if (codeError) {
         // If unique constraint error, generate new code
         if (codeError.code === "23505") {
           return registerWithCode(password) // Retry with new code
         }
-        console.error("Supabase error:", codeError)
-        return { success: false, error: "Erro ao criar conta. Tente novamente." }
+        console.error("[v0] Supabase error:", codeError)
+        return { success: false, error: `Erro ao criar conta: ${codeError.message}` }
       }
 
       // Now save the player profile to the new player_profiles table
       const profileData = {
         user_code: code,
-        player_name: playerProfile.name,
-        player_title: playerProfile.title,
-        avatar_id: playerProfile.avatarUrl,
+        player_name: playerProfile.name || "Jogador",
+        player_title: playerProfile.title || "Iniciante",
+        avatar_id: playerProfile.avatarUrl || null,
         coins: coins,
         gems: 0,
         collection: collection,
@@ -1766,16 +1782,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
         total_losses: matchHistory.filter(m => m.result === "lost").length,
       }
 
-      const { error: profileError } = await supabase.from("player_profiles").insert(profileData)
+      const { data: profileResult, error: profileError } = await supabase.from("player_profiles").insert(profileData).select().single()
+      
+      console.log("[v0] player_profiles insert result:", { data: profileResult, error: profileError })
       
       if (profileError) {
-        console.error("Error saving player profile:", profileError)
+        console.error("[v0] Error saving player profile:", profileError)
         // Continue anyway, the code was created successfully
       }
+      
+      // Update local playerId with the new UUID
+      setPlayerId(userUUID)
+      localStorage.setItem("gear-perks-player-id", userUUID)
 
     } catch (err) {
-      console.error("Registration error:", err)
-      return { success: false, error: "Erro ao criar conta. Tente novamente." }
+      console.error("[v0] Registration exception:", err)
+      return { success: false, error: `Erro ao criar conta: ${err instanceof Error ? err.message : "Tente novamente."}` }
     }
 
     const now = new Date().toISOString()
