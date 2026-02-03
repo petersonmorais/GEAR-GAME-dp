@@ -3147,7 +3147,22 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 text-center w-80">
               <div className="text-white font-bold text-2xl drop-shadow-lg">{inspectedCard.name}</div>
               {isUnitCard(inspectedCard) && (
-                <div className="text-cyan-400 text-xl mt-2 font-semibold">{inspectedCard.dp} DP</div>
+                <div className="flex flex-col items-center gap-1 mt-2">
+                  <div className={`text-xl font-semibold ${
+                    (inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp > inspectedCard.dp 
+                      ? "text-green-400" 
+                      : (inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp < inspectedCard.dp 
+                        ? "text-red-400" 
+                        : "text-cyan-400"
+                  }`}>
+                    {(inspectedCard as FieldCard).currentDp !== undefined ? (inspectedCard as FieldCard).currentDp : inspectedCard.dp} DP
+                  </div>
+                  {(inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp !== inspectedCard.dp && (
+                    <div className="text-white/50 text-sm">
+                      (Base: {inspectedCard.dp} DP | {(inspectedCard as FieldCard).currentDp > inspectedCard.dp ? "+" : ""}{(inspectedCard as FieldCard).currentDp - inspectedCard.dp})
+                    </div>
+                  )}
+                </div>
               )}
               {!isUnitCard(inspectedCard) && (
                 <div className="text-purple-400 text-lg mt-2 font-semibold">Carta de Funcao</div>
