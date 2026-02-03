@@ -1734,68 +1734,48 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     // Try to save to Supabase
     try {
-      const { error } = await supabase.from("unique_codes").insert({
+      // First, save the unique code
+      const { error: codeError } = await supabase.from("unique_codes").insert({
         user_id: playerId,
         code,
         password_hash: passwordHash,
       })
 
-      if (error) {
+      if (codeError) {
         // If unique constraint error, generate new code
-        if (error.code === "23505") {
+        if (codeError.code === "23505") {
           return registerWithCode(password) // Retry with new code
         }
-        console.error("Supabase error:", error)
-        // Fallback to localStorage
-        const storedCodes = localStorage.getItem("gear-perks-codes")
-        const codes = storedCodes ? JSON.parse(storedCodes) : {}
-        codes[code] = {
-          passwordHash,
-          playerId,
-          progress: {
-            coins,
-            collection,
-            decks,
-            matchHistory,
-            giftBoxes,
-            friends,
-            friendRequests,
-            friendPoints,
-            spendableFP,
-            playerProfile,
-            playerId,
-            lastSaved: new Date().toISOString(),
-            ownedPlaymats: ownedPlaymats.map((p) => p.id),
-            globalPlaymatId,
-          },
-        }
-        localStorage.setItem("gear-perks-codes", JSON.stringify(codes))
+        console.error("Supabase error:", codeError)
+        return { success: false, error: "Erro ao criar conta. Tente novamente." }
       }
-    } catch {
-      // Fallback to localStorage
-      const storedCodes = localStorage.getItem("gear-perks-codes")
-      const codes = storedCodes ? JSON.parse(storedCodes) : {}
-      codes[code] = {
-        passwordHash,
-        playerId,
-        progress: {
-          coins,
-          collection,
-          decks,
-          matchHistory,
-          giftBoxes,
-          friends,
-          friendRequests,
-          friendPoints,
-          spendableFP,
-          playerProfile,
-          playerId,
-          lastSaved: new Date().toISOString(),
-          ownedPlaymats: ownedPlaymats.map((p) => p.id),
-          globalPlaymatId,
-        },
+
+      // Now save the player profile to the new player_profiles table
+      const profileData = {
+        user_code: code,
+        player_name: playerProfile.name,
+        player_title: playerProfile.title,
+        avatar_id: playerProfile.avatarUrl,
+        coins: coins,
+        gems: 0,
+        collection: collection,
+        decks: decks,
+        duel_history: matchHistory,
+        gacha_pity: 0,
+        total_wins: matchHistory.filter(m => m.result === "won").length,
+        total_losses: matchHistory.filter(m => m.result === "lost").length,
       }
-      localStorage.setItem("gear-perks-codes", JSON.stringify(codes))
+
+      const { error: profileError } = await supabase.from("player_profiles").insert(profileData)
+      
+      if (profileError) {
+        console.error("Error saving player profile:", profileError)
+        // Continue anyway, the code was created successfully
+      }
+
+    } catch (err) {
+      console.error("Registration error:", err)
+      return { success: false, error: "Erro ao criar conta. Tente novamente." }
     }
 
     const now = new Date().toISOString()
@@ -1819,99 +1799,80 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     // Try Supabase first
     try {
-      const { data, error } = await supabase
+      // Verify the code and password
+      const { data: codeData, error: codeError } = await supabase
         .from("unique_codes")
         .select("*")
         .eq("code", normalizedCode)
         .single()
 
-      if (data && !error) {
-        if (data.password_hash !== passwordHash) {
-          return { success: false, error: "Senha incorreta" }
-        }
+      if (codeError || !codeData) {
+        return { success: false, error: "Codigo nao encontrado" }
+      }
 
-        // Load progress from localStorage using user_id
-        const storedCodes = localStorage.getItem("gear-perks-codes")
-        const codes = storedCodes ? JSON.parse(storedCodes) : {}
+      if (codeData.password_hash !== passwordHash) {
+        return { success: false, error: "Senha incorreta" }
+      }
+
+      // Load player profile from Supabase
+      const { data: profileData, error: profileError } = await supabase
+        .from("player_profiles")
+        .select("*")
+        .eq("user_code", normalizedCode)
+        .single()
+
+      if (profileData && !profileError) {
+        // Load all data from the cloud profile
+        setCoins(profileData.coins ?? 999)
+        setCollection(profileData.collection ?? [])
+        setDecks(profileData.decks ?? [])
+        setMatchHistory(profileData.duel_history ?? [])
+        setGiftBoxes(INITIAL_GIFT_BOXES)
+        setFriends([DEFAULT_GUEST_FRIEND])
+        setFriendRequests([])
+        setFriendPoints(0)
+        setSpendableFP(0)
         
-        if (codes[normalizedCode]?.progress) {
-          const progress = codes[normalizedCode].progress
-          setCoins(progress.coins ?? 999)
-          setCollection(progress.collection ?? [])
-          setDecks(progress.decks ?? [])
-          setMatchHistory(progress.matchHistory ?? [])
-          setGiftBoxes(progress.giftBoxes ?? INITIAL_GIFT_BOXES)
-          setFriends(progress.friends ?? [DEFAULT_GUEST_FRIEND])
-          setFriendRequests(progress.friendRequests ?? [])
-          setFriendPoints(progress.friendPoints ?? 0)
-          setSpendableFP(progress.spendableFP ?? 0)
-          if (progress.playerProfile) setPlayerProfile(progress.playerProfile)
-          if (progress.playerId) setPlayerId(progress.playerId)
-          if (progress.ownedPlaymats) {
-            setOwnedPlaymats(ALL_PLAYMATS.filter((p) => progress.ownedPlaymats.includes(p.id)))
-          }
-          if (progress.globalPlaymatId) setGlobalPlaymatId(progress.globalPlaymatId)
+        // Update player profile
+        const loadedProfile: PlayerProfile = {
+          id: profileData.id,
+          name: profileData.player_name || "Jogador",
+          title: profileData.player_title || "Iniciante",
+          level: 1,
+          avatarUrl: profileData.avatar_id,
+          showcaseCards: [],
+          hasCompletedSetup: true,
         }
+        setPlayerProfile(loadedProfile)
+        setPlayerId(codeData.user_id)
 
-        const now = new Date().toISOString()
-        const auth: AccountAuth = {
-          isLoggedIn: true,
-          email: null,
-          uniqueCode: normalizedCode,
-          lastSaved: now,
-        }
-        setAccountAuth(auth)
-        localStorage.setItem("gear-perks-auth", JSON.stringify(auth))
-
-        return { success: true }
+        // Also save to localStorage for offline access
+        localStorage.setItem("gear-perks-coins", profileData.coins?.toString() ?? "999")
+        localStorage.setItem("gear-perks-collection", JSON.stringify(profileData.collection ?? []))
+        localStorage.setItem("gear-perks-decks", JSON.stringify(profileData.decks ?? []))
+        localStorage.setItem("gear-perks-match-history", JSON.stringify(profileData.duel_history ?? []))
+        localStorage.setItem("gear-perks-player-profile", JSON.stringify(loadedProfile))
+        localStorage.setItem("gear-perks-player-id", codeData.user_id)
+      } else {
+        // Profile not found in cloud, use local data but still log in
+        console.log("Profile not found in cloud, using local data")
       }
-    } catch {
-      // Continue to localStorage fallback
-    }
 
-    // Fallback to localStorage
-    const storedCodes = localStorage.getItem("gear-perks-codes")
-    const codes = storedCodes ? JSON.parse(storedCodes) : {}
-
-    if (!codes[normalizedCode]) {
-      return { success: false, error: "Codigo nao encontrado" }
-    }
-
-    if (codes[normalizedCode].passwordHash !== passwordHash) {
-      return { success: false, error: "Senha incorreta" }
-    }
-
-    // Load progress
-    const progress = codes[normalizedCode].progress
-    if (progress) {
-      setCoins(progress.coins ?? 999)
-      setCollection(progress.collection ?? [])
-      setDecks(progress.decks ?? [])
-      setMatchHistory(progress.matchHistory ?? [])
-      setGiftBoxes(progress.giftBoxes ?? INITIAL_GIFT_BOXES)
-      setFriends(progress.friends ?? [DEFAULT_GUEST_FRIEND])
-      setFriendRequests(progress.friendRequests ?? [])
-      setFriendPoints(progress.friendPoints ?? 0)
-      setSpendableFP(progress.spendableFP ?? 0)
-      if (progress.playerProfile) setPlayerProfile(progress.playerProfile)
-      if (progress.playerId) setPlayerId(progress.playerId)
-      if (progress.ownedPlaymats) {
-        setOwnedPlaymats(ALL_PLAYMATS.filter((p) => progress.ownedPlaymats.includes(p.id)))
+      const now = new Date().toISOString()
+      const auth: AccountAuth = {
+        isLoggedIn: true,
+        email: null,
+        uniqueCode: normalizedCode,
+        lastSaved: now,
       }
-      if (progress.globalPlaymatId) setGlobalPlaymatId(progress.globalPlaymatId)
-    }
+      setAccountAuth(auth)
+      localStorage.setItem("gear-perks-auth", JSON.stringify(auth))
 
-    const now = new Date().toISOString()
-    const auth: AccountAuth = {
-      isLoggedIn: true,
-      email: null,
-      uniqueCode: normalizedCode,
-      lastSaved: now,
+      return { success: true }
+    } catch (err) {
+      console.error("Login error:", err)
+      return { success: false, error: "Erro ao fazer login. Verifique sua conexao." }
     }
-    setAccountAuth(auth)
-    localStorage.setItem("gear-perks-auth", JSON.stringify(auth))
-
-    return { success: true }
   }
 
   // Link email to existing code account
@@ -1977,54 +1938,55 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setGlobalPlaymatId(null)
   }
 
-  const saveProgressManually = () => {
+  const saveProgressManually = async () => {
     if (!accountAuth.isLoggedIn) return
 
     const now = new Date().toISOString()
-    const progressData = {
-      coins,
-      collection,
-      decks,
-      matchHistory,
-      giftBoxes,
-      friends,
-      friendRequests,
-      friendPoints,
-      spendableFP,
-      playerProfile,
-      playerId,
-      lastSaved: now,
-      ownedPlaymats: ownedPlaymats.map((p) => p.id),
-      globalPlaymatId,
-    }
 
-    // Save for unique code accounts
+    // Save to Supabase if we have a unique code
     if (accountAuth.uniqueCode) {
-      const storedCodes = localStorage.getItem("gear-perks-codes")
-      const codes = storedCodes ? JSON.parse(storedCodes) : {}
+      const supabase = createClient()
       
-      if (codes[accountAuth.uniqueCode]) {
-        codes[accountAuth.uniqueCode].progress = progressData
-      } else {
-        codes[accountAuth.uniqueCode] = { progress: progressData }
+      const profileUpdate = {
+        player_name: playerProfile.name,
+        player_title: playerProfile.title,
+        avatar_id: playerProfile.avatarUrl,
+        coins: coins,
+        collection: collection,
+        decks: decks,
+        duel_history: matchHistory,
+        total_wins: matchHistory.filter(m => m.result === "won").length,
+        total_losses: matchHistory.filter(m => m.result === "lost").length,
+        updated_at: now,
       }
-      localStorage.setItem("gear-perks-codes", JSON.stringify(codes))
-      setAccountAuth((prev) => ({ ...prev, lastSaved: now }))
-      localStorage.setItem("gear-perks-auth", JSON.stringify({ ...accountAuth, lastSaved: now }))
-      return
-    }
 
-    // Save for email accounts
-    if (accountAuth.email) {
-      const storedAccounts = localStorage.getItem("gear-perks-accounts")
-      const accounts = storedAccounts ? JSON.parse(storedAccounts) : {}
+      try {
+        const { error } = await supabase
+          .from("player_profiles")
+          .update(profileUpdate)
+          .eq("user_code", accountAuth.uniqueCode)
 
-      if (accounts[accountAuth.email]) {
-        accounts[accountAuth.email].progress = progressData
-      } else {
-        accounts[accountAuth.email] = { password: "", progress: progressData }
+        if (error) {
+          console.error("Error saving to cloud:", error)
+          // If profile doesn't exist, create it
+          if (error.code === "PGRST116") {
+            await supabase.from("player_profiles").insert({
+              user_code: accountAuth.uniqueCode,
+              ...profileUpdate,
+            })
+          }
+        }
+      } catch (err) {
+        console.error("Error saving progress:", err)
       }
-      localStorage.setItem("gear-perks-accounts", JSON.stringify(accounts))
+
+      // Also save to localStorage for offline access
+      localStorage.setItem("gear-perks-coins", coins.toString())
+      localStorage.setItem("gear-perks-collection", JSON.stringify(collection))
+      localStorage.setItem("gear-perks-decks", JSON.stringify(decks))
+      localStorage.setItem("gear-perks-match-history", JSON.stringify(matchHistory))
+      localStorage.setItem("gear-perks-player-profile", JSON.stringify(playerProfile))
+      
       setAccountAuth((prev) => ({ ...prev, lastSaved: now }))
       localStorage.setItem("gear-perks-auth", JSON.stringify({ ...accountAuth, lastSaved: now }))
     }
