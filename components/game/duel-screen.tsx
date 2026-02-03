@@ -160,19 +160,21 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       
       // Get ORIGINAL DP (base dp, not currentDp which may have buffs/debuffs)
       const dpBonus = enemyUnit.dp
+      const allyCurrentDp = allyUnit.currentDp || allyUnit.dp
+      const newDp = allyCurrentDp + dpBonus
       
       context.setPlayerField((prev) => {
         const newUnitZone = [...prev.unitZone]
         if (newUnitZone[allyIndex]) {
           newUnitZone[allyIndex] = {
             ...newUnitZone[allyIndex]!,
-            currentDp: (newUnitZone[allyIndex]!.currentDp || newUnitZone[allyIndex]!.dp) + dpBonus,
+            currentDp: newDp,
           }
         }
         return { ...prev, unitZone: newUnitZone }
       })
       
-      return { success: true, message: `+${dpBonus} DP aplicado!` }
+      return { success: true, message: `+${dpBonus} DP aplicado! (${allyCurrentDp} -> ${newDp})` }
     },
   },
   
@@ -198,19 +200,42 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         return { success: false, message: "Nao ha dano para curar" }
       }
       
+      const newLife = Math.min(currentLife + healAmount, maxLife)
+      
       context.setPlayerField((prev) => ({
         ...prev,
-        life: Math.min(prev.life + healAmount, maxLife),
+        life: newLife,
       }))
       
-      return { success: true, message: `+${healAmount} LP restaurado!` }
+      return { success: true, message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})` }
     },
   },
 }
 
-// Helper function to get effect for a card
-const getFunctionCardEffect = (cardId: string): FunctionCardEffect | null => {
-  return FUNCTION_CARD_EFFECTS[cardId] || null
+// Helper function to extract base card ID (removes deck timestamp suffix)
+const getBaseCardId = (cardId: string): string => {
+  // Card IDs in deck are formatted as: "original-id-deck-timestamp"
+  // We need to extract just "original-id"
+  const deckSuffixIndex = cardId.lastIndexOf("-deck-")
+  if (deckSuffixIndex !== -1) {
+    return cardId.substring(0, deckSuffixIndex)
+  }
+  return cardId
+}
+
+// Helper function to get effect for a card - also checks by card name
+const getFunctionCardEffect = (card: { id: string; name?: string }): FunctionCardEffect | null => {
+  // First try by base ID
+  const baseId = getBaseCardId(card.id)
+  if (FUNCTION_CARD_EFFECTS[baseId]) {
+    return FUNCTION_CARD_EFFECTS[baseId]
+  }
+  
+  // Fallback: try to match by card name
+  const effectByName = Object.values(FUNCTION_CARD_EFFECTS).find(
+    (effect) => effect.name === card.name
+  )
+  return effectByName || null
 }
 
 // Helper to check if a Function card can be activated
@@ -1564,9 +1589,18 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       if (playerField.functionZone[slotIndex] !== null) return
 
       // Get the effect configuration for this card
-      const effect = getFunctionCardEffect(cardToPlace.id)
+      const effect = getFunctionCardEffect(cardToPlace)
       
-      if (effect) {
+      // Special handling for Amplificador de Poder by name (backup)
+      const isAmplificador = cardToPlace.name === "Amplificador de Poder"
+      const isBandagem = cardToPlace.name === "Bandagem Restauradora"
+      
+      if (effect || isAmplificador || isBandagem) {
+        // Use found effect or fallback to the correct one by name
+        const effectToUse = effect || (isAmplificador ? FUNCTION_CARD_EFFECTS["amplificador-de-poder"] : FUNCTION_CARD_EFFECTS["bandagem-restauradora"])
+        
+        if (!effectToUse) return // Safety check
+        
         // Create effect context
         const effectContext: EffectContext = {
           playerField,
@@ -1576,15 +1610,15 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
         
         // Check if card can be activated
-        const { canActivate, reason } = effect.canActivate(effectContext)
+        const { canActivate, reason } = effectToUse.canActivate(effectContext)
         if (!canActivate) {
           // Card cannot be activated - show feedback
-        showEffectFeedback(`${cardToPlace.name}: ${reason}`, "error")
+          showEffectFeedback(`${cardToPlace.name}: ${reason}`, "error")
           return // Card cannot be played
         }
         
         // If effect requires targets, enter selection mode
-        if (effect.requiresTargets && effect.targetConfig) {
+        if (effectToUse.requiresTargets && effectToUse.targetConfig) {
           setItemSelectionMode({
             active: true,
             itemCard: cardToPlace,
@@ -1601,7 +1635,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
         
         // Effect doesn't require targets - resolve immediately
-        const result = effect.resolve(effectContext)
+        const result = effectToUse.resolve(effectContext)
         if (result.success) {
           // Show visual feedback
           showEffectFeedback(`${cardToPlace.name}: ${result.message}`, "success")
@@ -1898,7 +1932,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         const unitSlot = el.closest("[data-player-unit-slot]")
         const funcSlot = el.closest("[data-player-func-slot]")
         const scenarioSlot = el.closest("[data-player-scenario-slot]")
-
+        
         if (unitSlot && isUnitCard(draggedHandCard.card)) {
           const slotIndex = Number.parseInt(unitSlot.getAttribute("data-player-unit-slot") || "0")
           if (!playerField.unitZone[slotIndex]) {
@@ -2226,7 +2260,16 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     if (!allyUnit) return
 
     // Use centralized effect resolver
-    const effect = getFunctionCardEffect(itemSelectionMode.itemCard.id)
+    let effect = getFunctionCardEffect(itemSelectionMode.itemCard)
+    
+    // Fallback: find effect by name
+    if (!effect) {
+      const isAmplificador = itemSelectionMode.itemCard.name === "Amplificador de Poder"
+      const isBandagem = itemSelectionMode.itemCard.name === "Bandagem Restauradora"
+      if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
+      if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
+    }
+    
     if (effect) {
       const effectContext: EffectContext = {
         playerField,
@@ -3104,7 +3147,22 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
             <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 text-center w-80">
               <div className="text-white font-bold text-2xl drop-shadow-lg">{inspectedCard.name}</div>
               {isUnitCard(inspectedCard) && (
-                <div className="text-cyan-400 text-xl mt-2 font-semibold">{inspectedCard.dp} DP</div>
+                <div className="flex flex-col items-center gap-1 mt-2">
+                  <div className={`text-xl font-semibold ${
+                    (inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp > inspectedCard.dp 
+                      ? "text-green-400" 
+                      : (inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp < inspectedCard.dp 
+                        ? "text-red-400" 
+                        : "text-cyan-400"
+                  }`}>
+                    {(inspectedCard as FieldCard).currentDp !== undefined ? (inspectedCard as FieldCard).currentDp : inspectedCard.dp} DP
+                  </div>
+                  {(inspectedCard as FieldCard).currentDp !== undefined && (inspectedCard as FieldCard).currentDp !== inspectedCard.dp && (
+                    <div className="text-white/50 text-sm">
+                      (Base: {inspectedCard.dp} DP | {(inspectedCard as FieldCard).currentDp > inspectedCard.dp ? "+" : ""}{(inspectedCard as FieldCard).currentDp - inspectedCard.dp})
+                    </div>
+                  )}
+                </div>
               )}
               {!isUnitCard(inspectedCard) && (
                 <div className="text-purple-400 text-lg mt-2 font-semibold">Carta de Funcao</div>
