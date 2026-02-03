@@ -218,15 +218,20 @@ const getBaseCardId = (cardId: string): string => {
   // We need to extract just "original-id"
   const deckSuffixIndex = cardId.lastIndexOf("-deck-")
   if (deckSuffixIndex !== -1) {
-    return cardId.substring(0, deckSuffixIndex)
+    const baseId = cardId.substring(0, deckSuffixIndex)
+    console.log("[v0] getBaseCardId:", cardId, "->", baseId)
+    return baseId
   }
+  console.log("[v0] getBaseCardId (no suffix):", cardId)
   return cardId
 }
 
 // Helper function to get effect for a card
 const getFunctionCardEffect = (cardId: string): FunctionCardEffect | null => {
   const baseId = getBaseCardId(cardId)
-  return FUNCTION_CARD_EFFECTS[baseId] || null
+  const effect = FUNCTION_CARD_EFFECTS[baseId]
+  console.log("[v0] getFunctionCardEffect: baseId =", baseId, "| effect found =", effect ? effect.name : "NONE", "| available keys =", Object.keys(FUNCTION_CARD_EFFECTS))
+  return effect || null
 }
 
 // Helper to check if a Function card can be activated
