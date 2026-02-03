@@ -308,6 +308,44 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       }
     },
   },
+  
+  "cauda-de-dragao-assada": {
+    id: "cauda-de-dragao-assada",
+    name: "Cauda de Dragão Assada",
+    requiresTargets: false,
+    canActivate: (context) => {
+      // Count player units on the field
+      const playerUnitCount = context.playerField.unitZone.filter((u) => u !== null).length
+      
+      if (playerUnitCount < 2) {
+        return { canActivate: false, reason: "Voce precisa ter 2 ou mais unidades no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      const maxLife = 20
+      const currentLife = context.playerField.life
+      const healAmount = Math.min(2, maxLife - currentLife)
+      const newLife = Math.min(currentLife + healAmount, maxLife)
+      
+      // Buff all player units with +1 DP
+      context.setPlayerField((prev) => ({
+        ...prev,
+        life: newLife,
+        unitZone: prev.unitZone.map((unit) => {
+          if (unit === null) return null
+          return {
+            ...unit,
+            currentDp: (unit.currentDp || unit.dp) + 1,
+          }
+        }),
+      }))
+      
+      const unitCount = context.playerField.unitZone.filter((u) => u !== null).length
+      const healMsg = healAmount > 0 ? ` +${healAmount} LP (${currentLife} -> ${newLife})` : ""
+      return { success: true, message: `+1 DP para ${unitCount} unidades!${healMsg}` }
+    },
+  },
 }
 
 // Helper function to extract base card ID (removes deck timestamp suffix)
@@ -1695,8 +1733,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isAdaga = cardToPlace.name === "Adaga Energizada"
       const isBandagensDuplas = cardToPlace.name === "Bandagens Duplas"
       const isCristalRecuperador = cardToPlace.name === "Cristal Recuperador"
+      const isCaudaDeDragao = cardToPlace.name === "Cauda de Dragão Assada"
       
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador) {
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao) {
         // Use found effect or fallback to the correct one by name
         let effectToUse = effect
         if (!effectToUse) {
@@ -1705,6 +1744,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           else if (isAdaga) effectToUse = FUNCTION_CARD_EFFECTS["adaga-energizada"]
           else if (isBandagensDuplas) effectToUse = FUNCTION_CARD_EFFECTS["bandagens-duplas"]
           else if (isCristalRecuperador) effectToUse = FUNCTION_CARD_EFFECTS["cristal-recuperador"]
+          else if (isCaudaDeDragao) effectToUse = FUNCTION_CARD_EFFECTS["cauda-de-dragao-assada"]
         }
         
         if (!effectToUse) return // Safety check
@@ -2425,11 +2465,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isAdaga = itemSelectionMode.itemCard.name === "Adaga Energizada"
       const isBandagensDuplas = itemSelectionMode.itemCard.name === "Bandagens Duplas"
       const isCristalRecuperador = itemSelectionMode.itemCard.name === "Cristal Recuperador"
+      const isCaudaDeDragao = itemSelectionMode.itemCard.name === "Cauda de Dragão Assada"
       if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
       else if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
       else if (isAdaga) effect = FUNCTION_CARD_EFFECTS["adaga-energizada"]
       else if (isBandagensDuplas) effect = FUNCTION_CARD_EFFECTS["bandagens-duplas"]
       else if (isCristalRecuperador) effect = FUNCTION_CARD_EFFECTS["cristal-recuperador"]
+      else if (isCaudaDeDragao) effect = FUNCTION_CARD_EFFECTS["cauda-de-dragao-assada"]
     }
     
     if (effect) {
