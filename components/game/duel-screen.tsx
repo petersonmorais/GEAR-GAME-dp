@@ -210,6 +210,34 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       return { success: true, message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})` }
     },
   },
+  
+  "adaga-energizada": {
+    id: "adaga-energizada",
+    name: "Adaga Energizada",
+    requiresTargets: false,
+    canActivate: (context) => {
+      // Count enemy units on the field
+      const enemyUnitCount = context.enemyField.unitZone.filter((u) => u !== null).length
+      
+      if (enemyUnitCount < 2) {
+        return { canActivate: false, reason: "O oponente precisa ter 2 ou mais unidades no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      // Deal 4 direct damage to enemy LP
+      const damage = 4
+      const currentEnemyLife = context.enemyField.life
+      const newEnemyLife = Math.max(0, currentEnemyLife - damage)
+      
+      context.setEnemyField((prev) => ({
+        ...prev,
+        life: newEnemyLife,
+      }))
+      
+      return { success: true, message: `4 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
+    },
+  },
 }
 
 // Helper function to extract base card ID (removes deck timestamp suffix)
@@ -1591,13 +1619,19 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       // Get the effect configuration for this card
       const effect = getFunctionCardEffect(cardToPlace)
       
-      // Special handling for Amplificador de Poder by name (backup)
+      // Special handling for Function cards by name (backup)
       const isAmplificador = cardToPlace.name === "Amplificador de Poder"
       const isBandagem = cardToPlace.name === "Bandagem Restauradora"
+      const isAdaga = cardToPlace.name === "Adaga Energizada"
       
-      if (effect || isAmplificador || isBandagem) {
+      if (effect || isAmplificador || isBandagem || isAdaga) {
         // Use found effect or fallback to the correct one by name
-        const effectToUse = effect || (isAmplificador ? FUNCTION_CARD_EFFECTS["amplificador-de-poder"] : FUNCTION_CARD_EFFECTS["bandagem-restauradora"])
+        let effectToUse = effect
+        if (!effectToUse) {
+          if (isAmplificador) effectToUse = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
+          else if (isBandagem) effectToUse = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
+          else if (isAdaga) effectToUse = FUNCTION_CARD_EFFECTS["adaga-energizada"]
+        }
         
         if (!effectToUse) return // Safety check
         
@@ -2266,8 +2300,10 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     if (!effect) {
       const isAmplificador = itemSelectionMode.itemCard.name === "Amplificador de Poder"
       const isBandagem = itemSelectionMode.itemCard.name === "Bandagem Restauradora"
+      const isAdaga = itemSelectionMode.itemCard.name === "Adaga Energizada"
       if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
-      if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
+      else if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
+      else if (isAdaga) effect = FUNCTION_CARD_EFFECTS["adaga-energizada"]
     }
     
     if (effect) {
