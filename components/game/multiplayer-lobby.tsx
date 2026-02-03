@@ -89,21 +89,30 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
         ? playerId
         : crypto.randomUUID()
       
-      console.log("[v0] Creating room with hostUUID:", hostUUID, "playerId:", playerId)
+      console.log("[v0] Creating room...")
+      console.log("[v0] Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL ? "SET" : "NOT SET")
+      console.log("[v0] Room code:", code)
+      console.log("[v0] Host UUID:", hostUUID)
+      console.log("[v0] Host name:", playerProfile.name)
+      
+      const insertPayload = {
+        room_code: code,
+        host_id: hostUUID,
+        host_name: playerProfile.name || "Jogador",
+        host_deck: selectedDeck ? JSON.stringify(selectedDeck) : null,
+        status: "waiting",
+        host_ready: false,
+        guest_ready: false,
+      }
+      console.log("[v0] Insert payload:", JSON.stringify(insertPayload, null, 2))
       
       const { data, error: insertError } = await supabase
         .from("duel_rooms")
-        .insert({
-          room_code: code,
-          host_id: hostUUID,
-          host_name: playerProfile.name || "Jogador",
-          host_deck: selectedDeck ? JSON.stringify(selectedDeck) : null,
-          status: "waiting",
-          host_ready: false,
-          guest_ready: false,
-        })
+        .insert(insertPayload)
         .select()
         .single()
+
+      console.log("[v0] Insert response - data:", data, "error:", insertError)
 
       if (insertError) {
         console.error("[v0] Error creating room:", JSON.stringify(insertError, null, 2))
@@ -139,8 +148,8 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
       subscribeToRoom(data.id, code)
       
     } catch (err) {
-      console.log("[v0] Error creating room:", err)
-      setError("Erro ao criar sala. Tente novamente.")
+      console.error("[v0] Exception creating room:", err)
+      setError(`Erro ao criar sala: ${err instanceof Error ? err.message : "Tente novamente."}`)
     }
     
     setIsLoading(false)
