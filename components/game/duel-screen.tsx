@@ -218,20 +218,24 @@ const getBaseCardId = (cardId: string): string => {
   // We need to extract just "original-id"
   const deckSuffixIndex = cardId.lastIndexOf("-deck-")
   if (deckSuffixIndex !== -1) {
-    const baseId = cardId.substring(0, deckSuffixIndex)
-    console.log("[v0] getBaseCardId:", cardId, "->", baseId)
-    return baseId
+    return cardId.substring(0, deckSuffixIndex)
   }
-  console.log("[v0] getBaseCardId (no suffix):", cardId)
   return cardId
 }
 
-// Helper function to get effect for a card
-const getFunctionCardEffect = (cardId: string): FunctionCardEffect | null => {
-  const baseId = getBaseCardId(cardId)
-  const effect = FUNCTION_CARD_EFFECTS[baseId]
-  console.log("[v0] getFunctionCardEffect: baseId =", baseId, "| effect found =", effect ? effect.name : "NONE", "| available keys =", Object.keys(FUNCTION_CARD_EFFECTS))
-  return effect || null
+// Helper function to get effect for a card - also checks by card name
+const getFunctionCardEffect = (card: { id: string; name?: string }): FunctionCardEffect | null => {
+  // First try by base ID
+  const baseId = getBaseCardId(card.id)
+  if (FUNCTION_CARD_EFFECTS[baseId]) {
+    return FUNCTION_CARD_EFFECTS[baseId]
+  }
+  
+  // Fallback: try to match by card name
+  const effectByName = Object.values(FUNCTION_CARD_EFFECTS).find(
+    (effect) => effect.name === card.name
+  )
+  return effectByName || null
 }
 
 // Helper to check if a Function card can be activated
@@ -1548,40 +1552,19 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   }
 
   const placeCard = (zone: "unit" | "function", slotIndex: number, forcedCardIndex?: number) => {
-    console.log("[v0] placeCard called - zone:", zone, "slotIndex:", slotIndex, "forcedCardIndex:", forcedCardIndex)
-    console.log("[v0] isPlayerTurn:", isPlayerTurn, "phase:", phase)
-    
-    if (!isPlayerTurn) {
-      console.log("[v0] BLOCKED: Not player turn")
-      return
-    }
-    if (phase !== "main") {
-      console.log("[v0] BLOCKED: Not main phase")
-      return
-    }
+    if (!isPlayerTurn) return
+    if (phase !== "main") return
 
     const cardIndex = forcedCardIndex ?? (draggedHandCard?.index ?? selectedHandCard)
-    console.log("[v0] cardIndex resolved to:", cardIndex)
-    if (cardIndex === null || cardIndex === undefined) {
-      console.log("[v0] BLOCKED: No card index")
-      return
-    }
+    if (cardIndex === null || cardIndex === undefined) return
     
     const cardToPlace = playerField.hand[cardIndex]
-    console.log("[v0] cardToPlace:", cardToPlace?.name, "type:", cardToPlace?.type, "id:", cardToPlace?.id)
-    if (!cardToPlace) {
-      console.log("[v0] BLOCKED: No card to place")
-      return
-    }
+    if (!cardToPlace) return
 
     // Scenario cards can ONLY be played in the Scenario zone
-    if (cardToPlace.type === "scenario") {
-      console.log("[v0] BLOCKED: Scenario card cannot be placed here")
-      return
-    }
+    if (cardToPlace.type === "scenario") return
 
     const isUnit = isUnitCard(cardToPlace)
-    console.log("[v0] isUnit:", isUnit)
     if (zone === "unit" && isUnit) {
       if (playerField.unitZone[slotIndex] !== null) return
 
@@ -1606,12 +1589,18 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       if (playerField.functionZone[slotIndex] !== null) return
 
       // Get the effect configuration for this card
-      console.log("[v0] Card placed in function zone:", cardToPlace.id, cardToPlace.name)
-      console.log("[v0] Base card ID:", getBaseCardId(cardToPlace.id))
-      const effect = getFunctionCardEffect(cardToPlace.id)
-      console.log("[v0] Effect found:", effect ? effect.name : "NONE")
+      const effect = getFunctionCardEffect(cardToPlace)
       
-      if (effect) {
+      // Special handling for Amplificador de Poder by name (backup)
+      const isAmplificador = cardToPlace.name === "Amplificador de Poder"
+      const isBandagem = cardToPlace.name === "Bandagem Restauradora"
+      
+      if (effect || isAmplificador || isBandagem) {
+        // Use found effect or fallback to the correct one by name
+        const effectToUse = effect || (isAmplificador ? FUNCTION_CARD_EFFECTS["amplificador-de-poder"] : FUNCTION_CARD_EFFECTS["bandagem-restauradora"])
+        
+        if (!effectToUse) return // Safety check
+        
         // Create effect context
         const effectContext: EffectContext = {
           playerField,
@@ -1621,15 +1610,15 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
         
         // Check if card can be activated
-        const { canActivate, reason } = effect.canActivate(effectContext)
+        const { canActivate, reason } = effectToUse.canActivate(effectContext)
         if (!canActivate) {
           // Card cannot be activated - show feedback
-        showEffectFeedback(`${cardToPlace.name}: ${reason}`, "error")
+          showEffectFeedback(`${cardToPlace.name}: ${reason}`, "error")
           return // Card cannot be played
         }
         
         // If effect requires targets, enter selection mode
-        if (effect.requiresTargets && effect.targetConfig) {
+        if (effectToUse.requiresTargets && effectToUse.targetConfig) {
           setItemSelectionMode({
             active: true,
             itemCard: cardToPlace,
@@ -1646,7 +1635,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         }
         
         // Effect doesn't require targets - resolve immediately
-        const result = effect.resolve(effectContext)
+        const result = effectToUse.resolve(effectContext)
         if (result.success) {
           // Show visual feedback
           showEffectFeedback(`${cardToPlace.name}: ${result.message}`, "success")
@@ -1944,12 +1933,6 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         const funcSlot = el.closest("[data-player-func-slot]")
         const scenarioSlot = el.closest("[data-player-scenario-slot]")
         
-        // Debug: log when we find a function slot
-        if (funcSlot) {
-          const slotIndex = Number.parseInt(funcSlot.getAttribute("data-player-func-slot") || "0")
-          console.log("[v0] Found funcSlot:", slotIndex, "Card type:", draggedHandCard.card.type, "isUnitCard:", isUnitCard(draggedHandCard.card), "isEmpty:", !playerField.functionZone[slotIndex])
-        }
-        
         if (unitSlot && isUnitCard(draggedHandCard.card)) {
           const slotIndex = Number.parseInt(unitSlot.getAttribute("data-player-unit-slot") || "0")
           if (!playerField.unitZone[slotIndex]) {
@@ -1978,20 +1961,9 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   }
 
   const handleHandCardDragEnd = () => {
-    console.log("[v0] handleHandCardDragEnd called")
-    console.log("[v0] draggedHandCard:", draggedHandCard?.card?.name, draggedHandCard?.card?.type)
-    console.log("[v0] dropTarget:", dropTarget)
-    
     if (!draggedHandCard) {
-      console.log("[v0] No draggedHandCard - returning")
       setDropTarget(null)
       return
-    }
-    
-    if (dropTarget) {
-      console.log("[v0] Has dropTarget, calling placeCard")
-    } else {
-      console.log("[v0] No dropTarget - card will return to hand")
     }
     
     if (dropTarget) {
@@ -2288,7 +2260,16 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     if (!allyUnit) return
 
     // Use centralized effect resolver
-    const effect = getFunctionCardEffect(itemSelectionMode.itemCard.id)
+    let effect = getFunctionCardEffect(itemSelectionMode.itemCard)
+    
+    // Fallback: find effect by name
+    if (!effect) {
+      const isAmplificador = itemSelectionMode.itemCard.name === "Amplificador de Poder"
+      const isBandagem = itemSelectionMode.itemCard.name === "Bandagem Restauradora"
+      if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
+      if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
+    }
+    
     if (effect) {
       const effectContext: EffectContext = {
         playerField,
