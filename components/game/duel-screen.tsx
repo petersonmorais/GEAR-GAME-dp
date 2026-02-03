@@ -1938,7 +1938,13 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         const unitSlot = el.closest("[data-player-unit-slot]")
         const funcSlot = el.closest("[data-player-func-slot]")
         const scenarioSlot = el.closest("[data-player-scenario-slot]")
-
+        
+        // Debug: log when we find a function slot
+        if (funcSlot) {
+          const slotIndex = Number.parseInt(funcSlot.getAttribute("data-player-func-slot") || "0")
+          console.log("[v0] Found funcSlot:", slotIndex, "Card type:", draggedHandCard.card.type, "isUnitCard:", isUnitCard(draggedHandCard.card), "isEmpty:", !playerField.functionZone[slotIndex])
+        }
+        
         if (unitSlot && isUnitCard(draggedHandCard.card)) {
           const slotIndex = Number.parseInt(unitSlot.getAttribute("data-player-unit-slot") || "0")
           if (!playerField.unitZone[slotIndex]) {
@@ -1967,9 +1973,20 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   }
 
   const handleHandCardDragEnd = () => {
+    console.log("[v0] handleHandCardDragEnd called")
+    console.log("[v0] draggedHandCard:", draggedHandCard?.card?.name, draggedHandCard?.card?.type)
+    console.log("[v0] dropTarget:", dropTarget)
+    
     if (!draggedHandCard) {
+      console.log("[v0] No draggedHandCard - returning")
       setDropTarget(null)
       return
+    }
+    
+    if (dropTarget) {
+      console.log("[v0] Has dropTarget, calling placeCard")
+    } else {
+      console.log("[v0] No dropTarget - card will return to hand")
     }
     
     if (dropTarget) {
