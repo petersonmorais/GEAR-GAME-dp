@@ -346,6 +346,29 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       return { success: true, message: `+1 DP para ${unitCount} unidades!${healMsg}` }
     },
   },
+  
+  "projetil-de-impacto": {
+    id: "projetil-de-impacto",
+    name: "Projétil de Impacto",
+    requiresTargets: false,
+    canActivate: () => {
+      // No condition - can always be activated
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      // Deal 2 direct damage to enemy LP
+      const damage = 2
+      const currentEnemyLife = context.enemyField.life
+      const newEnemyLife = Math.max(0, currentEnemyLife - damage)
+      
+      context.setEnemyField((prev) => ({
+        ...prev,
+        life: newEnemyLife,
+      }))
+      
+      return { success: true, message: `2 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
+    },
+  },
 }
 
 // Helper function to extract base card ID (removes deck timestamp suffix)
@@ -1734,20 +1757,22 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isBandagensDuplas = cardToPlace.name === "Bandagens Duplas"
       const isCristalRecuperador = cardToPlace.name === "Cristal Recuperador"
       const isCaudaDeDragao = cardToPlace.name === "Cauda de Dragão Assada"
+      const isProjetilDeImpacto = cardToPlace.name === "Projétil de Impacto"
       
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao) {
-        // Use found effect or fallback to the correct one by name
-        let effectToUse = effect
-        if (!effectToUse) {
-          if (isAmplificador) effectToUse = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
-          else if (isBandagem) effectToUse = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
-          else if (isAdaga) effectToUse = FUNCTION_CARD_EFFECTS["adaga-energizada"]
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto) {
+      // Use found effect or fallback to the correct one by name
+      let effectToUse = effect
+      if (!effectToUse) {
+      if (isAmplificador) effectToUse = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
+      else if (isBandagem) effectToUse = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
+      else if (isAdaga) effectToUse = FUNCTION_CARD_EFFECTS["adaga-energizada"]
           else if (isBandagensDuplas) effectToUse = FUNCTION_CARD_EFFECTS["bandagens-duplas"]
           else if (isCristalRecuperador) effectToUse = FUNCTION_CARD_EFFECTS["cristal-recuperador"]
-          else if (isCaudaDeDragao) effectToUse = FUNCTION_CARD_EFFECTS["cauda-de-dragao-assada"]
-        }
-        
-        if (!effectToUse) return // Safety check
+      else if (isCaudaDeDragao) effectToUse = FUNCTION_CARD_EFFECTS["cauda-de-dragao-assada"]
+      else if (isProjetilDeImpacto) effectToUse = FUNCTION_CARD_EFFECTS["projetil-de-impacto"]
+      }
+      
+      if (!effectToUse) return // Safety check
         
         // Create effect context
         const effectContext: EffectContext = {
@@ -2466,12 +2491,14 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isBandagensDuplas = itemSelectionMode.itemCard.name === "Bandagens Duplas"
       const isCristalRecuperador = itemSelectionMode.itemCard.name === "Cristal Recuperador"
       const isCaudaDeDragao = itemSelectionMode.itemCard.name === "Cauda de Dragão Assada"
+      const isProjetilDeImpacto = itemSelectionMode.itemCard.name === "Projétil de Impacto"
       if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
       else if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
       else if (isAdaga) effect = FUNCTION_CARD_EFFECTS["adaga-energizada"]
       else if (isBandagensDuplas) effect = FUNCTION_CARD_EFFECTS["bandagens-duplas"]
       else if (isCristalRecuperador) effect = FUNCTION_CARD_EFFECTS["cristal-recuperador"]
       else if (isCaudaDeDragao) effect = FUNCTION_CARD_EFFECTS["cauda-de-dragao-assada"]
+      else if (isProjetilDeImpacto) effect = FUNCTION_CARD_EFFECTS["projetil-de-impacto"]
     }
     
     if (effect) {
