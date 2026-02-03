@@ -84,12 +84,19 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
     try {
       const code = generateRoomCode()
       
+      // Generate a valid UUID for the host if playerId is not a valid UUID
+      const hostUUID = playerId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(playerId)
+        ? playerId
+        : crypto.randomUUID()
+      
+      console.log("[v0] Creating room with hostUUID:", hostUUID, "playerId:", playerId)
+      
       const { data, error: insertError } = await supabase
         .from("duel_rooms")
         .insert({
           room_code: code,
-          host_id: playerId,
-          host_name: playerProfile.name,
+          host_id: hostUUID,
+          host_name: playerProfile.name || "Jogador",
           host_deck: selectedDeck ? JSON.stringify(selectedDeck) : null,
           status: "waiting",
           host_ready: false,
@@ -99,7 +106,7 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
         .single()
 
       if (insertError) {
-        console.log("[v0] Error creating room:", insertError)
+        console.log("[v0] Error creating room:", insertError.message, insertError.code, insertError.details)
         setError("Erro ao criar sala. Tente novamente.")
         setIsLoading(false)
         return
@@ -110,8 +117,8 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
         roomId: data.id,
         roomCode: code,
         isHost: true,
-        hostId: playerId,
-        hostName: playerProfile.name,
+        hostId: hostUUID,
+        hostName: playerProfile.name || "Jogador",
         hostDeck: selectedDeck,
         guestId: null,
         guestName: null,
@@ -160,7 +167,12 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
         return
       }
 
-      if (room.host_id === playerId) {
+      // Generate a valid UUID for the guest if playerId is not a valid UUID
+      const guestUUID = playerId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(playerId)
+        ? playerId
+        : crypto.randomUUID()
+
+      if (room.host_id === guestUUID) {
         setError("Voce nao pode entrar na sua propria sala.")
         setIsLoading(false)
         return
@@ -170,8 +182,8 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
       const { error: updateError } = await supabase
         .from("duel_rooms")
         .update({
-          guest_id: playerId,
-          guest_name: playerProfile.name,
+          guest_id: guestUUID,
+          guest_name: playerProfile.name || "Jogador",
           guest_deck: selectedDeck ? JSON.stringify(selectedDeck) : null,
           status: "lobby",
         })
