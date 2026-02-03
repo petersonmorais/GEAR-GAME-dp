@@ -253,6 +253,8 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
 
   // Subscribe to room updates
   const subscribeToRoom = useCallback((roomId: string, code: string) => {
+    console.log("[v0] subscribeToRoom called - roomId:", roomId, "code:", code)
+    
     // Clean up existing subscription
     if (roomChannelRef.current) {
       roomChannelRef.current.unsubscribe()
@@ -298,7 +300,12 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
               }
             }
             
-            console.log("[v0] Room update - hostDeck:", hostDeck?.name, "guestDeck:", guestDeck?.name)
+            console.log("[v0] Room update received!")
+            console.log("[v0] - newData.status:", newData.status)
+            console.log("[v0] - newData.guest_id:", newData.guest_id)
+            console.log("[v0] - newData.guest_name:", newData.guest_name)
+            console.log("[v0] - prev.isHost:", prev.isHost)
+            console.log("[v0] - hostDeck:", hostDeck?.name, "guestDeck:", guestDeck?.name)
             
             const updated: RoomData = {
               ...prev,
@@ -311,7 +318,9 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
             }
             
             // If guest joined and we're the host, move to lobby
+            console.log("[v0] Checking if should move to lobby:", prev.isHost, newData.guest_id, newData.status)
             if (prev.isHost && newData.guest_id && newData.status === "lobby") {
+              console.log("[v0] Moving host to lobby screen!")
               setScreen("lobby")
               subscribeToChat(roomId)
             }
@@ -325,7 +334,9 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
           })
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log("[v0] Room subscription status:", status)
+      })
 
     roomChannelRef.current = channel
   }, [supabase])
