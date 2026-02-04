@@ -458,6 +458,111 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       return { success: false, message: "Escolha uma opcao" }
     },
   },
+  
+  "nucleo-explosivo": {
+    id: "nucleo-explosivo",
+    name: "Núcleo Explosivo",
+    requiresTargets: false,
+    canActivate: (context) => {
+      // Check if opponent has at least 1 unit on field
+      const enemyUnitCount = context.enemyField.unitZone.filter((u) => u !== null).length
+      
+      if (enemyUnitCount === 0) {
+        return { canActivate: false, reason: "O oponente precisa ter ao menos 1 unidade no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      // Deal 1 damage to each enemy unit
+      let unitsHit = 0
+      
+      context.setEnemyField((prev) => ({
+        ...prev,
+        unitZone: prev.unitZone.map((unit) => {
+          if (unit === null) return null
+          unitsHit++
+          const currentDp = unit.currentDp || unit.dp
+          const newDp = Math.max(0, currentDp - 1)
+          return {
+            ...unit,
+            currentDp: newDp,
+          }
+        }),
+      }))
+      
+      return { success: true, message: `1 de dano em ${unitsHit} unidade(s) inimigas!` }
+    },
+  },
+  
+  "kit-medico-improvisado": {
+    id: "kit-medico-improvisado",
+    name: "Kit Médico Improvisado",
+    requiresTargets: false,
+    needsDrawAfterResolve: true,
+    canActivate: (context) => {
+      const currentLife = context.playerField.life
+      const maxLife = 20
+      
+      if (currentLife >= maxLife) {
+        return { canActivate: false, reason: "LP ja esta no maximo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      const currentLife = context.playerField.life
+      const maxLife = 20
+      const healAmount = Math.min(2, maxLife - currentLife)
+      const newLife = Math.min(currentLife + healAmount, maxLife)
+      
+      context.setPlayerField((prev) => ({
+        ...prev,
+        life: newLife,
+      }))
+      
+      // Return special flag to indicate we need to draw and check for Unit type
+      return { 
+        success: true, 
+        message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})`,
+        needsDrawAndCheckUnit: true,
+        currentLife: newLife,
+      }
+    },
+  },
+  
+  "soro-recuperador": {
+    id: "soro-recuperador",
+    name: "Soro Recuperador",
+    requiresTargets: false,
+    needsDrawAfterResolve: true,
+    canActivate: (context) => {
+      const currentLife = context.playerField.life
+      const maxLife = 20
+      
+      if (currentLife >= maxLife) {
+        return { canActivate: false, reason: "LP ja esta no maximo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      const currentLife = context.playerField.life
+      const maxLife = 20
+      const healAmount = Math.min(3, maxLife - currentLife)
+      const newLife = Math.min(currentLife + healAmount, maxLife)
+      
+      context.setPlayerField((prev) => ({
+        ...prev,
+        life: newLife,
+      }))
+      
+      // Return special flag to indicate we need to draw (no bonus check)
+      return { 
+        success: true, 
+        message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})`,
+        needsDrawOnly: true,
+        currentLife: newLife,
+      }
+    },
+  },
 }
 
 // Helper function to extract base card ID (removes deck timestamp suffix)
@@ -1857,8 +1962,11 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
       const isCaudaDeDragao = cardToPlace.name === "Cauda de Dragão Assada"
       const isProjetilDeImpacto = cardToPlace.name === "Projétil de Impacto"
       const isVeuDosLacos = cardToPlace.name === "Véu dos Laços Cruzados"
+      const isNucleoExplosivo = cardToPlace.name === "Núcleo Explosivo"
+      const isKitMedico = cardToPlace.name === "Kit Médico Improvisado"
+      const isSoroRecuperador = cardToPlace.name === "Soro Recuperador"
       
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos) {
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador) {
       // Use found effect or fallback to the correct one by name
       let effectToUse = effect
       if (!effectToUse) {
@@ -1870,6 +1978,9 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
       else if (isCaudaDeDragao) effectToUse = FUNCTION_CARD_EFFECTS["cauda-de-dragao-assada"]
       else if (isProjetilDeImpacto) effectToUse = FUNCTION_CARD_EFFECTS["projetil-de-impacto"]
       else if (isVeuDosLacos) effectToUse = FUNCTION_CARD_EFFECTS["veu-dos-lacos-cruzados"]
+      else if (isNucleoExplosivo) effectToUse = FUNCTION_CARD_EFFECTS["nucleo-explosivo"]
+      else if (isKitMedico) effectToUse = FUNCTION_CARD_EFFECTS["kit-medico-improvisado"]
+      else if (isSoroRecuperador) effectToUse = FUNCTION_CARD_EFFECTS["soro-recuperador"]
       }
       
       if (!effectToUse) return // Safety check
@@ -1983,6 +2094,86 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
                 }
               })
             }, 500) // Small delay for visual feedback
+            
+            setSelectedHandCard(null)
+            setDraggedHandCard(null)
+            return
+          }
+          
+          // Special handling for Kit Médico Improvisado - draw and check if Unit type for bonus
+          if (result.needsDrawAndCheckUnit) {
+            setTimeout(() => {
+              setPlayerField((prev) => {
+                if (prev.deck.length === 0) {
+                  showEffectFeedback("Deck vazio - nao pode comprar carta", "error")
+                  return {
+                    ...prev,
+                    hand: prev.hand.filter((_, i) => i !== cardIndex),
+                    graveyard: [...prev.graveyard, cardToPlace],
+                  }
+                }
+                
+                const drawnCard = prev.deck[0]
+                const newDeck = prev.deck.slice(1)
+                const newHand = [...prev.hand.filter((_, i) => i !== cardIndex), drawnCard]
+                
+                // Check if drawn card is a Unit type
+                const isUnitCard = drawnCard.type === "unit"
+                let finalLife = result.currentLife || prev.life
+                
+                if (isUnitCard) {
+                  const maxLife = 20
+                  const bonusHeal = Math.min(1, maxLife - finalLife)
+                  finalLife = Math.min(finalLife + bonusHeal, maxLife)
+                  if (bonusHeal > 0) {
+                    showEffectFeedback(`Carta Unidade comprada! +1 LP bonus! (${finalLife - 1} -> ${finalLife})`, "success")
+                  }
+                } else {
+                  showEffectFeedback(`Comprou: ${drawnCard.name}`, "success")
+                }
+                
+                return {
+                  ...prev,
+                  deck: newDeck,
+                  hand: newHand,
+                  graveyard: [...prev.graveyard, cardToPlace],
+                  life: finalLife,
+                }
+              })
+            }, 500)
+            
+            setSelectedHandCard(null)
+            setDraggedHandCard(null)
+            return
+          }
+          
+          // Special handling for Soro Recuperador - just draw, no bonus check
+          if (result.needsDrawOnly) {
+            setTimeout(() => {
+              setPlayerField((prev) => {
+                if (prev.deck.length === 0) {
+                  showEffectFeedback("Deck vazio - nao pode comprar carta", "error")
+                  return {
+                    ...prev,
+                    hand: prev.hand.filter((_, i) => i !== cardIndex),
+                    graveyard: [...prev.graveyard, cardToPlace],
+                  }
+                }
+                
+                const drawnCard = prev.deck[0]
+                const newDeck = prev.deck.slice(1)
+                const newHand = [...prev.hand.filter((_, i) => i !== cardIndex), drawnCard]
+                
+                showEffectFeedback(`Comprou: ${drawnCard.name}`, "success")
+                
+                return {
+                  ...prev,
+                  deck: newDeck,
+                  hand: newHand,
+                  graveyard: [...prev.graveyard, cardToPlace],
+                }
+              })
+            }, 500)
             
             setSelectedHandCard(null)
             setDraggedHandCard(null)
@@ -2665,16 +2856,22 @@ const handleAllyUnitSelect = (index: number) => {
   const isCristalRecuperador = itemSelectionMode.itemCard.name === "Cristal Recuperador"
   const isCaudaDeDragao = itemSelectionMode.itemCard.name === "Cauda de Dragão Assada"
   const isProjetilDeImpacto = itemSelectionMode.itemCard.name === "Projétil de Impacto"
-  const isVeuDosLacos = itemSelectionMode.itemCard.name === "Véu dos Laços Cruzados"
-  if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
-  else if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
-  else if (isAdaga) effect = FUNCTION_CARD_EFFECTS["adaga-energizada"]
-  else if (isBandagensDuplas) effect = FUNCTION_CARD_EFFECTS["bandagens-duplas"]
-  else if (isCristalRecuperador) effect = FUNCTION_CARD_EFFECTS["cristal-recuperador"]
-  else if (isCaudaDeDragao) effect = FUNCTION_CARD_EFFECTS["cauda-de-dragao-assada"]
-  else if (isProjetilDeImpacto) effect = FUNCTION_CARD_EFFECTS["projetil-de-impacto"]
-  else if (isVeuDosLacos) effect = FUNCTION_CARD_EFFECTS["veu-dos-lacos-cruzados"]
-  }
+      const isVeuDosLacos = itemSelectionMode.itemCard.name === "Véu dos Laços Cruzados"
+      const isNucleoExplosivo = itemSelectionMode.itemCard.name === "Núcleo Explosivo"
+      const isKitMedico = itemSelectionMode.itemCard.name === "Kit Médico Improvisado"
+      const isSoroRecuperador = itemSelectionMode.itemCard.name === "Soro Recuperador"
+      if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
+      else if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
+      else if (isAdaga) effect = FUNCTION_CARD_EFFECTS["adaga-energizada"]
+      else if (isBandagensDuplas) effect = FUNCTION_CARD_EFFECTS["bandagens-duplas"]
+      else if (isCristalRecuperador) effect = FUNCTION_CARD_EFFECTS["cristal-recuperador"]
+      else if (isCaudaDeDragao) effect = FUNCTION_CARD_EFFECTS["cauda-de-dragao-assada"]
+      else if (isProjetilDeImpacto) effect = FUNCTION_CARD_EFFECTS["projetil-de-impacto"]
+      else if (isVeuDosLacos) effect = FUNCTION_CARD_EFFECTS["veu-dos-lacos-cruzados"]
+      else if (isNucleoExplosivo) effect = FUNCTION_CARD_EFFECTS["nucleo-explosivo"]
+      else if (isKitMedico) effect = FUNCTION_CARD_EFFECTS["kit-medico-improvisado"]
+      else if (isSoroRecuperador) effect = FUNCTION_CARD_EFFECTS["soro-recuperador"]
+      }
     
     if (effect) {
       const effectContext: EffectContext = {
