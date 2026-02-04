@@ -563,6 +563,204 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       }
     },
   },
+  
+  "ordem-de-laceracao": {
+    id: "ordem-de-laceracao",
+    name: "Ordem de Laceração",
+    requiresTargets: false,
+    canActivate: (context) => {
+      // Check if player has Fehnon Hoskie on field
+      const hasFehnon = context.playerField.unitZone.some((u) => 
+        u !== null && u.name === "Fehnon Hoskie"
+      )
+      
+      if (!hasFehnon) {
+        return { canActivate: false, reason: "Voce precisa ter Fehnon Hoskie no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      // Deal 3 direct damage to enemy LP (ignores unit abilities)
+      const damage = 3
+      const currentEnemyLife = context.enemyField.life
+      const newEnemyLife = Math.max(0, currentEnemyLife - damage)
+      
+      context.setEnemyField((prev) => ({
+        ...prev,
+        life: newEnemyLife,
+      }))
+      
+      return { success: true, message: `3 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
+    },
+  },
+  
+  "sinfonia-relampago": {
+    id: "sinfonia-relampago",
+    name: "Sinfonia Relâmpago",
+    requiresTargets: false,
+    canActivate: (context) => {
+      // Check if player has Morgana Pendragon on field
+      const hasMorgana = context.playerField.unitZone.some((u) => 
+        u !== null && u.name === "Morgana Pendragon"
+      )
+      
+      if (!hasMorgana) {
+        return { canActivate: false, reason: "Voce precisa ter Morgana Pendragon no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      // Deal 4 direct damage to enemy LP (cannot be negated by traps)
+      const damage = 4
+      const currentEnemyLife = context.enemyField.life
+      const newEnemyLife = Math.max(0, currentEnemyLife - damage)
+      
+      context.setEnemyField((prev) => ({
+        ...prev,
+        life: newEnemyLife,
+      }))
+      
+      return { success: true, message: `4 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
+    },
+  },
+  
+  "fafnisbani": {
+    id: "fafnisbani",
+    name: "Fafnisbani",
+    requiresTargets: true,
+    requiresChoice: true,
+    choiceOptions: [
+      { id: "unit", label: "Atacar Unidade", description: "Causa 3 de dano a uma unidade inimiga" },
+      { id: "lp", label: "Atacar LP", description: "Causa 3 de dano direto ao LP do oponente" },
+    ],
+    canActivate: (context) => {
+      // Check if player has Scandinavel Angel Hrotti on field
+      const hasHrotti = context.playerField.unitZone.some((u) => 
+        u !== null && u.name === "Scandinavel Angel Hrotti"
+      )
+      
+      if (!hasHrotti) {
+        return { canActivate: false, reason: "Voce precisa ter Scandinavel Angel Hrotti no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      const chosenOption = targets?.chosenOption
+      
+      if (chosenOption === "lp") {
+        // Direct damage to LP
+        const damage = 3
+        const currentEnemyLife = context.enemyField.life
+        const newEnemyLife = Math.max(0, currentEnemyLife - damage)
+        
+        context.setEnemyField((prev) => ({
+          ...prev,
+          life: newEnemyLife,
+        }))
+        
+        return { success: true, message: `Fafnisbani! 3 de dano direto! LP: ${currentEnemyLife} -> ${newEnemyLife}` }
+      } else if (chosenOption === "unit") {
+        // Damage to enemy unit
+        if (!targets?.enemyUnitIndices?.length) {
+          return { success: false, message: "Selecione uma unidade inimiga" }
+        }
+        
+        const enemyIndex = targets.enemyUnitIndices[0]
+        const enemyUnit = context.enemyField.unitZone[enemyIndex]
+        
+        if (!enemyUnit) {
+          return { success: false, message: "Unidade inimiga nao encontrada" }
+        }
+        
+        const currentDp = enemyUnit.currentDp || enemyUnit.dp
+        const newDp = Math.max(0, currentDp - 3)
+        
+        context.setEnemyField((prev) => {
+          const newUnitZone = [...prev.unitZone]
+          if (newUnitZone[enemyIndex]) {
+            newUnitZone[enemyIndex] = {
+              ...newUnitZone[enemyIndex]!,
+              currentDp: newDp,
+            }
+          }
+          return { ...prev, unitZone: newUnitZone }
+        })
+        
+        return { success: true, message: `Fafnisbani! ${enemyUnit.name} recebeu 3 de dano! (${currentDp} -> ${newDp})` }
+      }
+      
+      return { success: false, message: "Escolha uma opcao" }
+    },
+  },
+  
+  "devorar-o-mundo": {
+    id: "devorar-o-mundo",
+    name: "Devorar o Mundo",
+    requiresTargets: true,
+    requiresChoice: true,
+    choiceOptions: [
+      { id: "unit", label: "Atacar Unidade", description: "Causa 4 de dano a uma unidade inimiga" },
+      { id: "lp", label: "Atacar LP", description: "Causa 4 de dano direto ao LP do oponente" },
+    ],
+    canActivate: (context) => {
+      // Check if player has Scandinavel Angel Logi on field
+      const hasLogi = context.playerField.unitZone.some((u) => 
+        u !== null && u.name === "Scandinavel Angel Logi"
+      )
+      
+      if (!hasLogi) {
+        return { canActivate: false, reason: "Voce precisa ter Scandinavel Angel Logi no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      const chosenOption = targets?.chosenOption
+      
+      if (chosenOption === "lp") {
+        // Direct damage to LP
+        const damage = 4
+        const currentEnemyLife = context.enemyField.life
+        const newEnemyLife = Math.max(0, currentEnemyLife - damage)
+        
+        context.setEnemyField((prev) => ({
+          ...prev,
+          life: newEnemyLife,
+        }))
+        
+        return { success: true, message: `Devorar o Mundo! 4 de dano direto! LP: ${currentEnemyLife} -> ${newEnemyLife}` }
+      } else if (chosenOption === "unit") {
+        // Damage to enemy unit
+        if (!targets?.enemyUnitIndices?.length) {
+          return { success: false, message: "Selecione uma unidade inimiga" }
+        }
+        
+        const enemyIndex = targets.enemyUnitIndices[0]
+        const enemyUnit = context.enemyField.unitZone[enemyIndex]
+        
+        if (!enemyUnit) {
+          return { success: false, message: "Unidade inimiga nao encontrada" }
+        }
+        
+        const currentDp = enemyUnit.currentDp || enemyUnit.dp
+        const newDp = Math.max(0, currentDp - 4)
+        
+        context.setEnemyField((prev) => {
+          const newUnitZone = [...prev.unitZone]
+          if (newUnitZone[enemyIndex]) {
+            newUnitZone[enemyIndex] = {
+              ...newUnitZone[enemyIndex]!,
+              currentDp: newDp,
+            }
+          }
+          return { ...prev, unitZone: newUnitZone }
+        })
+        
+        return { success: true, message: `Devorar o Mundo! ${enemyUnit.name} recebeu 4 de dano! (${currentDp} -> ${newDp})` }
+      }
+      
+      return { success: false, message: "Escolha uma opcao" }
+    },
+  },
 }
 
 // Helper function to extract base card ID (removes deck timestamp suffix)
@@ -1965,8 +2163,12 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
       const isNucleoExplosivo = cardToPlace.name === "Núcleo Explosivo"
       const isKitMedico = cardToPlace.name === "Kit Médico Improvisado"
       const isSoroRecuperador = cardToPlace.name === "Soro Recuperador"
+      const isOrdemDeLaceracao = cardToPlace.name === "Ordem de Laceração"
+      const isSinfoniaRelampago = cardToPlace.name === "Sinfonia Relâmpago"
+      const isFafnisbani = cardToPlace.name === "Fafnisbani"
+      const isDevorarOMundo = cardToPlace.name === "Devorar o Mundo"
       
-      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador) {
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo) {
       // Use found effect or fallback to the correct one by name
       let effectToUse = effect
       if (!effectToUse) {
@@ -1981,6 +2183,10 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
       else if (isNucleoExplosivo) effectToUse = FUNCTION_CARD_EFFECTS["nucleo-explosivo"]
       else if (isKitMedico) effectToUse = FUNCTION_CARD_EFFECTS["kit-medico-improvisado"]
       else if (isSoroRecuperador) effectToUse = FUNCTION_CARD_EFFECTS["soro-recuperador"]
+      else if (isOrdemDeLaceracao) effectToUse = FUNCTION_CARD_EFFECTS["ordem-de-laceracao"]
+      else if (isSinfoniaRelampago) effectToUse = FUNCTION_CARD_EFFECTS["sinfonia-relampago"]
+      else if (isFafnisbani) effectToUse = FUNCTION_CARD_EFFECTS["fafnisbani"]
+      else if (isDevorarOMundo) effectToUse = FUNCTION_CARD_EFFECTS["devorar-o-mundo"]
       }
       
       if (!effectToUse) return // Safety check
@@ -2004,27 +2210,46 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
   // If effect requires a choice first, show choice modal
   if (effectToUse.requiresChoice && effectToUse.choiceOptions) {
   setChoiceModal({
-    visible: true,
-    cardName: cardToPlace.name,
-    options: effectToUse.choiceOptions,
-    onChoose: (optionId: string) => {
-      setChoiceModal(null)
-      // Now enter target selection mode with the chosen option
-      const step = optionId === "buff" ? "selectAlly" : "selectEnemy"
-      setItemSelectionMode({
-        active: true,
-        itemCard: cardToPlace,
-        step: step,
-        selectedEnemyIndex: null,
-        chosenOption: optionId,
-      })
+  visible: true,
+  cardName: cardToPlace.name,
+  options: effectToUse.choiceOptions,
+  onChoose: (optionId: string) => {
+  setChoiceModal(null)
+  
+  // For Fafnisbani and Devorar o Mundo - if choosing LP, resolve immediately
+  if (optionId === "lp") {
+    const result = effectToUse.resolve(effectContext, { chosenOption: "lp" })
+    if (result.success) {
+      showEffectFeedback(`${cardToPlace.name}: ${result.message}`, "success")
       setPlayerField((prev) => ({
         ...prev,
         hand: prev.hand.filter((_, i) => i !== cardIndex),
+        graveyard: [...prev.graveyard, cardToPlace],
       }))
-      setSelectedHandCard(null)
-      setDraggedHandCard(null)
-    },
+    } else {
+      showEffectFeedback(`${cardToPlace.name}: ${result.message || "Falha"}`, "error")
+    }
+    setSelectedHandCard(null)
+    setDraggedHandCard(null)
+    return
+  }
+  
+  // Now enter target selection mode with the chosen option
+  const step = optionId === "buff" ? "selectAlly" : "selectEnemy"
+  setItemSelectionMode({
+  active: true,
+  itemCard: cardToPlace,
+  step: step,
+  selectedEnemyIndex: null,
+  chosenOption: optionId,
+  })
+  setPlayerField((prev) => ({
+  ...prev,
+  hand: prev.hand.filter((_, i) => i !== cardIndex),
+  }))
+  setSelectedHandCard(null)
+  setDraggedHandCard(null)
+  },
   })
   return
   }
@@ -2860,6 +3085,10 @@ const handleAllyUnitSelect = (index: number) => {
       const isNucleoExplosivo = itemSelectionMode.itemCard.name === "Núcleo Explosivo"
       const isKitMedico = itemSelectionMode.itemCard.name === "Kit Médico Improvisado"
       const isSoroRecuperador = itemSelectionMode.itemCard.name === "Soro Recuperador"
+      const isOrdemDeLaceracao = itemSelectionMode.itemCard.name === "Ordem de Laceração"
+      const isSinfoniaRelampago = itemSelectionMode.itemCard.name === "Sinfonia Relâmpago"
+      const isFafnisbani = itemSelectionMode.itemCard.name === "Fafnisbani"
+      const isDevorarOMundo = itemSelectionMode.itemCard.name === "Devorar o Mundo"
       if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
       else if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
       else if (isAdaga) effect = FUNCTION_CARD_EFFECTS["adaga-energizada"]
@@ -2871,6 +3100,10 @@ const handleAllyUnitSelect = (index: number) => {
       else if (isNucleoExplosivo) effect = FUNCTION_CARD_EFFECTS["nucleo-explosivo"]
       else if (isKitMedico) effect = FUNCTION_CARD_EFFECTS["kit-medico-improvisado"]
       else if (isSoroRecuperador) effect = FUNCTION_CARD_EFFECTS["soro-recuperador"]
+      else if (isOrdemDeLaceracao) effect = FUNCTION_CARD_EFFECTS["ordem-de-laceracao"]
+      else if (isSinfoniaRelampago) effect = FUNCTION_CARD_EFFECTS["sinfonia-relampago"]
+      else if (isFafnisbani) effect = FUNCTION_CARD_EFFECTS["fafnisbani"]
+      else if (isDevorarOMundo) effect = FUNCTION_CARD_EFFECTS["devorar-o-mundo"]
       }
     
     if (effect) {
