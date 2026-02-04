@@ -114,7 +114,8 @@ interface EffectContext {
 interface EffectTargets {
   enemyUnitIndices?: number[]
   allyUnitIndices?: number[]
-}
+  chosenOption?: string
+  }
 
 interface EffectResult {
   success: boolean
@@ -236,6 +237,528 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       }))
       
       return { success: true, message: `4 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
+    },
+  },
+  
+  "bandagens-duplas": {
+    id: "bandagens-duplas",
+    name: "Bandagens Duplas",
+    requiresTargets: false,
+    canActivate: (context) => {
+      const currentLife = context.playerField.life
+      const maxLife = 20 // Max LP
+      
+      if (currentLife >= maxLife) {
+        return { canActivate: false, reason: "LP ja esta no maximo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      const currentLife = context.playerField.life
+      const maxLife = 20
+      const healAmount = Math.min(4, maxLife - currentLife) // Heal up to 4, but don't exceed max
+      
+      if (healAmount <= 0) {
+        return { success: false, message: "Nao ha dano para curar" }
+      }
+      
+      const newLife = Math.min(currentLife + healAmount, maxLife)
+      
+      context.setPlayerField((prev) => ({
+        ...prev,
+        life: newLife,
+      }))
+      
+      return { success: true, message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})` }
+    },
+  },
+  
+  "cristal-recuperador": {
+    id: "cristal-recuperador",
+    name: "Cristal Recuperador",
+    requiresTargets: false,
+    // This effect needs special handling because it draws a card
+    // We'll mark it as needing post-resolution draw
+    needsDrawAfterResolve: true,
+    canActivate: (context) => {
+      const currentLife = context.playerField.life
+      const maxLife = 20
+      
+      if (currentLife >= maxLife) {
+        return { canActivate: false, reason: "LP ja esta no maximo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      const currentLife = context.playerField.life
+      const maxLife = 20
+      const healAmount = Math.min(3, maxLife - currentLife)
+      const newLife = Math.min(currentLife + healAmount, maxLife)
+      
+      context.setPlayerField((prev) => ({
+        ...prev,
+        life: newLife,
+      }))
+      
+      // Return special flag to indicate we need to draw and potentially heal more
+      return { 
+        success: true, 
+        message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})`,
+        needsDrawAndCheck: true,
+        currentLife: newLife,
+      }
+    },
+  },
+  
+  "cauda-de-dragao-assada": {
+    id: "cauda-de-dragao-assada",
+    name: "Cauda de Dragão Assada",
+    requiresTargets: false,
+    canActivate: (context) => {
+      // Count player units on the field
+      const playerUnitCount = context.playerField.unitZone.filter((u) => u !== null).length
+      
+      if (playerUnitCount < 2) {
+        return { canActivate: false, reason: "Voce precisa ter 2 ou mais unidades no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      const maxLife = 20
+      const currentLife = context.playerField.life
+      const healAmount = Math.min(2, maxLife - currentLife)
+      const newLife = Math.min(currentLife + healAmount, maxLife)
+      
+      // Buff all player units with +1 DP
+      context.setPlayerField((prev) => ({
+        ...prev,
+        life: newLife,
+        unitZone: prev.unitZone.map((unit) => {
+          if (unit === null) return null
+          return {
+            ...unit,
+            currentDp: (unit.currentDp || unit.dp) + 1,
+          }
+        }),
+      }))
+      
+      const unitCount = context.playerField.unitZone.filter((u) => u !== null).length
+      const healMsg = healAmount > 0 ? ` +${healAmount} LP (${currentLife} -> ${newLife})` : ""
+      return { success: true, message: `+1 DP para ${unitCount} unidades!${healMsg}` }
+    },
+  },
+  
+  "projetil-de-impacto": {
+    id: "projetil-de-impacto",
+    name: "Projétil de Impacto",
+    requiresTargets: false,
+    canActivate: () => {
+      // No condition - can always be activated
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      // Deal 2 direct damage to enemy LP
+      const damage = 2
+      const currentEnemyLife = context.enemyField.life
+      const newEnemyLife = Math.max(0, currentEnemyLife - damage)
+      
+      context.setEnemyField((prev) => ({
+        ...prev,
+        life: newEnemyLife,
+      }))
+      
+      return { success: true, message: `2 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
+    },
+  },
+  
+  "veu-dos-lacos-cruzados": {
+    id: "veu-dos-lacos-cruzados",
+    name: "Véu dos Laços Cruzados",
+    requiresTargets: true,
+    requiresChoice: true, // Requires player to choose between two options
+    choiceOptions: [
+      { id: "buff", label: "+2 DP em Fehnon/Jaden", description: "Adiciona 2 DP a uma unidade Fehnon Hoskie ou Jaden Hainaegi sua" },
+      { id: "debuff", label: "-2 DP em inimigo", description: "Reduz 2 DP de uma unidade do oponente" },
+    ],
+    targetConfig: {
+      allyUnits: 1,
+    },
+    canActivate: (context) => {
+      // Check if player has Fehnon Hoskie or Jaden Hainaegi on field
+      const hasRequiredUnit = context.playerField.unitZone.some((u) => 
+        u !== null && (u.name === "Fehnon Hoskie" || u.name === "Jaden Hainaegi")
+      )
+      
+      if (!hasRequiredUnit) {
+        return { canActivate: false, reason: "Voce precisa ter Fehnon Hoskie ou Jaden Hainaegi no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      const chosenOption = targets?.chosenOption
+      
+      if (chosenOption === "buff") {
+        // Buff option: +2 DP to Fehnon or Jaden
+        if (!targets?.allyUnitIndices?.length) {
+          return { success: false, message: "Selecione uma unidade Fehnon ou Jaden" }
+        }
+        
+        const allyIndex = targets.allyUnitIndices[0]
+        const allyUnit = context.playerField.unitZone[allyIndex]
+        
+        if (!allyUnit || (allyUnit.name !== "Fehnon Hoskie" && allyUnit.name !== "Jaden Hainaegi")) {
+          return { success: false, message: "Selecione Fehnon Hoskie ou Jaden Hainaegi" }
+        }
+        
+        const currentDp = allyUnit.currentDp || allyUnit.dp
+        const newDp = currentDp + 2
+        
+        context.setPlayerField((prev) => {
+          const newUnitZone = [...prev.unitZone]
+          if (newUnitZone[allyIndex]) {
+            newUnitZone[allyIndex] = {
+              ...newUnitZone[allyIndex]!,
+              currentDp: newDp,
+            }
+          }
+          return { ...prev, unitZone: newUnitZone }
+        })
+        
+        return { success: true, message: `${allyUnit.name} recebeu +2 DP! (${currentDp} -> ${newDp})` }
+      } else if (chosenOption === "debuff") {
+        // Debuff option: -2 DP to enemy unit
+        if (!targets?.enemyUnitIndices?.length) {
+          return { success: false, message: "Selecione uma unidade inimiga" }
+        }
+        
+        const enemyIndex = targets.enemyUnitIndices[0]
+        const enemyUnit = context.enemyField.unitZone[enemyIndex]
+        
+        if (!enemyUnit) {
+          return { success: false, message: "Unidade inimiga nao encontrada" }
+        }
+        
+        const currentDp = enemyUnit.currentDp || enemyUnit.dp
+        const newDp = Math.max(0, currentDp - 2)
+        
+        context.setEnemyField((prev) => {
+          const newUnitZone = [...prev.unitZone]
+          if (newUnitZone[enemyIndex]) {
+            newUnitZone[enemyIndex] = {
+              ...newUnitZone[enemyIndex]!,
+              currentDp: newDp,
+            }
+          }
+          return { ...prev, unitZone: newUnitZone }
+        })
+        
+        return { success: true, message: `${enemyUnit.name} perdeu 2 DP! (${currentDp} -> ${newDp})` }
+      }
+      
+      return { success: false, message: "Escolha uma opcao" }
+    },
+  },
+  
+  "nucleo-explosivo": {
+    id: "nucleo-explosivo",
+    name: "Núcleo Explosivo",
+    requiresTargets: false,
+    canActivate: (context) => {
+      // Check if opponent has at least 1 unit on field
+      const enemyUnitCount = context.enemyField.unitZone.filter((u) => u !== null).length
+      
+      if (enemyUnitCount === 0) {
+        return { canActivate: false, reason: "O oponente precisa ter ao menos 1 unidade no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      // Deal 1 damage to each enemy unit
+      let unitsHit = 0
+      
+      context.setEnemyField((prev) => ({
+        ...prev,
+        unitZone: prev.unitZone.map((unit) => {
+          if (unit === null) return null
+          unitsHit++
+          const currentDp = unit.currentDp || unit.dp
+          const newDp = Math.max(0, currentDp - 1)
+          return {
+            ...unit,
+            currentDp: newDp,
+          }
+        }),
+      }))
+      
+      return { success: true, message: `1 de dano em ${unitsHit} unidade(s) inimigas!` }
+    },
+  },
+  
+  "kit-medico-improvisado": {
+    id: "kit-medico-improvisado",
+    name: "Kit Médico Improvisado",
+    requiresTargets: false,
+    needsDrawAfterResolve: true,
+    canActivate: (context) => {
+      const currentLife = context.playerField.life
+      const maxLife = 20
+      
+      if (currentLife >= maxLife) {
+        return { canActivate: false, reason: "LP ja esta no maximo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      const currentLife = context.playerField.life
+      const maxLife = 20
+      const healAmount = Math.min(2, maxLife - currentLife)
+      const newLife = Math.min(currentLife + healAmount, maxLife)
+      
+      context.setPlayerField((prev) => ({
+        ...prev,
+        life: newLife,
+      }))
+      
+      // Return special flag to indicate we need to draw and check for Unit type
+      return { 
+        success: true, 
+        message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})`,
+        needsDrawAndCheckUnit: true,
+        currentLife: newLife,
+      }
+    },
+  },
+  
+  "soro-recuperador": {
+    id: "soro-recuperador",
+    name: "Soro Recuperador",
+    requiresTargets: false,
+    needsDrawAfterResolve: true,
+    canActivate: (context) => {
+      const currentLife = context.playerField.life
+      const maxLife = 20
+      
+      if (currentLife >= maxLife) {
+        return { canActivate: false, reason: "LP ja esta no maximo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      const currentLife = context.playerField.life
+      const maxLife = 20
+      const healAmount = Math.min(3, maxLife - currentLife)
+      const newLife = Math.min(currentLife + healAmount, maxLife)
+      
+      context.setPlayerField((prev) => ({
+        ...prev,
+        life: newLife,
+      }))
+      
+      // Return special flag to indicate we need to draw (no bonus check)
+      return { 
+        success: true, 
+        message: `+${healAmount} LP restaurado! (${currentLife} -> ${newLife})`,
+        needsDrawOnly: true,
+        currentLife: newLife,
+      }
+    },
+  },
+  
+  "ordem-de-laceracao": {
+    id: "ordem-de-laceracao",
+    name: "Ordem de Laceração",
+    requiresTargets: false,
+    canActivate: (context) => {
+      // Check if player has Fehnon Hoskie on field
+      const hasFehnon = context.playerField.unitZone.some((u) => 
+        u !== null && u.name === "Fehnon Hoskie"
+      )
+      
+      if (!hasFehnon) {
+        return { canActivate: false, reason: "Voce precisa ter Fehnon Hoskie no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      // Deal 3 direct damage to enemy LP (ignores unit abilities)
+      const damage = 3
+      const currentEnemyLife = context.enemyField.life
+      const newEnemyLife = Math.max(0, currentEnemyLife - damage)
+      
+      context.setEnemyField((prev) => ({
+        ...prev,
+        life: newEnemyLife,
+      }))
+      
+      return { success: true, message: `3 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
+    },
+  },
+  
+  "sinfonia-relampago": {
+    id: "sinfonia-relampago",
+    name: "Sinfonia Relâmpago",
+    requiresTargets: false,
+    canActivate: (context) => {
+      // Check if player has Morgana Pendragon on field
+      const hasMorgana = context.playerField.unitZone.some((u) => 
+        u !== null && u.name === "Morgana Pendragon"
+      )
+      
+      if (!hasMorgana) {
+        return { canActivate: false, reason: "Voce precisa ter Morgana Pendragon no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context) => {
+      // Deal 4 direct damage to enemy LP (cannot be negated by traps)
+      const damage = 4
+      const currentEnemyLife = context.enemyField.life
+      const newEnemyLife = Math.max(0, currentEnemyLife - damage)
+      
+      context.setEnemyField((prev) => ({
+        ...prev,
+        life: newEnemyLife,
+      }))
+      
+      return { success: true, message: `4 de dano direto! LP do oponente: ${currentEnemyLife} -> ${newEnemyLife}` }
+    },
+  },
+  
+  "fafnisbani": {
+    id: "fafnisbani",
+    name: "Fafnisbani",
+    requiresTargets: true,
+    requiresChoice: true,
+    choiceOptions: [
+      { id: "unit", label: "Atacar Unidade", description: "Causa 3 de dano a uma unidade inimiga" },
+      { id: "lp", label: "Atacar LP", description: "Causa 3 de dano direto ao LP do oponente" },
+    ],
+    canActivate: (context) => {
+      // Check if player has Scandinavel Angel Hrotti on field
+      const hasHrotti = context.playerField.unitZone.some((u) => 
+        u !== null && u.name === "Scandinavel Angel Hrotti"
+      )
+      
+      if (!hasHrotti) {
+        return { canActivate: false, reason: "Voce precisa ter Scandinavel Angel Hrotti no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      const chosenOption = targets?.chosenOption
+      
+      if (chosenOption === "lp") {
+        // Direct damage to LP
+        const damage = 3
+        const currentEnemyLife = context.enemyField.life
+        const newEnemyLife = Math.max(0, currentEnemyLife - damage)
+        
+        context.setEnemyField((prev) => ({
+          ...prev,
+          life: newEnemyLife,
+        }))
+        
+        return { success: true, message: `Fafnisbani! 3 de dano direto! LP: ${currentEnemyLife} -> ${newEnemyLife}` }
+      } else if (chosenOption === "unit") {
+        // Damage to enemy unit
+        if (!targets?.enemyUnitIndices?.length) {
+          return { success: false, message: "Selecione uma unidade inimiga" }
+        }
+        
+        const enemyIndex = targets.enemyUnitIndices[0]
+        const enemyUnit = context.enemyField.unitZone[enemyIndex]
+        
+        if (!enemyUnit) {
+          return { success: false, message: "Unidade inimiga nao encontrada" }
+        }
+        
+        const currentDp = enemyUnit.currentDp || enemyUnit.dp
+        const newDp = Math.max(0, currentDp - 3)
+        
+        context.setEnemyField((prev) => {
+          const newUnitZone = [...prev.unitZone]
+          if (newUnitZone[enemyIndex]) {
+            newUnitZone[enemyIndex] = {
+              ...newUnitZone[enemyIndex]!,
+              currentDp: newDp,
+            }
+          }
+          return { ...prev, unitZone: newUnitZone }
+        })
+        
+        return { success: true, message: `Fafnisbani! ${enemyUnit.name} recebeu 3 de dano! (${currentDp} -> ${newDp})` }
+      }
+      
+      return { success: false, message: "Escolha uma opcao" }
+    },
+  },
+  
+  "devorar-o-mundo": {
+    id: "devorar-o-mundo",
+    name: "Devorar o Mundo",
+    requiresTargets: true,
+    requiresChoice: true,
+    choiceOptions: [
+      { id: "unit", label: "Atacar Unidade", description: "Causa 4 de dano a uma unidade inimiga" },
+      { id: "lp", label: "Atacar LP", description: "Causa 4 de dano direto ao LP do oponente" },
+    ],
+    canActivate: (context) => {
+      // Check if player has Scandinavel Angel Logi on field
+      const hasLogi = context.playerField.unitZone.some((u) => 
+        u !== null && u.name === "Scandinavel Angel Logi"
+      )
+      
+      if (!hasLogi) {
+        return { canActivate: false, reason: "Voce precisa ter Scandinavel Angel Logi no campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      const chosenOption = targets?.chosenOption
+      
+      if (chosenOption === "lp") {
+        // Direct damage to LP
+        const damage = 4
+        const currentEnemyLife = context.enemyField.life
+        const newEnemyLife = Math.max(0, currentEnemyLife - damage)
+        
+        context.setEnemyField((prev) => ({
+          ...prev,
+          life: newEnemyLife,
+        }))
+        
+        return { success: true, message: `Devorar o Mundo! 4 de dano direto! LP: ${currentEnemyLife} -> ${newEnemyLife}` }
+      } else if (chosenOption === "unit") {
+        // Damage to enemy unit
+        if (!targets?.enemyUnitIndices?.length) {
+          return { success: false, message: "Selecione uma unidade inimiga" }
+        }
+        
+        const enemyIndex = targets.enemyUnitIndices[0]
+        const enemyUnit = context.enemyField.unitZone[enemyIndex]
+        
+        if (!enemyUnit) {
+          return { success: false, message: "Unidade inimiga nao encontrada" }
+        }
+        
+        const currentDp = enemyUnit.currentDp || enemyUnit.dp
+        const newDp = Math.max(0, currentDp - 4)
+        
+        context.setEnemyField((prev) => {
+          const newUnitZone = [...prev.unitZone]
+          if (newUnitZone[enemyIndex]) {
+            newUnitZone[enemyIndex] = {
+              ...newUnitZone[enemyIndex]!,
+              currentDp: newDp,
+            }
+          }
+          return { ...prev, unitZone: newUnitZone }
+        })
+        
+        return { success: true, message: `Devorar o Mundo! ${enemyUnit.name} recebeu 4 de dano! (${currentDp} -> ${newDp})` }
+      }
+      
+      return { success: false, message: "Escolha uma opcao" }
     },
   },
 }
@@ -385,12 +908,21 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     targetInfo: null, // Initialize targetInfo
   })
   const [attackTarget, setAttackTarget] = useState<{ type: "direct" | "unit"; index?: number } | null>(null)
-  const [itemSelectionMode, setItemSelectionMode] = useState<{
-    active: boolean
-    itemCard: GameCard | null
-    step: "selectEnemy" | "selectAlly"
-    selectedEnemyIndex: number | null
-  }>({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null })
+const [itemSelectionMode, setItemSelectionMode] = useState<{
+  active: boolean
+  itemCard: GameCard | null
+  step: "selectEnemy" | "selectAlly" | "selectChoice"
+  selectedEnemyIndex: number | null
+  chosenOption: string | null
+  }>({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
+  
+  // State for choice modal (for cards like Véu dos Laços Cruzados)
+  const [choiceModal, setChoiceModal] = useState<{
+    visible: boolean
+    cardName: string
+    options: { id: string; label: string; description: string }[]
+    onChoose: (optionId: string) => void
+  } | null>(null)
 
   const [arrowPos, setArrowPos] = useState({ x1: 0, y1: 0, x2: 0, y2: 0 })
 
@@ -1623,17 +2155,41 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       const isAmplificador = cardToPlace.name === "Amplificador de Poder"
       const isBandagem = cardToPlace.name === "Bandagem Restauradora"
       const isAdaga = cardToPlace.name === "Adaga Energizada"
+      const isBandagensDuplas = cardToPlace.name === "Bandagens Duplas"
+      const isCristalRecuperador = cardToPlace.name === "Cristal Recuperador"
+      const isCaudaDeDragao = cardToPlace.name === "Cauda de Dragão Assada"
+      const isProjetilDeImpacto = cardToPlace.name === "Projétil de Impacto"
+      const isVeuDosLacos = cardToPlace.name === "Véu dos Laços Cruzados"
+      const isNucleoExplosivo = cardToPlace.name === "Núcleo Explosivo"
+      const isKitMedico = cardToPlace.name === "Kit Médico Improvisado"
+      const isSoroRecuperador = cardToPlace.name === "Soro Recuperador"
+      const isOrdemDeLaceracao = cardToPlace.name === "Ordem de Laceração"
+      const isSinfoniaRelampago = cardToPlace.name === "Sinfonia Relâmpago"
+      const isFafnisbani = cardToPlace.name === "Fafnisbani"
+      const isDevorarOMundo = cardToPlace.name === "Devorar o Mundo"
       
-      if (effect || isAmplificador || isBandagem || isAdaga) {
-        // Use found effect or fallback to the correct one by name
-        let effectToUse = effect
-        if (!effectToUse) {
-          if (isAmplificador) effectToUse = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
-          else if (isBandagem) effectToUse = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
-          else if (isAdaga) effectToUse = FUNCTION_CARD_EFFECTS["adaga-energizada"]
-        }
-        
-        if (!effectToUse) return // Safety check
+      if (effect || isAmplificador || isBandagem || isAdaga || isBandagensDuplas || isCristalRecuperador || isCaudaDeDragao || isProjetilDeImpacto || isVeuDosLacos || isNucleoExplosivo || isKitMedico || isSoroRecuperador || isOrdemDeLaceracao || isSinfoniaRelampago || isFafnisbani || isDevorarOMundo) {
+      // Use found effect or fallback to the correct one by name
+      let effectToUse = effect
+      if (!effectToUse) {
+      if (isAmplificador) effectToUse = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
+      else if (isBandagem) effectToUse = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
+      else if (isAdaga) effectToUse = FUNCTION_CARD_EFFECTS["adaga-energizada"]
+          else if (isBandagensDuplas) effectToUse = FUNCTION_CARD_EFFECTS["bandagens-duplas"]
+          else if (isCristalRecuperador) effectToUse = FUNCTION_CARD_EFFECTS["cristal-recuperador"]
+      else if (isCaudaDeDragao) effectToUse = FUNCTION_CARD_EFFECTS["cauda-de-dragao-assada"]
+      else if (isProjetilDeImpacto) effectToUse = FUNCTION_CARD_EFFECTS["projetil-de-impacto"]
+      else if (isVeuDosLacos) effectToUse = FUNCTION_CARD_EFFECTS["veu-dos-lacos-cruzados"]
+      else if (isNucleoExplosivo) effectToUse = FUNCTION_CARD_EFFECTS["nucleo-explosivo"]
+      else if (isKitMedico) effectToUse = FUNCTION_CARD_EFFECTS["kit-medico-improvisado"]
+      else if (isSoroRecuperador) effectToUse = FUNCTION_CARD_EFFECTS["soro-recuperador"]
+      else if (isOrdemDeLaceracao) effectToUse = FUNCTION_CARD_EFFECTS["ordem-de-laceracao"]
+      else if (isSinfoniaRelampago) effectToUse = FUNCTION_CARD_EFFECTS["sinfonia-relampago"]
+      else if (isFafnisbani) effectToUse = FUNCTION_CARD_EFFECTS["fafnisbani"]
+      else if (isDevorarOMundo) effectToUse = FUNCTION_CARD_EFFECTS["devorar-o-mundo"]
+      }
+      
+      if (!effectToUse) return // Safety check
         
         // Create effect context
         const effectContext: EffectContext = {
@@ -1651,28 +2207,204 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
           return // Card cannot be played
         }
         
-        // If effect requires targets, enter selection mode
-        if (effectToUse.requiresTargets && effectToUse.targetConfig) {
-          setItemSelectionMode({
-            active: true,
-            itemCard: cardToPlace,
-            step: "selectEnemy",
-            selectedEnemyIndex: null,
-          })
-          setPlayerField((prev) => ({
-            ...prev,
-            hand: prev.hand.filter((_, i) => i !== cardIndex),
-          }))
-          setSelectedHandCard(null)
-          setDraggedHandCard(null)
-          return
-        }
+  // If effect requires a choice first, show choice modal
+  if (effectToUse.requiresChoice && effectToUse.choiceOptions) {
+  setChoiceModal({
+  visible: true,
+  cardName: cardToPlace.name,
+  options: effectToUse.choiceOptions,
+  onChoose: (optionId: string) => {
+  setChoiceModal(null)
+  
+  // For Fafnisbani and Devorar o Mundo - if choosing LP, resolve immediately
+  if (optionId === "lp") {
+    const result = effectToUse.resolve(effectContext, { chosenOption: "lp" })
+    if (result.success) {
+      showEffectFeedback(`${cardToPlace.name}: ${result.message}`, "success")
+      setPlayerField((prev) => ({
+        ...prev,
+        hand: prev.hand.filter((_, i) => i !== cardIndex),
+        graveyard: [...prev.graveyard, cardToPlace],
+      }))
+    } else {
+      showEffectFeedback(`${cardToPlace.name}: ${result.message || "Falha"}`, "error")
+    }
+    setSelectedHandCard(null)
+    setDraggedHandCard(null)
+    return
+  }
+  
+  // Now enter target selection mode with the chosen option
+  const step = optionId === "buff" ? "selectAlly" : "selectEnemy"
+  setItemSelectionMode({
+  active: true,
+  itemCard: cardToPlace,
+  step: step,
+  selectedEnemyIndex: null,
+  chosenOption: optionId,
+  })
+  setPlayerField((prev) => ({
+  ...prev,
+  hand: prev.hand.filter((_, i) => i !== cardIndex),
+  }))
+  setSelectedHandCard(null)
+  setDraggedHandCard(null)
+  },
+  })
+  return
+  }
+  
+  // If effect requires targets, enter selection mode
+  if (effectToUse.requiresTargets && effectToUse.targetConfig) {
+  setItemSelectionMode({
+  active: true,
+  itemCard: cardToPlace,
+  step: "selectEnemy",
+  selectedEnemyIndex: null,
+  chosenOption: null,
+  })
+  setPlayerField((prev) => ({
+  ...prev,
+  hand: prev.hand.filter((_, i) => i !== cardIndex),
+  }))
+  setSelectedHandCard(null)
+  setDraggedHandCard(null)
+  return
+  }
         
         // Effect doesn't require targets - resolve immediately
         const result = effectToUse.resolve(effectContext)
         if (result.success) {
           // Show visual feedback
           showEffectFeedback(`${cardToPlace.name}: ${result.message}`, "success")
+          
+          // Special handling for Cristal Recuperador - draw a card and check if Function type
+          if (result.needsDrawAndCheck) {
+            setTimeout(() => {
+              setPlayerField((prev) => {
+                if (prev.deck.length === 0) {
+                  showEffectFeedback("Deck vazio - nao pode comprar carta", "error")
+                  return {
+                    ...prev,
+                    hand: prev.hand.filter((_, i) => i !== cardIndex),
+                    graveyard: [...prev.graveyard, cardToPlace],
+                  }
+                }
+                
+                const drawnCard = prev.deck[0]
+                const newDeck = prev.deck.slice(1)
+                const newHand = [...prev.hand.filter((_, i) => i !== cardIndex), drawnCard]
+                
+                // Check if drawn card is a Function type (item)
+                const isFunctionCard = drawnCard.type === "item"
+                let finalLife = result.currentLife || prev.life
+                
+                if (isFunctionCard) {
+                  const maxLife = 20
+                  const bonusHeal = Math.min(1, maxLife - finalLife)
+                  finalLife = Math.min(finalLife + bonusHeal, maxLife)
+                  if (bonusHeal > 0) {
+                    showEffectFeedback(`Carta Function comprada! +1 LP bonus! (${finalLife - 1} -> ${finalLife})`, "success")
+                  }
+                } else {
+                  showEffectFeedback(`Comprou: ${drawnCard.name}`, "success")
+                }
+                
+                return {
+                  ...prev,
+                  deck: newDeck,
+                  hand: newHand,
+                  graveyard: [...prev.graveyard, cardToPlace],
+                  life: finalLife,
+                }
+              })
+            }, 500) // Small delay for visual feedback
+            
+            setSelectedHandCard(null)
+            setDraggedHandCard(null)
+            return
+          }
+          
+          // Special handling for Kit Médico Improvisado - draw and check if Unit type for bonus
+          if (result.needsDrawAndCheckUnit) {
+            setTimeout(() => {
+              setPlayerField((prev) => {
+                if (prev.deck.length === 0) {
+                  showEffectFeedback("Deck vazio - nao pode comprar carta", "error")
+                  return {
+                    ...prev,
+                    hand: prev.hand.filter((_, i) => i !== cardIndex),
+                    graveyard: [...prev.graveyard, cardToPlace],
+                  }
+                }
+                
+                const drawnCard = prev.deck[0]
+                const newDeck = prev.deck.slice(1)
+                const newHand = [...prev.hand.filter((_, i) => i !== cardIndex), drawnCard]
+                
+                // Check if drawn card is a Unit type
+                const isUnitCard = drawnCard.type === "unit"
+                let finalLife = result.currentLife || prev.life
+                
+                if (isUnitCard) {
+                  const maxLife = 20
+                  const bonusHeal = Math.min(1, maxLife - finalLife)
+                  finalLife = Math.min(finalLife + bonusHeal, maxLife)
+                  if (bonusHeal > 0) {
+                    showEffectFeedback(`Carta Unidade comprada! +1 LP bonus! (${finalLife - 1} -> ${finalLife})`, "success")
+                  }
+                } else {
+                  showEffectFeedback(`Comprou: ${drawnCard.name}`, "success")
+                }
+                
+                return {
+                  ...prev,
+                  deck: newDeck,
+                  hand: newHand,
+                  graveyard: [...prev.graveyard, cardToPlace],
+                  life: finalLife,
+                }
+              })
+            }, 500)
+            
+            setSelectedHandCard(null)
+            setDraggedHandCard(null)
+            return
+          }
+          
+          // Special handling for Soro Recuperador - just draw, no bonus check
+          if (result.needsDrawOnly) {
+            setTimeout(() => {
+              setPlayerField((prev) => {
+                if (prev.deck.length === 0) {
+                  showEffectFeedback("Deck vazio - nao pode comprar carta", "error")
+                  return {
+                    ...prev,
+                    hand: prev.hand.filter((_, i) => i !== cardIndex),
+                    graveyard: [...prev.graveyard, cardToPlace],
+                  }
+                }
+                
+                const drawnCard = prev.deck[0]
+                const newDeck = prev.deck.slice(1)
+                const newHand = [...prev.hand.filter((_, i) => i !== cardIndex), drawnCard]
+                
+                showEffectFeedback(`Comprou: ${drawnCard.name}`, "success")
+                
+                return {
+                  ...prev,
+                  deck: newDeck,
+                  hand: newHand,
+                  graveyard: [...prev.graveyard, cardToPlace],
+                }
+              })
+            }, 500)
+            
+            setSelectedHandCard(null)
+            setDraggedHandCard(null)
+            return
+          }
+          
           // Send card to graveyard after resolution
           setPlayerField((prev) => ({
             ...prev,
@@ -2271,39 +3003,16 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     })
   }
 
-  const handleEnemyUnitSelect = (index: number) => {
-    if (!itemSelectionMode.active || itemSelectionMode.step !== "selectEnemy") return
-    const enemyUnit = enemyField.unitZone[index]
-    if (!enemyUnit) return
-
-
-
-    setItemSelectionMode((prev) => ({
-      ...prev,
-      step: "selectAlly",
-      selectedEnemyIndex: index,
-    }))
-  }
-
-  const handleAllyUnitSelect = (index: number) => {
-    if (!itemSelectionMode.active || itemSelectionMode.step !== "selectAlly") return
-    if (itemSelectionMode.selectedEnemyIndex === null) return
-    if (!itemSelectionMode.itemCard) return
-
-    const allyUnit = playerField.unitZone[index]
-    if (!allyUnit) return
-
-    // Use centralized effect resolver
+const handleEnemyUnitSelect = (index: number) => {
+  if (!itemSelectionMode.active || itemSelectionMode.step !== "selectEnemy") return
+  const enemyUnit = enemyField.unitZone[index]
+  if (!enemyUnit) return
+  
+  // If this is Véu dos Laços Cruzados with "debuff" option, resolve immediately
+  if (itemSelectionMode.chosenOption === "debuff" && itemSelectionMode.itemCard) {
     let effect = getFunctionCardEffect(itemSelectionMode.itemCard)
-    
-    // Fallback: find effect by name
-    if (!effect) {
-      const isAmplificador = itemSelectionMode.itemCard.name === "Amplificador de Poder"
-      const isBandagem = itemSelectionMode.itemCard.name === "Bandagem Restauradora"
-      const isAdaga = itemSelectionMode.itemCard.name === "Adaga Energizada"
-      if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
-      else if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
-      else if (isAdaga) effect = FUNCTION_CARD_EFFECTS["adaga-energizada"]
+    if (!effect && itemSelectionMode.itemCard.name === "Véu dos Laços Cruzados") {
+      effect = FUNCTION_CARD_EFFECTS["veu-dos-lacos-cruzados"]
     }
     
     if (effect) {
@@ -2315,8 +3024,100 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       }
       
       const targets: EffectTargets = {
-        enemyUnitIndices: [itemSelectionMode.selectedEnemyIndex],
+        enemyUnitIndices: [index],
+        allyUnitIndices: [],
+        chosenOption: "debuff",
+      }
+      
+      const result = effect.resolve(effectContext, targets)
+      
+      if (result.success) {
+        showEffectFeedback(`${itemSelectionMode.itemCard.name}: ${result.message}`, "success")
+        setPlayerField((prev) => ({
+          ...prev,
+          graveyard: [...prev.graveyard, itemSelectionMode.itemCard!],
+        }))
+      } else {
+        showEffectFeedback(`${itemSelectionMode.itemCard.name}: ${result.message || "Falha"}`, "error")
+      }
+      
+      setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
+      return
+    }
+  }
+  
+  setItemSelectionMode((prev) => ({
+  ...prev,
+  step: "selectAlly",
+  selectedEnemyIndex: index,
+  }))
+  }
+
+const handleAllyUnitSelect = (index: number) => {
+  if (!itemSelectionMode.active || itemSelectionMode.step !== "selectAlly") return
+  // For Véu dos Laços Cruzados with "buff" option, we don't need selectedEnemyIndex
+  const isVeuBuff = itemSelectionMode.chosenOption === "buff"
+  if (itemSelectionMode.selectedEnemyIndex === null && !isVeuBuff) return
+  if (!itemSelectionMode.itemCard) return
+  
+  const allyUnit = playerField.unitZone[index]
+  if (!allyUnit) return
+  
+  // For Véu dos Laços Cruzados buff, check if unit is Fehnon or Jaden
+  if (isVeuBuff && allyUnit.name !== "Fehnon Hoskie" && allyUnit.name !== "Jaden Hainaegi") {
+    showEffectFeedback("Selecione Fehnon Hoskie ou Jaden Hainaegi", "error")
+    return
+  }
+  
+  // Use centralized effect resolver
+  let effect = getFunctionCardEffect(itemSelectionMode.itemCard)
+  
+  // Fallback: find effect by name
+  if (!effect) {
+  const isAmplificador = itemSelectionMode.itemCard.name === "Amplificador de Poder"
+  const isBandagem = itemSelectionMode.itemCard.name === "Bandagem Restauradora"
+  const isAdaga = itemSelectionMode.itemCard.name === "Adaga Energizada"
+  const isBandagensDuplas = itemSelectionMode.itemCard.name === "Bandagens Duplas"
+  const isCristalRecuperador = itemSelectionMode.itemCard.name === "Cristal Recuperador"
+  const isCaudaDeDragao = itemSelectionMode.itemCard.name === "Cauda de Dragão Assada"
+  const isProjetilDeImpacto = itemSelectionMode.itemCard.name === "Projétil de Impacto"
+      const isVeuDosLacos = itemSelectionMode.itemCard.name === "Véu dos Laços Cruzados"
+      const isNucleoExplosivo = itemSelectionMode.itemCard.name === "Núcleo Explosivo"
+      const isKitMedico = itemSelectionMode.itemCard.name === "Kit Médico Improvisado"
+      const isSoroRecuperador = itemSelectionMode.itemCard.name === "Soro Recuperador"
+      const isOrdemDeLaceracao = itemSelectionMode.itemCard.name === "Ordem de Laceração"
+      const isSinfoniaRelampago = itemSelectionMode.itemCard.name === "Sinfonia Relâmpago"
+      const isFafnisbani = itemSelectionMode.itemCard.name === "Fafnisbani"
+      const isDevorarOMundo = itemSelectionMode.itemCard.name === "Devorar o Mundo"
+      if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
+      else if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
+      else if (isAdaga) effect = FUNCTION_CARD_EFFECTS["adaga-energizada"]
+      else if (isBandagensDuplas) effect = FUNCTION_CARD_EFFECTS["bandagens-duplas"]
+      else if (isCristalRecuperador) effect = FUNCTION_CARD_EFFECTS["cristal-recuperador"]
+      else if (isCaudaDeDragao) effect = FUNCTION_CARD_EFFECTS["cauda-de-dragao-assada"]
+      else if (isProjetilDeImpacto) effect = FUNCTION_CARD_EFFECTS["projetil-de-impacto"]
+      else if (isVeuDosLacos) effect = FUNCTION_CARD_EFFECTS["veu-dos-lacos-cruzados"]
+      else if (isNucleoExplosivo) effect = FUNCTION_CARD_EFFECTS["nucleo-explosivo"]
+      else if (isKitMedico) effect = FUNCTION_CARD_EFFECTS["kit-medico-improvisado"]
+      else if (isSoroRecuperador) effect = FUNCTION_CARD_EFFECTS["soro-recuperador"]
+      else if (isOrdemDeLaceracao) effect = FUNCTION_CARD_EFFECTS["ordem-de-laceracao"]
+      else if (isSinfoniaRelampago) effect = FUNCTION_CARD_EFFECTS["sinfonia-relampago"]
+      else if (isFafnisbani) effect = FUNCTION_CARD_EFFECTS["fafnisbani"]
+      else if (isDevorarOMundo) effect = FUNCTION_CARD_EFFECTS["devorar-o-mundo"]
+      }
+    
+    if (effect) {
+      const effectContext: EffectContext = {
+        playerField,
+        enemyField,
+        setPlayerField,
+        setEnemyField,
+      }
+      
+      const targets: EffectTargets = {
+        enemyUnitIndices: itemSelectionMode.selectedEnemyIndex !== null ? [itemSelectionMode.selectedEnemyIndex] : [],
         allyUnitIndices: [index],
+        chosenOption: itemSelectionMode.chosenOption || undefined,
       }
       
       const result = effect.resolve(effectContext, targets)
@@ -2334,7 +3135,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       }
     }
     
-    setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null })
+    setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
   }
 
   const cancelItemSelection = () => {
@@ -2344,7 +3145,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
         hand: [...prev.hand, itemSelectionMode.itemCard!],
       }))
     }
-    setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null })
+    setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
   }
 
   useEffect(() => {
@@ -3267,28 +4068,66 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
       )}
 
       {/* Effect Feedback Toast */}
-      {effectFeedback && (
-        <div className={`fixed top-1/3 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl text-white font-bold text-lg shadow-2xl animate-pulse ${
-          effectFeedback.type === "success" 
-            ? "bg-gradient-to-r from-green-600 to-emerald-600 border-2 border-green-400" 
-            : "bg-gradient-to-r from-red-600 to-rose-600 border-2 border-red-400"
-        }`}>
-          {effectFeedback.message}
-        </div>
-      )}
-
-      {itemSelectionMode.active && itemSelectionMode.itemCard && (
+  {effectFeedback && (
+  <div className={`fixed top-1/3 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl text-white font-bold text-lg shadow-2xl animate-pulse ${
+  effectFeedback.type === "success"
+  ? "bg-gradient-to-r from-green-600 to-emerald-600 border-2 border-green-400"
+  : "bg-gradient-to-r from-red-600 to-rose-600 border-2 border-red-400"
+  }`}>
+  {effectFeedback.message}
+  </div>
+  )}
+  
+  {/* Choice Modal for cards like Véu dos Laços Cruzados */}
+  {choiceModal && choiceModal.visible && (
+  <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50">
+    <div className="bg-gradient-to-b from-slate-800 to-slate-900 p-6 rounded-xl border-2 border-purple-500/50 text-center shadow-2xl max-w-sm mx-4">
+      <h3 className="text-purple-400 font-bold text-xl mb-4">{choiceModal.cardName}</h3>
+      <p className="text-white/80 text-sm mb-5">Escolha um dos efeitos:</p>
+      <div className="flex flex-col gap-3">
+        {choiceModal.options.map((option) => (
+          <button
+            key={option.id}
+            onClick={() => choiceModal.onChoose(option.id)}
+            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 px-4 rounded-lg border border-purple-400/50 transition-all hover:scale-105"
+          >
+            <div className="text-lg">{option.label}</div>
+            <div className="text-xs text-white/70 mt-1">{option.description}</div>
+          </button>
+        ))}
+      </div>
+      <Button
+        onClick={() => setChoiceModal(null)}
+        size="sm"
+        variant="outline"
+        className="mt-4 border-red-500/50 text-red-400 hover:bg-red-950/50"
+      >
+        Cancelar
+      </Button>
+    </div>
+  </div>
+  )}
+  
+  {itemSelectionMode.active && itemSelectionMode.itemCard && (
         <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-40 pointer-events-none">
           <div className="bg-gradient-to-b from-slate-800 to-slate-900 p-5 rounded-xl border-2 border-yellow-500/50 text-center shadow-2xl pointer-events-auto">
             <h3 className="text-yellow-400 font-bold text-lg mb-3">{itemSelectionMode.itemCard.name}</h3>
-            {itemSelectionMode.step === "selectEnemy" ? (
-              <p className="text-white text-sm">Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para absorver o DP original</p>
-            ) : (
-              <p className="text-white text-sm">
-                Clique em uma unidade <span className="text-cyan-400 font-bold">SUA</span> para receber{" "}
-                <span className="text-green-400 font-bold">+{enemyField.unitZone[itemSelectionMode.selectedEnemyIndex!]?.dp || 0} DP</span>
-              </p>
-            )}
+  {itemSelectionMode.step === "selectEnemy" ? (
+  <p className="text-white text-sm">
+    {itemSelectionMode.chosenOption === "debuff" 
+      ? <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para reduzir <span className="text-red-400 font-bold">-2 DP</span></>
+      : <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para absorver o DP original</>
+    }
+  </p>
+  ) : (
+  <p className="text-white text-sm">
+    {itemSelectionMode.chosenOption === "buff"
+      ? <>Clique em <span className="text-cyan-400 font-bold">Fehnon Hoskie</span> ou <span className="text-cyan-400 font-bold">Jaden Hainaegi</span> para receber <span className="text-green-400 font-bold">+2 DP</span></>
+      : <>Clique em uma unidade <span className="text-cyan-400 font-bold">SUA</span> para receber{" "}
+        <span className="text-green-400 font-bold">+{enemyField.unitZone[itemSelectionMode.selectedEnemyIndex!]?.dp || 0} DP</span></>
+    }
+  </p>
+  )}
             <Button
               onClick={cancelItemSelection}
               size="sm"
