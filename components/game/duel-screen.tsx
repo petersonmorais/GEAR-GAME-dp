@@ -3448,10 +3448,17 @@ const handleEnemyUnitSelect = (index: number) => {
 
 const handleAllyUnitSelect = (index: number) => {
   if (!itemSelectionMode.active || itemSelectionMode.step !== "selectAlly") return
+  if (!itemSelectionMode.itemCard) return
+  
+  // Check if this is a dice card (they don't need selectedEnemyIndex)
+  const cardId = getBaseCardId(itemSelectionMode.itemCard.id || "")
+  const isDiceCard = cardId.includes("dados-do-destino") || cardId.includes("dados-elementais")
+  
   // For Véu dos Laços Cruzados with "buff" option, we don't need selectedEnemyIndex
   const isVeuBuff = itemSelectionMode.chosenOption === "buff"
-  if (itemSelectionMode.selectedEnemyIndex === null && !isVeuBuff) return
-  if (!itemSelectionMode.itemCard) return
+  
+  // Skip the selectedEnemyIndex check for dice cards and buff options
+  if (itemSelectionMode.selectedEnemyIndex === null && !isVeuBuff && !isDiceCard) return
   
   const allyUnit = playerField.unitZone[index]
   if (!allyUnit) return
@@ -3482,6 +3489,9 @@ const handleAllyUnitSelect = (index: number) => {
       const isSinfoniaRelampago = itemSelectionMode.itemCard.name === "Sinfonia Relâmpago"
       const isFafnisbani = itemSelectionMode.itemCard.name === "Fafnisbani"
       const isDevorarOMundo = itemSelectionMode.itemCard.name === "Devorar o Mundo"
+      const isDadosDestinoGentil = itemSelectionMode.itemCard.name === "Dados do Destino Gentil"
+      const isDadosElementaisAlpha = itemSelectionMode.itemCard.name === "Dados Elementais Alpha"
+      const isDadosElementaisOmega = itemSelectionMode.itemCard.name === "Dados Elementais Omega"
       if (isAmplificador) effect = FUNCTION_CARD_EFFECTS["amplificador-de-poder"]
       else if (isBandagem) effect = FUNCTION_CARD_EFFECTS["bandagem-restauradora"]
       else if (isAdaga) effect = FUNCTION_CARD_EFFECTS["adaga-energizada"]
@@ -3497,6 +3507,9 @@ const handleAllyUnitSelect = (index: number) => {
       else if (isSinfoniaRelampago) effect = FUNCTION_CARD_EFFECTS["sinfonia-relampago"]
       else if (isFafnisbani) effect = FUNCTION_CARD_EFFECTS["fafnisbani"]
       else if (isDevorarOMundo) effect = FUNCTION_CARD_EFFECTS["devorar-o-mundo"]
+      else if (isDadosDestinoGentil) effect = FUNCTION_CARD_EFFECTS["dados-do-destino-gentil"]
+      else if (isDadosElementaisAlpha) effect = FUNCTION_CARD_EFFECTS["dados-elementais-alpha"]
+      else if (isDadosElementaisOmega) effect = FUNCTION_CARD_EFFECTS["dados-elementais-omega"]
       }
     
   if (effect) {
