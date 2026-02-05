@@ -96,10 +96,16 @@ interface FunctionCardEffect {
   id: string
   name: string
   requiresTargets: boolean
+  requiresChoice?: boolean
+  requiresDice?: boolean // For dice-rolling effects
+  choiceOptions?: { id: string; label: string; description: string }[]
   targetConfig?: {
-    enemyUnits?: number // Number of enemy units to select
-    allyUnits?: number // Number of ally units to select  
+  enemyUnits?: number // Number of enemy units to select
+  allyUnits?: number // Number of ally units to select
   }
+  canActivate: (context: EffectContext) => { canActivate: boolean; reason?: string }
+  resolve: (context: EffectContext, targets?: EffectTargets) => EffectResult
+}
   canActivate: (context: EffectContext) => { canActivate: boolean; reason?: string }
   resolve: (context: EffectContext, targets?: EffectTargets) => EffectResult
 }
@@ -115,7 +121,8 @@ interface EffectTargets {
   enemyUnitIndices?: number[]
   allyUnitIndices?: number[]
   chosenOption?: string
-  }
+  diceResult?: number // Result of dice roll (1-6)
+}
 
 interface EffectResult {
   success: boolean
@@ -791,6 +798,253 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       return { success: false, message: "Escolha uma opcao" }
     },
   },
+  
+  // ========== DICE FUNCTION CARDS ==========
+  
+  "dados-do-destino-gentil": {
+    id: "dados-do-destino-gentil",
+    name: "Dados do Destino Gentil",
+    requiresTargets: true,
+    requiresDice: true,
+    targetConfig: {
+      allyUnits: 1,
+    },
+    canActivate: (context) => {
+      const hasAllyUnits = context.playerField.unitZone.some((u) => u !== null)
+      if (!hasAllyUnits) {
+        return { canActivate: false, reason: "Voce precisa ter uma unidade em campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      if (!targets?.allyUnitIndices?.length) {
+        return { success: false, message: "Selecione uma unidade sua" }
+      }
+      
+      const allyIndex = targets.allyUnitIndices[0]
+      const allyUnit = context.playerField.unitZone[allyIndex]
+      
+      if (!allyUnit) {
+        return { success: false, message: "Unidade nao encontrada" }
+      }
+      
+      const diceResult = targets.diceResult || 1
+      const currentDp = allyUnit.currentDp || allyUnit.dp
+      
+      if (diceResult >= 1 && diceResult <= 3) {
+        // 1-3: -3 DP
+        const newDp = Math.max(0, currentDp - 3)
+        const isDestroyed = newDp <= 0
+        
+        context.setPlayerField((prev) => {
+          const newUnitZone = [...prev.unitZone]
+          const newGraveyard = [...prev.graveyard]
+          
+          if (isDestroyed) {
+            if (newUnitZone[allyIndex]) {
+              newGraveyard.push(newUnitZone[allyIndex]!)
+            }
+            newUnitZone[allyIndex] = null
+          } else {
+            if (newUnitZone[allyIndex]) {
+              newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp }
+            }
+          }
+          return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
+        })
+        
+        if (isDestroyed) {
+          return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} perdeu 3 DP e foi destruida!` }
+        }
+        return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} perdeu 3 DP (${currentDp} -> ${newDp})` }
+      } else {
+        // 4-6: +5 DP
+        const newDp = currentDp + 5
+        
+        context.setPlayerField((prev) => {
+          const newUnitZone = [...prev.unitZone]
+          if (newUnitZone[allyIndex]) {
+            newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp }
+          }
+          return { ...prev, unitZone: newUnitZone }
+        })
+        
+        return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} ganhou +5 DP! (${currentDp} -> ${newDp})` }
+      }
+    },
+  },
+  
+  "dados-elementais-alpha": {
+    id: "dados-elementais-alpha",
+    name: "Dados Elementais Alpha",
+    requiresTargets: true,
+    requiresDice: true,
+    targetConfig: {
+      allyUnits: 1,
+    },
+    canActivate: (context) => {
+      // Check for units with Darkness, Fire, or Aquos elements
+      const validElements = ["darkness", "fire", "aquos"]
+      const hasValidUnit = context.playerField.unitZone.some((u) => 
+        u !== null && validElements.includes(u.element?.toLowerCase() || "")
+      )
+      if (!hasValidUnit) {
+        return { canActivate: false, reason: "Precisa de unidade Darkness, Fire ou Aquos em campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      if (!targets?.allyUnitIndices?.length) {
+        return { success: false, message: "Selecione uma unidade sua" }
+      }
+      
+      const allyIndex = targets.allyUnitIndices[0]
+      const allyUnit = context.playerField.unitZone[allyIndex]
+      
+      if (!allyUnit) {
+        return { success: false, message: "Unidade nao encontrada" }
+      }
+      
+      const validElements = ["darkness", "fire", "aquos"]
+      const unitElement = allyUnit.element?.toLowerCase() || ""
+      
+      if (!validElements.includes(unitElement)) {
+        return { success: false, message: "Unidade deve ser Darkness, Fire ou Aquos" }
+      }
+      
+      const diceResult = targets.diceResult || 1
+      const currentDp = allyUnit.currentDp || allyUnit.dp
+      let dpBonus = 0
+      let bonusMessage = ""
+      
+      if (diceResult >= 1 && diceResult <= 2) {
+        dpBonus = 3
+        if (unitElement === "darkness") {
+          // Bonus: Draw 1 card
+          if (context.playerField.deck.length > 0) {
+            const drawnCard = context.playerField.deck[0]
+            context.setPlayerField((prev) => ({
+              ...prev,
+              hand: [...prev.hand, drawnCard],
+              deck: prev.deck.slice(1),
+            }))
+            bonusMessage = " Bonus Darkness: Comprou 1 carta!"
+          }
+        }
+      } else if (diceResult >= 3 && diceResult <= 4) {
+        dpBonus = 4
+        if (unitElement === "fire") {
+          // Bonus: +2 LP
+          context.setPlayerField((prev) => ({ ...prev, life: prev.life + 2 }))
+          bonusMessage = " Bonus Fire: +2 LP!"
+        }
+      } else {
+        dpBonus = 5
+        if (unitElement === "aquos") {
+          // Bonus: +3 LP
+          context.setPlayerField((prev) => ({ ...prev, life: prev.life + 3 }))
+          bonusMessage = " Bonus Aquos: +3 LP!"
+        }
+      }
+      
+      const newDp = currentDp + dpBonus
+      context.setPlayerField((prev) => {
+        const newUnitZone = [...prev.unitZone]
+        if (newUnitZone[allyIndex]) {
+          newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp }
+        }
+        return { ...prev, unitZone: newUnitZone }
+      })
+      
+      return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} +${dpBonus} DP!${bonusMessage}` }
+    },
+  },
+  
+  "dados-elementais-omega": {
+    id: "dados-elementais-omega",
+    name: "Dados Elementais Omega",
+    requiresTargets: true,
+    requiresDice: true,
+    targetConfig: {
+      allyUnits: 1,
+    },
+    canActivate: (context) => {
+      // Check for units with Neutral, Lightness, or Ventus elements
+      const validElements = ["neutral", "lightness", "ventus"]
+      const hasValidUnit = context.playerField.unitZone.some((u) => 
+        u !== null && validElements.includes(u.element?.toLowerCase() || "")
+      )
+      if (!hasValidUnit) {
+        return { canActivate: false, reason: "Precisa de unidade Neutral, Lightness ou Ventus em campo" }
+      }
+      return { canActivate: true }
+    },
+    resolve: (context, targets) => {
+      if (!targets?.allyUnitIndices?.length) {
+        return { success: false, message: "Selecione uma unidade sua" }
+      }
+      
+      const allyIndex = targets.allyUnitIndices[0]
+      const allyUnit = context.playerField.unitZone[allyIndex]
+      
+      if (!allyUnit) {
+        return { success: false, message: "Unidade nao encontrada" }
+      }
+      
+      const validElements = ["neutral", "lightness", "ventus"]
+      const unitElement = allyUnit.element?.toLowerCase() || ""
+      
+      if (!validElements.includes(unitElement)) {
+        return { success: false, message: "Unidade deve ser Neutral, Lightness ou Ventus" }
+      }
+      
+      const diceResult = targets.diceResult || 1
+      const currentDp = allyUnit.currentDp || allyUnit.dp
+      let dpBonus = 0
+      let bonusMessage = ""
+      
+      if (diceResult >= 1 && diceResult <= 2) {
+        dpBonus = 3
+        if (unitElement === "neutral") {
+          // Bonus: Draw 1 card
+          if (context.playerField.deck.length > 0) {
+            const drawnCard = context.playerField.deck[0]
+            context.setPlayerField((prev) => ({
+              ...prev,
+              hand: [...prev.hand, drawnCard],
+              deck: prev.deck.slice(1),
+            }))
+            bonusMessage = " Bonus Neutral: Comprou 1 carta!"
+          }
+        }
+      } else if (diceResult >= 3 && diceResult <= 4) {
+        dpBonus = 4
+        if (unitElement === "lightness") {
+          // Bonus: +2 LP
+          context.setPlayerField((prev) => ({ ...prev, life: prev.life + 2 }))
+          bonusMessage = " Bonus Lightness: +2 LP!"
+        }
+      } else {
+        dpBonus = 5
+        if (unitElement === "ventus") {
+          // Bonus: +3 LP
+          context.setPlayerField((prev) => ({ ...prev, life: prev.life + 3 }))
+          bonusMessage = " Bonus Ventus: +3 LP!"
+        }
+      }
+      
+      const newDp = currentDp + dpBonus
+      context.setPlayerField((prev) => {
+        const newUnitZone = [...prev.unitZone]
+        if (newUnitZone[allyIndex]) {
+          newUnitZone[allyIndex] = { ...newUnitZone[allyIndex]!, currentDp: newDp }
+        }
+        return { ...prev, unitZone: newUnitZone }
+      })
+      
+      return { success: true, message: `Dado: ${diceResult}! ${allyUnit.name} +${dpBonus} DP!${bonusMessage}` }
+    },
+  },
 }
 
 // Helper function to extract base card ID (removes deck timestamp suffix)
@@ -978,6 +1232,15 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
     y: number
     element: string
   } | null>(null)
+  
+  // Dice roll animation state
+  const [diceAnimation, setDiceAnimation] = useState<{
+    visible: boolean
+    rolling: boolean
+    result: number | null
+    cardName: string
+    onComplete: ((result: number) => void) | null
+  } | null>(null)
 
   const [draggedHandCard, setDraggedHandCard] = useState<{
     index: number
@@ -1037,6 +1300,50 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
     })
     setTimeout(() => setDestructionAnimation(null), 1200)
   }, [])
+  
+  // Helper to roll dice with animation
+  const rollDice = useCallback((cardName: string): Promise<number> => {
+    return new Promise((resolve) => {
+      // Start animation
+      setDiceAnimation({
+        visible: true,
+        rolling: true,
+        result: null,
+        cardName,
+        onComplete: null,
+      })
+      
+      // Roll for 2 seconds then show result
+      setTimeout(() => {
+        const result = Math.floor(Math.random() * 6) + 1
+        setDiceAnimation((prev) => prev ? {
+          ...prev,
+          rolling: false,
+          result,
+        } : null)
+        
+        // Wait for result display then resolve
+        setTimeout(() => {
+          setDiceAnimation(null)
+          resolve(result)
+        }, 1500)
+      }, 2000)
+    })
+  }, [])
+  
+  // Helper to resolve effect with dice roll if needed
+  const resolveEffectWithDice = useCallback(async (
+    effect: FunctionCardEffect,
+    effectContext: EffectContext,
+    targets: EffectTargets,
+    cardName: string
+  ): Promise<EffectResult> => {
+    if (effect.requiresDice) {
+      const diceResult = await rollDice(cardName)
+      return effect.resolve(effectContext, { ...targets, diceResult })
+    }
+    return effect.resolve(effectContext, targets)
+  }, [rollDice])
   
   // If mode is "player", show the multiplayer lobby system
   if (mode === "player" && !showOnlineDuel) {
@@ -3097,35 +3404,37 @@ const handleEnemyUnitSelect = (index: number) => {
       effect = FUNCTION_CARD_EFFECTS["veu-dos-lacos-cruzados"]
     }
     
-    if (effect) {
-      const effectContext: EffectContext = {
-        playerField,
-        enemyField,
-        setPlayerField,
-        setEnemyField,
-      }
-      
-      const targets: EffectTargets = {
-        enemyUnitIndices: [index],
-        allyUnitIndices: [],
-        chosenOption: "debuff",
-      }
-      
-      const result = effect.resolve(effectContext, targets)
-      
-      if (result.success) {
-        showEffectFeedback(`${itemSelectionMode.itemCard.name}: ${result.message}`, "success")
-        setPlayerField((prev) => ({
-          ...prev,
-          graveyard: [...prev.graveyard, itemSelectionMode.itemCard!],
-        }))
-      } else {
-        showEffectFeedback(`${itemSelectionMode.itemCard.name}: ${result.message || "Falha"}`, "error")
-      }
-      
-      setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
-      return
+  if (effect) {
+  const effectContext: EffectContext = {
+  playerField,
+  enemyField,
+  setPlayerField,
+  setEnemyField,
+  }
+  
+  const targets: EffectTargets = {
+  enemyUnitIndices: [index],
+  allyUnitIndices: [],
+  chosenOption: "debuff",
+  }
+  
+  const cardToUse = itemSelectionMode.itemCard
+  setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
+  
+  // Use async resolve for dice cards
+  resolveEffectWithDice(effect, effectContext, targets, cardToUse.name).then((result) => {
+    if (result.success) {
+      showEffectFeedback(`${cardToUse.name}: ${result.message}`, "success")
+      setPlayerField((prev) => ({
+        ...prev,
+        graveyard: [...prev.graveyard, cardToUse],
+      }))
+    } else {
+      showEffectFeedback(`${cardToUse.name}: ${result.message || "Falha"}`, "error")
     }
+  })
+  return
+  }
   }
   
   setItemSelectionMode((prev) => ({
@@ -3188,36 +3497,37 @@ const handleAllyUnitSelect = (index: number) => {
       else if (isDevorarOMundo) effect = FUNCTION_CARD_EFFECTS["devorar-o-mundo"]
       }
     
-    if (effect) {
-      const effectContext: EffectContext = {
-        playerField,
-        enemyField,
-        setPlayerField,
-        setEnemyField,
-      }
-      
-      const targets: EffectTargets = {
-        enemyUnitIndices: itemSelectionMode.selectedEnemyIndex !== null ? [itemSelectionMode.selectedEnemyIndex] : [],
-        allyUnitIndices: [index],
-        chosenOption: itemSelectionMode.chosenOption || undefined,
-      }
-      
-      const result = effect.resolve(effectContext, targets)
-      
-      if (result.success) {
-        // Show visual feedback
-        showEffectFeedback(`${itemSelectionMode.itemCard.name}: ${result.message}`, "success")
-        // Send card to graveyard after successful resolution
-        setPlayerField((prev) => ({
-          ...prev,
-          graveyard: [...prev.graveyard, itemSelectionMode.itemCard!],
-        }))
-      } else {
-        showEffectFeedback(`${itemSelectionMode.itemCard.name}: ${result.message || "Falha"}`, "error")
-      }
+  if (effect) {
+  const effectContext: EffectContext = {
+  playerField,
+  enemyField,
+  setPlayerField,
+  setEnemyField,
+  }
+  
+  const targets: EffectTargets = {
+  enemyUnitIndices: itemSelectionMode.selectedEnemyIndex !== null ? [itemSelectionMode.selectedEnemyIndex] : [],
+  allyUnitIndices: [index],
+  chosenOption: itemSelectionMode.chosenOption || undefined,
+  }
+  
+  const cardToUse = itemSelectionMode.itemCard
+  setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
+  
+  // Use async resolve for dice cards
+  resolveEffectWithDice(effect, effectContext, targets, cardToUse.name).then((result) => {
+    if (result.success) {
+      showEffectFeedback(`${cardToUse.name}: ${result.message}`, "success")
+      setPlayerField((prev) => ({
+        ...prev,
+        graveyard: [...prev.graveyard, cardToUse],
+      }))
+    } else {
+      showEffectFeedback(`${cardToUse.name}: ${result.message || "Falha"}`, "error")
     }
-    
-    setItemSelectionMode({ active: false, itemCard: null, step: "selectEnemy", selectedEnemyIndex: null, chosenOption: null })
+  })
+  return
+  }
   }
 
   const cancelItemSelection = () => {
@@ -4196,6 +4506,80 @@ const handleAllyUnitSelect = (index: number) => {
       <span className="text-white font-bold text-sm drop-shadow-lg">
         {drawAnimation.cardName}
       </span>
+    </div>
+  </div>
+  )}
+  
+  {/* Dice Roll Animation */}
+  {diceAnimation && (
+  <div className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none">
+    {/* Dark overlay */}
+    <div className="absolute inset-0 bg-black/60 animate-fade-in" />
+    
+    {/* Dice container */}
+    <div className="relative flex flex-col items-center gap-6">
+      {/* Card name */}
+      <div className="bg-gradient-to-r from-amber-900/90 to-orange-900/90 px-6 py-2 rounded-xl border border-amber-500/50 shadow-2xl">
+        <p className="text-amber-400 font-bold text-lg">{diceAnimation.cardName}</p>
+      </div>
+      
+      {/* 3D Dice */}
+      <div className={`dice-scene ${diceAnimation.rolling ? 'dice-rolling' : ''}`}>
+        <div className={`dice-cube ${!diceAnimation.rolling && diceAnimation.result ? `dice-face-${diceAnimation.result}` : ''}`}>
+          <div className="dice-face dice-face-1">
+            <span className="dice-dot"></span>
+          </div>
+          <div className="dice-face dice-face-2">
+            <span className="dice-dot"></span>
+            <span className="dice-dot"></span>
+          </div>
+          <div className="dice-face dice-face-3">
+            <span className="dice-dot"></span>
+            <span className="dice-dot"></span>
+            <span className="dice-dot"></span>
+          </div>
+          <div className="dice-face dice-face-4">
+            <span className="dice-dot"></span>
+            <span className="dice-dot"></span>
+            <span className="dice-dot"></span>
+            <span className="dice-dot"></span>
+          </div>
+          <div className="dice-face dice-face-5">
+            <span className="dice-dot"></span>
+            <span className="dice-dot"></span>
+            <span className="dice-dot"></span>
+            <span className="dice-dot"></span>
+            <span className="dice-dot"></span>
+          </div>
+          <div className="dice-face dice-face-6">
+            <span className="dice-dot"></span>
+            <span className="dice-dot"></span>
+            <span className="dice-dot"></span>
+            <span className="dice-dot"></span>
+            <span className="dice-dot"></span>
+            <span className="dice-dot"></span>
+          </div>
+        </div>
+      </div>
+      
+      {/* Result display */}
+      {!diceAnimation.rolling && diceAnimation.result && (
+        <div className="dice-result-display">
+          <div className="bg-gradient-to-r from-cyan-600 to-blue-600 px-8 py-4 rounded-2xl border-2 border-cyan-400/70 shadow-[0_0_30px_rgba(34,211,238,0.5)]">
+            <p className="text-white font-bold text-3xl text-center">
+              {diceAnimation.result}
+            </p>
+            <p className="text-cyan-200 text-sm text-center mt-1">
+              {diceAnimation.result <= 3 ? "Resultado Baixo" : "Resultado Alto"}
+            </p>
+          </div>
+        </div>
+      )}
+      
+      {/* Rolling text */}
+      {diceAnimation.rolling && (
+        <p className="text-white font-bold text-xl animate-pulse">Rolando...</p>
+      )}
     </div>
   </div>
   )}
