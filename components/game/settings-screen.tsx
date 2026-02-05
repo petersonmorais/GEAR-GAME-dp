@@ -24,13 +24,16 @@ import {
   Sparkles,
   Key,
   Hash,
+  Gift,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react"
 
 interface SettingsScreenProps {
   onBack: () => void
 }
 
-type TabType = "language" | "account"
+type TabType = "language" | "account" | "codes"
 
 export default function SettingsScreen({ onBack }: SettingsScreenProps) {
   const { t, language, setLanguage } = useLanguage()
@@ -45,6 +48,9 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
     registerWithCode,
     logoutAccount,
     saveProgressManually,
+    redeemCode,
+    redeemedCodes,
+    deleteAccountData,
   } = useGame()
   const [activeTab, setActiveTab] = useState<TabType>("language")
   const [copied, setCopied] = useState(false)
@@ -65,6 +71,15 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
   const [authError, setAuthError] = useState("")
   const [authLoading, setAuthLoading] = useState(false)
   const [saveMessage, setSaveMessage] = useState("")
+  
+  // Codes state
+  const [codeInput, setCodeInput] = useState("")
+  const [codeMessage, setCodeMessage] = useState<{ text: string; type: "success" | "error" } | null>(null)
+  const [codeLoading, setCodeLoading] = useState(false)
+  
+  // Delete account state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const handleCopyId = () => {
     navigator.clipboard.writeText(playerId)
@@ -175,6 +190,32 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
     setSaveMessage("Progresso salvo!")
     setTimeout(() => setSaveMessage(""), 3000)
   }
+  
+  const handleRedeemCode = () => {
+    if (!codeInput.trim()) {
+      setCodeMessage({ text: "Digite um codigo", type: "error" })
+      return
+    }
+    setCodeLoading(true)
+    const result = redeemCode(codeInput)
+    setCodeLoading(false)
+    setCodeMessage({ text: result.message, type: result.success ? "success" : "error" })
+    if (result.success) {
+      setCodeInput("")
+    }
+    setTimeout(() => setCodeMessage(null), 5000)
+  }
+  
+  const handleDeleteAccount = async () => {
+    setDeleteLoading(true)
+    const result = await deleteAccountData()
+    setDeleteLoading(false)
+    if (result.success) {
+      setShowDeleteConfirm(false)
+      setSaveMessage("Dados da conta deletados com sucesso!")
+      setTimeout(() => setSaveMessage(""), 3000)
+    }
+  }
 
   const formatLastSaved = (dateString: string | null) => {
     if (!dateString) return "Nunca"
@@ -235,6 +276,17 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
         >
           <User className="w-4 h-4 inline mr-2" />
           Conta
+        </button>
+        <button
+          onClick={() => setActiveTab("codes")}
+          className={`flex-1 py-4 px-4 font-medium transition-all ${
+            activeTab === "codes"
+              ? "text-emerald-400 border-b-2 border-emerald-400 bg-emerald-400/10"
+              : "text-slate-400 hover:text-white hover:bg-white/5"
+          }`}
+        >
+          <Gift className="w-4 h-4 inline mr-2" />
+          Codigos
         </button>
       </div>
 
@@ -349,12 +401,62 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
                     </div>
 
                     {saveMessage && (
-                      <p className="text-emerald-400 text-center text-sm animate-pulse bg-emerald-500/20 py-2 rounded-lg">
-                        {saveMessage}
-                      </p>
-                    )}
-                  </div>
-                ) : generatedCode ? (
+  <p className="text-emerald-400 text-center text-sm animate-pulse bg-emerald-500/20 py-2 rounded-lg">
+  {saveMessage}
+  </p>
+  )}
+  
+  {/* Delete Account Section */}
+  <div className="mt-4 pt-4 border-t border-red-500/20">
+    {!showDeleteConfirm ? (
+      <Button
+        onClick={() => setShowDeleteConfirm(true)}
+        variant="outline"
+        className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10 bg-transparent"
+      >
+        <Trash2 className="w-4 h-4 mr-2" />
+        Deletar Dados da Conta
+      </Button>
+    ) : (
+      <div className="bg-red-500/10 rounded-xl p-4 border border-red-500/30 space-y-3">
+        <div className="flex items-center gap-2 text-red-400">
+          <AlertTriangle className="w-5 h-5" />
+          <span className="font-bold">Confirmar Exclusao</span>
+        </div>
+        <p className="text-slate-300 text-sm">
+          Tem certeza que deseja deletar todos os dados da sua conta? Esta acao ira apagar:
+        </p>
+        <ul className="text-slate-400 text-xs space-y-1 ml-4">
+          <li>- Todas as suas cartas</li>
+          <li>- Todos os seus decks</li>
+          <li>- Historico de partidas</li>
+          <li>- Moedas e progresso</li>
+          <li>- Codigos resgatados</li>
+        </ul>
+        <p className="text-amber-400 text-xs">
+          Voce continuara logado, mas com uma conta zerada.
+        </p>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => setShowDeleteConfirm(false)}
+            variant="outline"
+            className="flex-1 border-slate-500/50 text-slate-300 hover:bg-slate-700 bg-transparent"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleDeleteAccount}
+            disabled={deleteLoading}
+            className="flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 border border-red-400/50"
+          >
+            {deleteLoading ? "Deletando..." : "Sim, Deletar Tudo"}
+          </Button>
+        </div>
+      </div>
+    )}
+  </div>
+  </div>
+  ) : generatedCode ? (
                   /* Show generated code after registration */
                   <div className="space-y-4">
                     <div className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 rounded-xl p-6 border border-emerald-400/50">
@@ -765,6 +867,97 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
                 </div>
               </div>
             </>
+          )}
+
+          {activeTab === "codes" && (
+            <div className="space-y-4">
+              {/* Code Redemption Section */}
+              <div className="bg-gradient-to-r from-emerald-900/40 to-teal-900/40 rounded-2xl p-6 border border-emerald-500/40 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
+                    <Gift className="w-5 h-5 text-white" />
+                  </div>
+                  <h2 className="text-xl font-bold text-white">Resgatar Codigo</h2>
+                </div>
+                
+                <p className="text-slate-400 text-sm mb-4">
+                  Digite um codigo promocional para receber recompensas especiais.
+                </p>
+                
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <Input
+                      type="text"
+                      value={codeInput}
+                      onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
+                      placeholder="DIGITE O CODIGO"
+                      className="pl-12 bg-slate-900/80 border-emerald-500/30 text-white py-3 uppercase tracking-widest font-mono"
+                      maxLength={20}
+                    />
+                  </div>
+                  
+                  <Button
+                    onClick={handleRedeemCode}
+                    disabled={codeLoading || !codeInput.trim()}
+                    className="w-full bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 border border-emerald-400/50"
+                  >
+                    {codeLoading ? "Verificando..." : "Resgatar Codigo"}
+                  </Button>
+                  
+                  {codeMessage && (
+                    <div className={`p-3 rounded-lg text-center text-sm ${
+                      codeMessage.type === "success" 
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
+                        : "bg-red-500/20 text-red-400 border border-red-500/30"
+                    }`}>
+                      {codeMessage.text}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Redeemed Codes History */}
+              <div className="bg-gradient-to-r from-slate-800/80 to-slate-900/80 rounded-2xl p-6 border border-slate-600/40 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center">
+                    <Check className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white">Codigos Resgatados</h3>
+                </div>
+                
+                {redeemedCodes.length > 0 ? (
+                  <div className="space-y-2">
+                    {redeemedCodes.map((code) => (
+                      <div 
+                        key={code}
+                        className="flex items-center gap-2 bg-slate-900/60 rounded-lg px-4 py-2 border border-emerald-500/20"
+                      >
+                        <Check className="w-4 h-4 text-emerald-400" />
+                        <code className="text-emerald-300 font-mono tracking-wider">{code}</code>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-500 text-sm text-center py-4">
+                    Nenhum codigo resgatado ainda.
+                  </p>
+                )}
+              </div>
+              
+              {/* Available Codes Hint */}
+              <div className="bg-gradient-to-r from-amber-900/20 to-orange-900/20 rounded-xl p-4 border border-amber-500/30">
+                <div className="flex items-start gap-3">
+                  <Sparkles className="w-5 h-5 text-amber-400 mt-0.5" />
+                  <div>
+                    <p className="text-amber-400 font-medium text-sm">Dica</p>
+                    <p className="text-slate-400 text-xs mt-1">
+                      Fique atento as redes sociais oficiais do Gear Perks para novos codigos promocionais!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Credits */}

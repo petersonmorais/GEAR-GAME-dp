@@ -152,6 +152,9 @@ interface GameContextType {
   globalPlaymatId: string | null
   setGlobalPlaymat: (playmatId: string | null) => void
   getPlaymatForDeck: (deck: Deck) => Playmat | null
+  redeemCode: (code: string) => { success: boolean; message: string }
+  redeemedCodes: string[]
+  deleteAccountData: () => Promise<{ success: boolean; error?: string }>
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined)
@@ -1231,7 +1234,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const [ownedPlaymats, setOwnedPlaymats] = useState<Playmat[]>([])
   const [globalPlaymatId, setGlobalPlaymatId] = useState<string | null>(null)
-
+  const [redeemedCodes, setRedeemedCodes] = useState<string[]>([])
+  
   // Load saved data from localStorage on mount
   useEffect(() => {
     const savedCoins = localStorage.getItem("gearperks-coins")
@@ -1319,9 +1323,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    if (savedGlobalPlaymat) {
-      setGlobalPlaymatId(savedGlobalPlaymat)
+  if (savedGlobalPlaymat) {
+  setGlobalPlaymatId(savedGlobalPlaymat)
+  }
+  
+  const savedRedeemedCodes = localStorage.getItem("gearperks-redeemed-codes")
+  if (savedRedeemedCodes) {
+    try {
+      setRedeemedCodes(JSON.parse(savedRedeemedCodes))
+    } catch (e) {
+      console.error("Failed to load redeemed codes")
     }
+  }
   }, [])
 
   // Save to localStorage when data changes
@@ -2046,19 +2059,128 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }
 
   const getPlaymatForDeck = (deck: Deck): Playmat | null => {
-    // If deck uses global playmat or has no specific setting
-    if (deck.useGlobalPlaymat !== false && globalPlaymatId) {
-      return ownedPlaymats.find((p) => p.id === globalPlaymatId) || null
+  // If deck uses global playmat or has no specific setting
+  if (deck.useGlobalPlaymat !== false && globalPlaymatId) {
+  return ownedPlaymats.find((p) => p.id === globalPlaymatId) || null
+  }
+  // If deck has specific playmat
+  if (deck.playmatId) {
+  return ownedPlaymats.find((p) => p.id === deck.playmatId) || null
+  }
+  // Fallback to global
+  if (globalPlaymatId) {
+  return ownedPlaymats.find((p) => p.id === globalPlaymatId) || null
+  }
+  return null
+  }
+  
+  // Redeem promotional codes
+  const redeemCode = (code: string): { success: boolean; message: string } => {
+    const normalizedCode = code.toUpperCase().trim()
+    
+    // Check if code was already redeemed
+    if (redeemedCodes.includes(normalizedCode)) {
+      return { success: false, message: "Este codigo ja foi resgatado!" }
     }
-    // If deck has specific playmat
-    if (deck.playmatId) {
-      return ownedPlaymats.find((p) => p.id === deck.playmatId) || null
+    
+    // ALLCARDS - Unlocks all cards with 4 copies each
+    if (normalizedCode === "ALLCARDS") {
+      // Get all cards with 4 copies each
+      const allCardsWithCopies: Card[] = []
+      ALL_CARDS.forEach((card) => {
+        for (let i = 0; i < 4; i++) {
+          allCardsWithCopies.push({ ...card })
+        }
+      })
+      
+      // Add to collection
+      setCollection(allCardsWithCopies)
+      
+      // Mark code as redeemed
+      const newRedeemedCodes = [...redeemedCodes, normalizedCode]
+      setRedeemedCodes(newRedeemedCodes)
+      localStorage.setItem("gearperks-redeemed-codes", JSON.stringify(newRedeemedCodes))
+      
+      return { success: true, message: `Todas as ${ALL_CARDS.length} cartas foram desbloqueadas com 4 copias cada!` }
     }
-    // Fallback to global
-    if (globalPlaymatId) {
-      return ownedPlaymats.find((p) => p.id === globalPlaymatId) || null
+    
+    // Invalid code
+    return { success: false, message: "Codigo invalido!" }
+  }
+  
+  // Delete all account data but keep logged in
+  const deleteAccountData = async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      // Reset all game data to defaults
+      setCoins(999)
+      setCollection([])
+      setDecks([])
+      setMatchHistory([])
+      setGiftBoxes(INITIAL_GIFT_BOXES)
+      setFriends([DEFAULT_GUEST_FRIEND])
+      setFriendRequests([])
+      setFriendPoints(0)
+      setSpendableFP(0)
+      setOwnedPlaymats([])
+      setGlobalPlaymatId(null)
+      setRedeemedCodes([])
+      setPlayerProfile({
+        id: playerId,
+        name: "Jogador",
+        title: "Iniciante",
+        level: 1,
+        showcaseCards: [],
+        hasCompletedSetup: false,
+      })
+      
+      // Clear localStorage data
+      localStorage.removeItem("gearperks-coins")
+      localStorage.removeItem("gearperks-collection")
+      localStorage.removeItem("gearperks-decks")
+      localStorage.removeItem("gearperks-history")
+      localStorage.removeItem("gearperks-giftboxes")
+      localStorage.removeItem("gearperks-profile")
+      localStorage.removeItem("gearperks-friends")
+      localStorage.removeItem("gearperks-friend-requests")
+      localStorage.removeItem("gearperks-friend-points")
+      localStorage.removeItem("gearperks-spendable-fp")
+      localStorage.removeItem("gearperks_owned_playmats")
+      localStorage.removeItem("gearperks_global_playmat")
+      localStorage.removeItem("gearperks-redeemed-codes")
+      
+      // If logged in with Supabase, also clear cloud data
+      if (accountAuth.isLoggedIn && accountAuth.uniqueCode) {
+        try {
+          const { createClient } = await import("@/lib/supabase/client")
+          const supabase = createClient()
+          
+          // Update the player profile in the cloud with reset data
+          await supabase
+            .from("player_profiles")
+            .update({
+              coins: 999,
+              collection: [],
+              decks: [],
+              duel_history: [],
+              total_wins: 0,
+              total_losses: 0,
+              player_name: "Jogador",
+              player_title: "Iniciante",
+              avatar_id: null,
+              gacha_pity: 0,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("user_id", playerId)
+        } catch (err) {
+          console.error("Error clearing cloud data:", err)
+        }
+      }
+      
+      return { success: true }
+    } catch (err) {
+      console.error("Error deleting account data:", err)
+      return { success: false, error: "Erro ao deletar dados da conta" }
     }
-    return null
   }
 
   return (
@@ -2104,14 +2226,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
         linkEmailToCode,
         logoutAccount,
         saveProgressManually,
-        // Added playmat-related values
-        allPlaymats: ALL_PLAYMATS,
-        ownedPlaymats,
-        globalPlaymatId,
-        setGlobalPlaymat,
-        getPlaymatForDeck,
-      }}
-    >
+  // Added playmat-related values
+  allPlaymats: ALL_PLAYMATS,
+  ownedPlaymats,
+  globalPlaymatId,
+  setGlobalPlaymat,
+  getPlaymatForDeck,
+  // Code redemption
+  redeemCode,
+  redeemedCodes,
+  deleteAccountData,
+  }}
+  >
       {children}
     </GameContext.Provider>
   )
