@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useCallback } from "react"
 import { useLanguage } from "@/contexts/language-context"
 import { useGame, type Card, type Deck } from "@/contexts/game-context"
 import { Button } from "@/components/ui/button"
@@ -27,6 +27,32 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
   const [useGlobalPlaymat, setUseGlobalPlaymat] = useState(true)
   const [showPlaymatSelector, setShowPlaymatSelector] = useState(false)
   const [zoomedCard, setZoomedCard] = useState<Card | null>(null)
+  const [draggedCard, setDraggedCard] = useState<Card | null>(null)
+  const [isDeckDropZone, setIsDeckDropZone] = useState(false)
+  
+  // Long press for zoom
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const LONG_PRESS_DURATION = 500 // ms
+  
+  const handleCardMouseDown = useCallback((card: Card) => {
+    longPressTimerRef.current = setTimeout(() => {
+      setZoomedCard(card)
+    }, LONG_PRESS_DURATION)
+  }, [])
+  
+  const handleCardMouseUp = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }, [])
+  
+  const handleCardMouseLeave = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }, [])
 
   const MIN_CARDS = 10
   const MAX_CARDS = 20
@@ -390,9 +416,21 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
   return (
   <div
   key={card.id}
-  onClick={() => setZoomedCard(card)}
-  onDoubleClick={() => canAdd && addCardToDeck(card)}
-  className={`relative aspect-[3/4] rounded-lg overflow-hidden shadow-lg transition-all duration-200 ${
+  draggable={canAdd}
+  onClick={() => canAdd && addCardToDeck(card)}
+  onMouseDown={() => handleCardMouseDown(card)}
+  onMouseUp={handleCardMouseUp}
+  onMouseLeave={handleCardMouseLeave}
+  onTouchStart={() => handleCardMouseDown(card)}
+  onTouchEnd={handleCardMouseUp}
+  onDragStart={(e) => {
+    if (canAdd) {
+      setDraggedCard(card)
+      e.dataTransfer.effectAllowed = "copy"
+    }
+  }}
+  onDragEnd={() => setDraggedCard(null)}
+  className={`relative aspect-[3/4] rounded-lg overflow-hidden shadow-lg transition-all duration-200 select-none ${
   canAdd ? "cursor-pointer transform hover:scale-110 hover:z-10" : "cursor-not-allowed opacity-50 grayscale"
   } ${
   card.rarity === "LR"
@@ -403,9 +441,9 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
   ? "ring-1 ring-purple-400"
   : ""
   }`}
-  title={!canAdd ? reason : `Clique para ver, duplo clique para adicionar (${copiesInDeck}/${maxAllowed})`}
+  title={!canAdd ? reason : `Clique para adicionar, segure para zoom (${copiesInDeck}/${maxAllowed})`}
   >
-  <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
+  <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover pointer-events-none" />
                     
                     {/* Copies indicator: X/Y (in deck / max allowed) */}
                     <div className={`absolute top-1 right-1 text-white text-xs px-1.5 py-0.5 rounded-full font-bold shadow-lg ${
@@ -545,18 +583,50 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
             )}
           </div>
 
-          {/* Deck cards grid */}
-          <div className="flex-1 p-3 overflow-y-auto">
-            <div className="grid grid-cols-4 gap-2">
+  {/* Deck cards grid - Drop Zone */}
+  <div 
+    className={`flex-1 p-3 overflow-y-auto transition-colors ${
+      isDeckDropZone ? "bg-green-500/20 ring-2 ring-green-400 ring-inset" : ""
+    }`}
+    onDragOver={(e) => {
+      e.preventDefault()
+      e.dataTransfer.dropEffect = "copy"
+      setIsDeckDropZone(true)
+    }}
+    onDragLeave={() => setIsDeckDropZone(false)}
+    onDrop={(e) => {
+      e.preventDefault()
+      setIsDeckDropZone(false)
+      if (draggedCard) {
+        const { canAdd } = canAddCardToDeck(draggedCard)
+        if (canAdd) {
+          addCardToDeck(draggedCard)
+        }
+        setDraggedCard(null)
+      }
+    }}
+  >
+    {isDeckDropZone && (
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+        <div className="bg-green-500/90 text-white font-bold px-4 py-2 rounded-lg shadow-lg">
+          Solte para adicionar
+        </div>
+      </div>
+    )}
+  <div className="grid grid-cols-4 gap-2">
   {deckCards.map((card, index) => (
   <div
   key={`${card.id}-${index}`}
-  onClick={() => setZoomedCard(card)}
-  onDoubleClick={() => removeCardFromDeck(index)}
+  onClick={() => removeCardFromDeck(index)}
+  onMouseDown={() => handleCardMouseDown(card)}
+  onMouseUp={handleCardMouseUp}
+  onMouseLeave={handleCardMouseLeave}
+  onTouchStart={() => handleCardMouseDown(card)}
+  onTouchEnd={handleCardMouseUp}
   className="relative aspect-[3/4] rounded-lg overflow-hidden shadow-lg cursor-pointer transform hover:scale-110 transition-all group"
-  title="Clique para ver, duplo clique para remover"
+  title="Clique para remover, segure para zoom"
   >
-  <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
+  <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover pointer-events-none" />
   <div className="absolute inset-0 bg-red-500/0 group-hover:bg-red-500/60 transition-colors flex items-center justify-center">
   <X className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
   </div>
