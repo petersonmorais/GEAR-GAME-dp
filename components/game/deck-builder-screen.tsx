@@ -26,6 +26,7 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
   const [selectedPlaymatId, setSelectedPlaymatId] = useState<string | null>(null)
   const [useGlobalPlaymat, setUseGlobalPlaymat] = useState(true)
   const [showPlaymatSelector, setShowPlaymatSelector] = useState(false)
+  const [zoomedCard, setZoomedCard] = useState<Card | null>(null)
 
   const MIN_CARDS = 10
   const MAX_CARDS = 20
@@ -386,24 +387,25 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
                   const { canAdd, maxAllowed, reason } = canAddCardToDeck(card)
                 const isAtLimit = copiesInDeck >= maxAllowed
 
-                return (
-                  <div
-                    key={card.id}
-                    onClick={() => canAdd && addCardToDeck(card)}
-                    className={`relative aspect-[3/4] rounded-lg overflow-hidden shadow-lg transition-all duration-200 ${
-                      canAdd ? "cursor-pointer transform hover:scale-110 hover:z-10" : "cursor-not-allowed opacity-50 grayscale"
-                    } ${
-                      card.rarity === "LR"
-                        ? "ring-2 ring-red-400"
-                        : card.rarity === "UR"
-                          ? "ring-2 ring-yellow-400"
-                          : card.rarity === "SR"
-                            ? "ring-1 ring-purple-400"
-                            : ""
-                    }`}
-                    title={!canAdd ? reason : `Clique para adicionar (${copiesInDeck}/${maxAllowed})`}
-                  >
-                    <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
+  return (
+  <div
+  key={card.id}
+  onClick={() => setZoomedCard(card)}
+  onDoubleClick={() => canAdd && addCardToDeck(card)}
+  className={`relative aspect-[3/4] rounded-lg overflow-hidden shadow-lg transition-all duration-200 ${
+  canAdd ? "cursor-pointer transform hover:scale-110 hover:z-10" : "cursor-not-allowed opacity-50 grayscale"
+  } ${
+  card.rarity === "LR"
+  ? "ring-2 ring-red-400"
+  : card.rarity === "UR"
+  ? "ring-2 ring-yellow-400"
+  : card.rarity === "SR"
+  ? "ring-1 ring-purple-400"
+  : ""
+  }`}
+  title={!canAdd ? reason : `Clique para ver, duplo clique para adicionar (${copiesInDeck}/${maxAllowed})`}
+  >
+  <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
                     
                     {/* Copies indicator: X/Y (in deck / max allowed) */}
                     <div className={`absolute top-1 right-1 text-white text-xs px-1.5 py-0.5 rounded-full font-bold shadow-lg ${
@@ -546,22 +548,78 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
           {/* Deck cards grid */}
           <div className="flex-1 p-3 overflow-y-auto">
             <div className="grid grid-cols-4 gap-2">
-              {deckCards.map((card, index) => (
-                <div
-                  key={`${card.id}-${index}`}
-                  onClick={() => removeCardFromDeck(index)}
-                  className="relative aspect-[3/4] rounded-lg overflow-hidden shadow-lg cursor-pointer transform hover:scale-110 transition-all group"
-                >
-                  <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
-                  <div className="absolute inset-0 bg-red-500/0 group-hover:bg-red-500/60 transition-colors flex items-center justify-center">
-                    <X className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+  {deckCards.map((card, index) => (
+  <div
+  key={`${card.id}-${index}`}
+  onClick={() => setZoomedCard(card)}
+  onDoubleClick={() => removeCardFromDeck(index)}
+  className="relative aspect-[3/4] rounded-lg overflow-hidden shadow-lg cursor-pointer transform hover:scale-110 transition-all group"
+  title="Clique para ver, duplo clique para remover"
+  >
+  <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
+  <div className="absolute inset-0 bg-red-500/0 group-hover:bg-red-500/60 transition-colors flex items-center justify-center">
+  <X className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+  </div>
+  </div>
+  ))}
+  </div>
+  </div>
+  </div>
+  </div>
+  </div>
+  
+  {/* Card zoom modal */}
+  {zoomedCard && (
+    <div
+      className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={() => setZoomedCard(null)}
+    >
+      <div className="relative w-full max-w-sm aspect-[3/4] animate-float">
+        <div className="absolute inset-0 blur-3xl bg-gradient-to-r from-cyan-500 to-purple-500 opacity-30" />
+        <Image
+          src={zoomedCard.image || "/placeholder.svg"}
+          alt={zoomedCard.name}
+          fill
+          className={`object-contain rounded-2xl ${
+            zoomedCard.rarity === "LR"
+              ? "rarity-lr"
+              : zoomedCard.rarity === "UR"
+                ? "rarity-ur"
+                : zoomedCard.rarity === "SR"
+                  ? "rarity-sr"
+                  : "rarity-r"
+          }`}
+        />
       </div>
+
+      {/* Card info */}
+      <div className="absolute bottom-8 left-0 right-0 text-center">
+        <h3 className="text-2xl font-bold text-white mb-2">{zoomedCard.name}</h3>
+        <span
+          className={`px-4 py-1 rounded-full text-sm font-bold ${
+            zoomedCard.rarity === "LR"
+              ? "bg-gradient-to-r from-red-500 to-amber-500 text-white"
+              : zoomedCard.rarity === "UR"
+                ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-black"
+                : zoomedCard.rarity === "SR"
+                  ? "bg-purple-500 text-white"
+                  : "bg-slate-500 text-white"
+          }`}
+        >
+          {zoomedCard.rarity}
+        </span>
+        {zoomedCard.type === "unit" && zoomedCard.dp && (
+          <p className="text-cyan-400 font-bold mt-2">DP: {zoomedCard.dp}</p>
+        )}
+      </div>
+
+      <button
+        onClick={() => setZoomedCard(null)}
+        className="absolute top-4 right-4 p-2 glass rounded-full hover:bg-white/20 transition-colors"
+      >
+        <X className="w-6 h-6 text-white" />
+      </button>
     </div>
+  )}
   )
-}
+  }
