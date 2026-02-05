@@ -195,6 +195,25 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     targetX: number
     targetY: number
   } | null>(null)
+  
+  // Draw card animation state
+  const [drawAnimation, setDrawAnimation] = useState<{
+    visible: boolean
+    cardName: string
+    cardImage: string
+    cardType: string
+  } | null>(null)
+  
+  // Helper to show draw card animation
+  const showDrawAnimation = useCallback((card: GameCard) => {
+    setDrawAnimation({
+      visible: true,
+      cardName: card.name,
+      cardImage: card.image,
+      cardType: card.type,
+    })
+    setTimeout(() => setDrawAnimation(null), 1300)
+  }, [])
 
   // Get my deck and opponent deck
   const myDeck = roomData.isHost ? roomData.hostDeck : roomData.guestDeck
@@ -793,25 +812,28 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
   // Draw a card
   const drawCard = () => {
-    if (!isMyTurn || phase !== "draw") return
-
-    setMyField((prev) => {
-      if (prev.deck.length === 0) return prev
-      const drawnCard = prev.deck[0]
-      const newDeck = prev.deck.slice(1)
-      const newHand = [...prev.hand, drawnCard]
-
-      sendAction({
-        type: "draw",
-        playerId,
-        data: { handSize: newHand.length, deckSize: newDeck.length },
-        timestamp: Date.now(),
-      })
-
-      return { ...prev, deck: newDeck, hand: newHand }
-    })
-
-    setPhase("main")
+  if (!isMyTurn || phase !== "draw") return
+  
+  setMyField((prev) => {
+  if (prev.deck.length === 0) return prev
+  const drawnCard = prev.deck[0]
+  const newDeck = prev.deck.slice(1)
+  const newHand = [...prev.hand, drawnCard]
+  
+  // Show draw animation
+  showDrawAnimation(drawnCard)
+  
+  sendAction({
+  type: "draw",
+  playerId,
+  data: { handSize: newHand.length, deckSize: newDeck.length },
+  timestamp: Date.now(),
+  })
+  
+  return { ...prev, deck: newDeck, hand: newHand }
+  })
+  
+  setPhase("main")
   }
 
   // Advance phase
@@ -2049,12 +2071,52 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
               )}
             </div>
           </div>
+  </div>
+  )}
+  
+  {/* Draw Card Animation - Card pulled from deck to hand */}
+  {drawAnimation && (
+  <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
+    {/* Card moving from deck position to hand */}
+    <div className="draw-card-container">
+      {/* Glow effect - follows card */}
+      <div className="draw-card-glow" />
+      
+      {/* The card itself */}
+      <div className="draw-card-frame">
+        {/* Card back */}
+        <div className="draw-card-back">
+          <div className="absolute inset-1.5 border border-cyan-500/40 rounded" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 opacity-70" />
+          </div>
         </div>
-      )}
-
-      {/* Card Inspection Overlay */}
-      {inspectedCard && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90" onClick={() => setInspectedCard(null)}>
+        
+        {/* Card front */}
+        <div className="draw-card-front">
+          <img 
+            src={drawAnimation.cardImage} 
+            alt={drawAnimation.cardName}
+            className="w-full h-full object-cover"
+          />
+          {/* Shine effect */}
+          <div className="draw-card-shine" />
+        </div>
+      </div>
+    </div>
+    
+    {/* Card name - appears at peak */}
+    <div className="draw-card-name">
+      <span className="text-white font-bold text-sm drop-shadow-lg">
+        {drawAnimation.cardName}
+      </span>
+    </div>
+  </div>
+  )}
+  
+  {/* Card Inspection Overlay */}
+  {inspectedCard && (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90" onClick={() => setInspectedCard(null)}>
           <div className="relative">
             <div className="absolute -inset-20 bg-gradient-to-br from-cyan-500/15 to-purple-500/15 blur-3xl rounded-full" />
             <div className="relative rounded-3xl border-4 border-white/40 shadow-2xl overflow-hidden bg-slate-900 w-64 h-80">
