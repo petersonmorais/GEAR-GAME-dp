@@ -6,9 +6,19 @@ import { useLanguage } from "@/contexts/language-context"
 import { useGame, type Deck, type Card } from "@/contexts/game-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, Copy, Check, Send, Users, MessageCircle, Loader2 } from "lucide-react"
+import { ArrowLeft, Copy, Check, Send, Users, MessageCircle, Loader2, Smile, X } from "lucide-react"
 import Image from "next/image"
 import type { RealtimeChannel } from "@supabase/supabase-js"
+
+// Emotes oficiais do jogo
+const GAME_EMOTES = [
+  { id: "emote-1", name: "Chorando de Alegria", image: "/images/emotes/emote-1.png" },
+  { id: "emote-2", name: "Confiante", image: "/images/emotes/emote-2.png" },
+  { id: "emote-3", name: "Raiva", image: "/images/emotes/emote-3.png" },
+  { id: "emote-4", name: "Feliz", image: "/images/emotes/emote-4.png" },
+  { id: "emote-5", name: "Surpreso", image: "/images/emotes/emote-5.png" },
+  { id: "emote-6", name: "Fogo", image: "/images/emotes/emote-6.png" },
+]
 
 interface MultiplayerLobbyProps {
   onBack: () => void
@@ -58,6 +68,7 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatInput, setChatInput] = useState("")
   const chatContainerRef = useRef<HTMLDivElement>(null)
+  const [showEmotePicker, setShowEmotePicker] = useState(false)
   
   // Ready state
   const [isReady, setIsReady] = useState(false)
@@ -389,20 +400,42 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
   }, [supabase])
 
   // Send chat message
-  const sendMessage = async () => {
-    if (!chatInput.trim() || !roomData) return
+  const sendMessage = async (messageText?: string) => {
+    const message = messageText || chatInput.trim()
+    if (!message || !roomData) return
     
-    const message = chatInput.trim()
     setChatInput("")
+    setShowEmotePicker(false)
     
-    await supabase
-      .from("duel_chat")
-      .insert({
-        room_id: roomData.roomId,
-        sender_id: playerId,
-        sender_name: playerProfile.name,
-        message: message,
-      })
+    // Generate a valid UUID for sender_id if playerId is not a valid UUID
+    const senderUUID = playerId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(playerId)
+      ? playerId
+      : roomData.isHost ? roomData.hostId : (roomData.guestId || crypto.randomUUID())
+    
+    try {
+      const { error: insertError } = await supabase
+        .from("duel_chat")
+        .insert({
+          room_id: roomData.roomId,
+          sender_id: senderUUID,
+          sender_name: playerProfile.name || "Jogador",
+          message: message,
+        })
+      
+      if (insertError) {
+        console.error("[v0] Error sending message:", insertError)
+      }
+    } catch (err) {
+      console.error("[v0] Exception sending message:", err)
+    }
+  }
+  
+  // Send emote
+  const sendEmote = (emoteId: string) => {
+    const emote = GAME_EMOTES.find(e => e.id === emoteId)
+    if (emote) {
+      sendMessage(`[EMOTE:${emoteId}]`)
+    }
   }
 
   // Toggle ready state
@@ -752,8 +785,18 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
               roomData.hostReady ? "border-green-500" : "border-slate-700"
             }`}>
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-10 h-10 rounded-full bg-amber-500/30 flex items-center justify-center">
-                  <span className="text-amber-400 font-bold">H</span>
+                <div className="w-10 h-10 rounded-full bg-amber-500/30 flex items-center justify-center overflow-hidden">
+                  {roomData.isHost && playerProfile.avatarUrl ? (
+                    <Image 
+                      src={playerProfile.avatarUrl} 
+                      alt={roomData.hostName} 
+                      width={40} 
+                      height={40} 
+                      className="object-cover"
+                    />
+                  ) : (
+                    <span className="text-amber-400 font-bold">H</span>
+                  )}
                 </div>
                 <div>
                   <p className="text-white font-medium text-sm truncate">{roomData.hostName}</p>
@@ -779,8 +822,20 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
               roomData.guestReady ? "border-green-500" : "border-slate-700"
             }`}>
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-10 h-10 rounded-full bg-blue-500/30 flex items-center justify-center">
-                  <span className="text-blue-400 font-bold">G</span>
+                <div className="w-10 h-10 rounded-full bg-blue-500/30 flex items-center justify-center overflow-hidden">
+                  {!roomData.isHost && playerProfile.avatarUrl ? (
+                    <Image 
+                      src={playerProfile.avatarUrl} 
+                      alt={roomData.guestName || "Guest"} 
+                      width={40} 
+                      height={40} 
+                      className="object-cover"
+                    />
+                  ) : roomData.guestName ? (
+                    <span className="text-blue-400 font-bold">G</span>
+                  ) : (
+                    <Users className="w-5 h-5 text-blue-400" />
+                  )}
                 </div>
                 <div>
                   <p className="text-white font-medium text-sm truncate">
@@ -824,29 +879,84 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
                   Nenhuma mensagem ainda...
                 </p>
               ) : (
-                chatMessages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex flex-col ${
-                      msg.sender_id === playerId ? "items-end" : "items-start"
-                    }`}
-                  >
-                    <span className="text-xs text-slate-500 mb-1">
-                      {msg.sender_name}
-                    </span>
-                    <div className={`max-w-[80%] px-3 py-2 rounded-lg ${
-                      msg.sender_id === playerId
-                        ? "bg-amber-500/30 text-amber-100"
-                        : "bg-slate-700 text-slate-200"
-                    }`}>
-                      <p className="text-sm break-words">{msg.message}</p>
+                chatMessages.map((msg) => {
+                  // Check if message is an emote
+                  const emoteMatch = msg.message.match(/^\[EMOTE:(emote-\d+)\]$/)
+                  const isEmote = !!emoteMatch
+                  const emote = isEmote ? GAME_EMOTES.find(e => e.id === emoteMatch![1]) : null
+                  
+                  // Check if this is from the current player (compare with both playerId and room IDs)
+                  const isCurrentPlayer = msg.sender_id === playerId || 
+                    (roomData?.isHost && msg.sender_id === roomData.hostId) ||
+                    (!roomData?.isHost && msg.sender_id === roomData?.guestId)
+                  
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`flex flex-col ${
+                        isCurrentPlayer ? "items-end" : "items-start"
+                      }`}
+                    >
+                      <span className="text-xs text-slate-500 mb-1">
+                        {msg.sender_name}
+                      </span>
+                      {isEmote && emote ? (
+                        <div className="relative w-16 h-16">
+                          <Image
+                            src={emote.image}
+                            alt={emote.name}
+                            fill
+                            className="object-contain"
+                          />
+                        </div>
+                      ) : (
+                        <div className={`max-w-[80%] px-3 py-2 rounded-lg ${
+                          isCurrentPlayer
+                            ? "bg-amber-500/30 text-amber-100"
+                            : "bg-slate-700 text-slate-200"
+                        }`}>
+                          <p className="text-sm break-words">{msg.message}</p>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))
+                  )
+                })
               )}
             </div>
 
-            <div className="p-3 border-t border-slate-700">
+            <div className="p-3 border-t border-slate-700 relative">
+              {/* Emote Picker */}
+              {showEmotePicker && (
+                <div className="absolute bottom-full left-0 right-0 mb-2 bg-slate-800 rounded-xl border border-slate-600 p-3 shadow-xl z-10">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-white text-sm font-medium">Emotes</span>
+                    <button 
+                      onClick={() => setShowEmotePicker(false)}
+                      className="text-slate-400 hover:text-white"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-6 gap-2">
+                    {GAME_EMOTES.map((emote) => (
+                      <button
+                        key={emote.id}
+                        onClick={() => sendEmote(emote.id)}
+                        className="w-10 h-10 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors p-1 relative"
+                        title={emote.name}
+                      >
+                        <Image
+                          src={emote.image}
+                          alt={emote.name}
+                          fill
+                          className="object-contain p-0.5"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <form
                 onSubmit={(e) => {
                   e.preventDefault()
@@ -861,6 +971,13 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
                   className="flex-1 bg-slate-700 border-slate-600 text-white text-sm"
                   maxLength={200}
                 />
+                <Button
+                  type="button"
+                  onClick={() => setShowEmotePicker(!showEmotePicker)}
+                  className="bg-slate-600 hover:bg-slate-500 text-white"
+                >
+                  <Smile className="w-4 h-4" />
+                </Button>
                 <Button
                   type="submit"
                   disabled={!chatInput.trim()}
