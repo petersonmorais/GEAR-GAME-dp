@@ -2633,10 +2633,15 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
   
   // If effect requires targets, enter selection mode
   if (effectToUse.requiresTargets && effectToUse.targetConfig) {
+  // Determine the correct step based on target config
+  // If only needs ally units (like dice cards), go straight to selectAlly
+  const needsEnemyFirst = effectToUse.targetConfig.enemyUnits && effectToUse.targetConfig.enemyUnits > 0
+  const initialStep = needsEnemyFirst ? "selectEnemy" : "selectAlly"
+  
   setItemSelectionMode({
   active: true,
   itemCard: cardToPlace,
-  step: "selectEnemy",
+  step: initialStep,
   selectedEnemyIndex: null,
   chosenOption: null,
   })
@@ -4660,22 +4665,38 @@ const handleAllyUnitSelect = (index: number) => {
         <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-40 pointer-events-none">
           <div className="bg-gradient-to-b from-slate-800 to-slate-900 p-5 rounded-xl border-2 border-yellow-500/50 text-center shadow-2xl pointer-events-auto">
             <h3 className="text-yellow-400 font-bold text-lg mb-3">{itemSelectionMode.itemCard.name}</h3>
-  {itemSelectionMode.step === "selectEnemy" ? (
-  <p className="text-white text-sm">
-    {itemSelectionMode.chosenOption === "debuff" 
-      ? <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para reduzir <span className="text-red-400 font-bold">-2 DP</span></>
-      : <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para absorver o DP original</>
+  {(() => {
+    const cardId = getBaseCardId(itemSelectionMode.itemCard?.id || "")
+    const isDiceCard = cardId.includes("dados-do-destino") || cardId.includes("dados-elementais")
+    
+    if (isDiceCard) {
+      return (
+        <p className="text-white text-sm">
+          Clique em uma unidade <span className="text-cyan-400 font-bold">SUA</span> para rolar o dado
+        </p>
+      )
     }
-  </p>
-  ) : (
-  <p className="text-white text-sm">
-    {itemSelectionMode.chosenOption === "buff"
-      ? <>Clique em <span className="text-cyan-400 font-bold">Fehnon Hoskie</span> ou <span className="text-cyan-400 font-bold">Jaden Hainaegi</span> para receber <span className="text-green-400 font-bold">+2 DP</span></>
-      : <>Clique em uma unidade <span className="text-cyan-400 font-bold">SUA</span> para receber{" "}
-        <span className="text-green-400 font-bold">+{enemyField.unitZone[itemSelectionMode.selectedEnemyIndex!]?.dp || 0} DP</span></>
+    
+    if (itemSelectionMode.step === "selectEnemy") {
+      return (
+        <p className="text-white text-sm">
+          {itemSelectionMode.chosenOption === "debuff" 
+            ? <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para reduzir <span className="text-red-400 font-bold">-2 DP</span></>
+            : <>Clique em uma unidade <span className="text-red-400 font-bold">INIMIGA</span> para aplicar o efeito</>
+          }
+        </p>
+      )
     }
-  </p>
-  )}
+    
+    return (
+      <p className="text-white text-sm">
+        {itemSelectionMode.chosenOption === "buff"
+          ? <>Clique em <span className="text-cyan-400 font-bold">Fehnon Hoskie</span> ou <span className="text-cyan-400 font-bold">Jaden Hainaegi</span> para receber <span className="text-green-400 font-bold">+2 DP</span></>
+          : <>Clique em uma unidade <span className="text-cyan-400 font-bold">SUA</span> para aplicar o efeito</>
+        }
+      </p>
+    )
+  })()}
             <Button
               onClick={cancelItemSelection}
               size="sm"
