@@ -243,7 +243,7 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
         hostId: room.host_id,
         hostName: room.host_name,
         hostDeck: hostDeck,
-        guestId: playerId,
+        guestId: guestUUID,
         guestName: playerProfile.name,
         guestDeck: selectedDeck,
         hostReady: room.host_ready,
@@ -785,17 +785,17 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
               roomData.hostReady ? "border-green-500" : "border-slate-700"
             }`}>
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-10 h-10 rounded-full bg-amber-500/30 flex items-center justify-center overflow-hidden">
+                <div className="w-12 h-12 rounded-full bg-amber-500/30 flex items-center justify-center overflow-hidden border-2 border-amber-500/50">
                   {roomData.isHost && playerProfile.avatarUrl ? (
                     <Image 
                       src={playerProfile.avatarUrl} 
                       alt={roomData.hostName} 
-                      width={40} 
-                      height={40} 
-                      className="object-cover"
+                      width={48} 
+                      height={48} 
+                      className="object-cover w-full h-full"
                     />
                   ) : (
-                    <span className="text-amber-400 font-bold">H</span>
+                    <span className="text-amber-400 font-bold text-lg">{roomData.hostName?.charAt(0)?.toUpperCase() || "H"}</span>
                   )}
                 </div>
                 <div>
@@ -822,17 +822,17 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
               roomData.guestReady ? "border-green-500" : "border-slate-700"
             }`}>
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-10 h-10 rounded-full bg-blue-500/30 flex items-center justify-center overflow-hidden">
+                <div className="w-12 h-12 rounded-full bg-blue-500/30 flex items-center justify-center overflow-hidden border-2 border-blue-500/50">
                   {!roomData.isHost && playerProfile.avatarUrl ? (
                     <Image 
                       src={playerProfile.avatarUrl} 
                       alt={roomData.guestName || "Guest"} 
-                      width={40} 
-                      height={40} 
-                      className="object-cover"
+                      width={48} 
+                      height={48} 
+                      className="object-cover w-full h-full"
                     />
                   ) : roomData.guestName ? (
-                    <span className="text-blue-400 font-bold">G</span>
+                    <span className="text-blue-400 font-bold text-lg">{roomData.guestName.charAt(0).toUpperCase()}</span>
                   ) : (
                     <Users className="w-5 h-5 text-blue-400" />
                   )}
@@ -901,12 +901,12 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
                         {msg.sender_name}
                       </span>
                       {isEmote && emote ? (
-                        <div className="relative w-16 h-16">
+                        <div className="relative w-24 h-24 bg-slate-800/50 rounded-xl p-1">
                           <Image
                             src={emote.image}
                             alt={emote.name}
                             fill
-                            className="object-contain"
+                            className="object-contain drop-shadow-lg"
                           />
                         </div>
                       ) : (
@@ -937,19 +937,19 @@ export function MultiplayerLobby({ onBack, onStartDuel }: MultiplayerLobbyProps)
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-                  <div className="grid grid-cols-6 gap-2">
+                  <div className="grid grid-cols-3 gap-3">
                     {GAME_EMOTES.map((emote) => (
                       <button
                         key={emote.id}
                         onClick={() => sendEmote(emote.id)}
-                        className="w-10 h-10 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors p-1 relative"
+                        className="w-16 h-16 rounded-xl bg-slate-700 hover:bg-slate-600 hover:scale-110 transition-all p-1 relative"
                         title={emote.name}
                       >
                         <Image
                           src={emote.image}
                           alt={emote.name}
                           fill
-                          className="object-contain p-0.5"
+                          className="object-contain p-1"
                         />
                       </button>
                     ))}
