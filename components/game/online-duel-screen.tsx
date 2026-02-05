@@ -195,6 +195,25 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     targetX: number
     targetY: number
   } | null>(null)
+  
+  // Draw card animation state
+  const [drawAnimation, setDrawAnimation] = useState<{
+    visible: boolean
+    cardName: string
+    cardImage: string
+    cardType: string
+  } | null>(null)
+  
+  // Helper to show draw card animation
+  const showDrawAnimation = useCallback((card: GameCard) => {
+    setDrawAnimation({
+      visible: true,
+      cardName: card.name,
+      cardImage: card.image,
+      cardType: card.type,
+    })
+    setTimeout(() => setDrawAnimation(null), 1800)
+  }, [])
 
   // Get my deck and opponent deck
   const myDeck = roomData.isHost ? roomData.hostDeck : roomData.guestDeck
@@ -793,25 +812,28 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
   // Draw a card
   const drawCard = () => {
-    if (!isMyTurn || phase !== "draw") return
-
-    setMyField((prev) => {
-      if (prev.deck.length === 0) return prev
-      const drawnCard = prev.deck[0]
-      const newDeck = prev.deck.slice(1)
-      const newHand = [...prev.hand, drawnCard]
-
-      sendAction({
-        type: "draw",
-        playerId,
-        data: { handSize: newHand.length, deckSize: newDeck.length },
-        timestamp: Date.now(),
-      })
-
-      return { ...prev, deck: newDeck, hand: newHand }
-    })
-
-    setPhase("main")
+  if (!isMyTurn || phase !== "draw") return
+  
+  setMyField((prev) => {
+  if (prev.deck.length === 0) return prev
+  const drawnCard = prev.deck[0]
+  const newDeck = prev.deck.slice(1)
+  const newHand = [...prev.hand, drawnCard]
+  
+  // Show draw animation
+  showDrawAnimation(drawnCard)
+  
+  sendAction({
+  type: "draw",
+  playerId,
+  data: { handSize: newHand.length, deckSize: newDeck.length },
+  timestamp: Date.now(),
+  })
+  
+  return { ...prev, deck: newDeck, hand: newHand }
+  })
+  
+  setPhase("main")
   }
 
   // Advance phase
@@ -2049,12 +2071,75 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
               )}
             </div>
           </div>
+  </div>
+  )}
+  
+  {/* Draw Card Animation */}
+  {drawAnimation && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+    {/* Background glow effect */}
+    <div className="absolute inset-0 bg-black/40 animate-fade-in" />
+    
+    {/* Card container with animations */}
+    <div className="relative animate-card-draw">
+      {/* Outer glow ring */}
+      <div className="absolute -inset-8 rounded-full bg-gradient-to-r from-cyan-500 via-purple-500 to-amber-500 opacity-60 blur-2xl animate-pulse" />
+      
+      {/* Inner glow */}
+      <div className="absolute -inset-4 rounded-xl bg-gradient-to-b from-white/30 to-transparent blur-xl animate-glow-pulse" />
+      
+      {/* Card frame */}
+      <div className="relative w-48 h-72 md:w-56 md:h-80 rounded-xl overflow-hidden border-4 border-white/50 shadow-2xl transform transition-all duration-500 animate-card-reveal">
+        {/* Card image */}
+        <img 
+          src={drawAnimation.cardImage} 
+          alt={drawAnimation.cardName}
+          className="w-full h-full object-cover"
+        />
+        
+        {/* Shine effect overlay */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent animate-shine" />
+        
+        {/* Card type indicator */}
+        <div className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+          drawAnimation.cardType === "unit" 
+            ? "bg-red-500/90 text-white" 
+            : drawAnimation.cardType === "item" 
+            ? "bg-purple-500/90 text-white"
+            : drawAnimation.cardType === "scenario"
+            ? "bg-blue-500/90 text-white"
+            : "bg-amber-500/90 text-white"
+        }`}>
+          {drawAnimation.cardType === "unit" ? "Unidade" : 
+           drawAnimation.cardType === "item" ? "Function" :
+           drawAnimation.cardType === "scenario" ? "Cenario" : "Carta"}
         </div>
-      )}
-
-      {/* Card Inspection Overlay */}
-      {inspectedCard && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90" onClick={() => setInspectedCard(null)}>
+      </div>
+      
+      {/* Sparkle particles */}
+      <div className="absolute -top-4 -left-4 w-3 h-3 rounded-full bg-cyan-400 animate-sparkle-1" />
+      <div className="absolute -top-2 -right-6 w-2 h-2 rounded-full bg-purple-400 animate-sparkle-2" />
+      <div className="absolute -bottom-4 -left-2 w-2 h-2 rounded-full bg-amber-400 animate-sparkle-3" />
+      <div className="absolute -bottom-2 -right-4 w-3 h-3 rounded-full bg-pink-400 animate-sparkle-4" />
+      <div className="absolute top-1/2 -left-6 w-2 h-2 rounded-full bg-green-400 animate-sparkle-5" />
+      <div className="absolute top-1/2 -right-6 w-2 h-2 rounded-full bg-blue-400 animate-sparkle-6" />
+    </div>
+    
+    {/* Card name label */}
+    <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 animate-name-reveal">
+      <div className="bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-900/95 px-6 py-3 rounded-xl border border-white/30 shadow-2xl">
+        <p className="text-white font-bold text-lg md:text-xl text-center whitespace-nowrap">
+          {drawAnimation.cardName}
+        </p>
+        <p className="text-cyan-400 text-xs text-center mt-1 uppercase tracking-widest">Carta Comprada</p>
+      </div>
+    </div>
+  </div>
+  )}
+  
+  {/* Card Inspection Overlay */}
+  {inspectedCard && (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90" onClick={() => setInspectedCard(null)}>
           <div className="relative">
             <div className="absolute -inset-20 bg-gradient-to-br from-cyan-500/15 to-purple-500/15 blur-3xl rounded-full" />
             <div className="relative rounded-3xl border-4 border-white/40 shadow-2xl overflow-hidden bg-slate-900 w-64 h-80">

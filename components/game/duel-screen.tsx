@@ -878,6 +878,14 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
   const [turn, setTurn] = useState(1)
   const [phase, setPhase] = useState<Phase>("draw")
   const [isPlayerTurn, setIsPlayerTurn] = useState(true)
+  
+  // Draw card animation state
+  const [drawAnimation, setDrawAnimation] = useState<{
+    visible: boolean
+    cardName: string
+    cardImage: string
+    cardType: string
+  } | null>(null)
   const [playerWentFirst, setPlayerWentFirst] = useState(true)
   const [playerField, setPlayerField] = useState<FieldState>({
     unitZone: [null, null, null, null],
@@ -961,8 +969,19 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
 
   // Helper to show effect feedback
   const showEffectFeedback = useCallback((message: string, type: "success" | "error") => {
-    setEffectFeedback({ active: true, message, type })
-    setTimeout(() => setEffectFeedback(null), 2000)
+  setEffectFeedback({ active: true, message, type })
+  setTimeout(() => setEffectFeedback(null), 2000)
+  }, [])
+  
+  // Helper to show draw card animation
+  const showDrawAnimation = useCallback((card: GameCard) => {
+    setDrawAnimation({
+      visible: true,
+      cardName: card.name,
+      cardImage: card.image,
+      cardType: card.type,
+    })
+    setTimeout(() => setDrawAnimation(null), 1800)
   }, [])
   
   // If mode is "player", show the multiplayer lobby system
@@ -2100,15 +2119,15 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
   }
 
   const drawCard = () => {
-    if (playerField.deck.length === 0) return
-
-    const drawnCard = playerField.deck[0]
-    setPlayerField((prev) => ({
-      ...prev,
-      hand: [...prev.hand, drawnCard],
-      deck: prev.deck.slice(1),
-    }))
-    setPhase("main")
+  if (playerField.deck.length === 0) return
+  
+  const drawnCard = playerField.deck[0]
+  showDrawAnimation(drawnCard)
+  setPlayerField((prev) => ({
+  ...prev,
+  hand: [...prev.hand, drawnCard],
+  deck: prev.deck.slice(1),
+  }))
   }
 
   const placeCard = (zone: "unit" | "function", slotIndex: number, forcedCardIndex?: number) => {
@@ -2457,23 +2476,24 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
   }
 
   const advancePhase = () => {
-    if (!isPlayerTurn) return
-    if (phase === "draw") {
-      // Compra uma carta automaticamente ao sair da fase de draw
-      if (playerField.deck.length > 0) {
-        const drawnCard = playerField.deck[0]
-        setPlayerField((prev) => ({
-          ...prev,
-          hand: [...prev.hand, drawnCard],
-          deck: prev.deck.slice(1),
-        }))
-      }
-      setPhase("main")
-    } else if (phase === "main") {
-      setPhase("battle")
-    } else if (phase === "battle") {
-      endTurn()
-    }
+  if (!isPlayerTurn) return
+  if (phase === "draw") {
+  // Compra uma carta automaticamente ao sair da fase de draw
+  if (playerField.deck.length > 0) {
+  const drawnCard = playerField.deck[0]
+  showDrawAnimation(drawnCard)
+  setPlayerField((prev) => ({
+  ...prev,
+  hand: [...prev.hand, drawnCard],
+  deck: prev.deck.slice(1),
+  }))
+  }
+  setPhase("main")
+  } else if (phase === "main") {
+  setPhase("battle")
+  } else if (phase === "battle") {
+  endTurn()
+  }
   }
 
   const handleAttackStart = useCallback(
@@ -4075,6 +4095,69 @@ const handleAllyUnitSelect = (index: number) => {
   : "bg-gradient-to-r from-red-600 to-rose-600 border-2 border-red-400"
   }`}>
   {effectFeedback.message}
+  </div>
+  )}
+  
+  {/* Draw Card Animation */}
+  {drawAnimation && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+    {/* Background glow effect */}
+    <div className="absolute inset-0 bg-black/40 animate-fade-in" />
+    
+    {/* Card container with animations */}
+    <div className="relative animate-card-draw">
+      {/* Outer glow ring */}
+      <div className="absolute -inset-8 rounded-full bg-gradient-to-r from-cyan-500 via-purple-500 to-amber-500 opacity-60 blur-2xl animate-pulse" />
+      
+      {/* Inner glow */}
+      <div className="absolute -inset-4 rounded-xl bg-gradient-to-b from-white/30 to-transparent blur-xl animate-glow-pulse" />
+      
+      {/* Card frame */}
+      <div className="relative w-48 h-72 md:w-56 md:h-80 rounded-xl overflow-hidden border-4 border-white/50 shadow-2xl transform transition-all duration-500 animate-card-reveal">
+        {/* Card image */}
+        <img 
+          src={drawAnimation.cardImage} 
+          alt={drawAnimation.cardName}
+          className="w-full h-full object-cover"
+        />
+        
+        {/* Shine effect overlay */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent animate-shine" />
+        
+        {/* Card type indicator */}
+        <div className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+          drawAnimation.cardType === "unit" 
+            ? "bg-red-500/90 text-white" 
+            : drawAnimation.cardType === "item" 
+            ? "bg-purple-500/90 text-white"
+            : drawAnimation.cardType === "scenario"
+            ? "bg-blue-500/90 text-white"
+            : "bg-amber-500/90 text-white"
+        }`}>
+          {drawAnimation.cardType === "unit" ? "Unidade" : 
+           drawAnimation.cardType === "item" ? "Function" :
+           drawAnimation.cardType === "scenario" ? "Cenario" : "Carta"}
+        </div>
+      </div>
+      
+      {/* Sparkle particles */}
+      <div className="absolute -top-4 -left-4 w-3 h-3 rounded-full bg-cyan-400 animate-sparkle-1" />
+      <div className="absolute -top-2 -right-6 w-2 h-2 rounded-full bg-purple-400 animate-sparkle-2" />
+      <div className="absolute -bottom-4 -left-2 w-2 h-2 rounded-full bg-amber-400 animate-sparkle-3" />
+      <div className="absolute -bottom-2 -right-4 w-3 h-3 rounded-full bg-pink-400 animate-sparkle-4" />
+      <div className="absolute top-1/2 -left-6 w-2 h-2 rounded-full bg-green-400 animate-sparkle-5" />
+      <div className="absolute top-1/2 -right-6 w-2 h-2 rounded-full bg-blue-400 animate-sparkle-6" />
+    </div>
+    
+    {/* Card name label */}
+    <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 animate-name-reveal">
+      <div className="bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-900/95 px-6 py-3 rounded-xl border border-white/30 shadow-2xl">
+        <p className="text-white font-bold text-lg md:text-xl text-center whitespace-nowrap">
+          {drawAnimation.cardName}
+        </p>
+        <p className="text-cyan-400 text-xs text-center mt-1 uppercase tracking-widest">Carta Comprada</p>
+      </div>
+    </div>
   </div>
   )}
   
