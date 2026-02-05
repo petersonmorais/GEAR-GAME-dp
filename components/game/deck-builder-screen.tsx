@@ -566,7 +566,6 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
   </div>
   </div>
   </div>
-  </div>
   
   {/* Card zoom modal */}
   {zoomedCard && (
@@ -621,5 +620,6 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
       </button>
     </div>
   )}
+  </div>
   )
-  }
+}
