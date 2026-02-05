@@ -31,19 +31,22 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
   const MAX_CARDS = 20
   const MAX_COPIES_PER_CARD = 4 // Maximum copies of same card allowed in deck
 
-  // Count how many copies of each card the player owns in collection
-  const getOwnedCopies = (cardName: string) => {
-    return collection.filter((c) => c.name === cardName).length
+  // Create unique card key using name + rarity (same character with different rarities are different cards)
+  const getCardKey = (card: Card) => `${card.name}-${card.rarity}`
+
+  // Count how many copies of each card the player owns in collection (by name + rarity)
+  const getOwnedCopies = (card: Card) => {
+    return collection.filter((c) => c.name === card.name && c.rarity === card.rarity).length
   }
 
-  // Get unique cards with their owned count
+  // Get unique cards with their owned count (grouped by name + rarity)
   const uniqueCards = collection.reduce(
     (acc, card) => {
-      const baseId = card.id.split("-").slice(0, -2).join("-") || card.id
-      if (!acc[baseId]) {
-        acc[baseId] = { ...card, ownedCount: 1 }
+      const cardKey = getCardKey(card)
+      if (!acc[cardKey]) {
+        acc[cardKey] = { ...card, ownedCount: 1 }
       } else {
-        acc[baseId].ownedCount = (acc[baseId].ownedCount || 1) + 1
+        acc[cardKey].ownedCount = (acc[cardKey].ownedCount || 1) + 1
       }
       return acc
     },
@@ -59,27 +62,28 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
     return matchesSearch && matchesRarity && matchesType
   })
 
-  const getCardCopiesInDeck = (cardName: string) => {
-    return deckCards.filter((c) => c.name === cardName).length
+  // Count copies in deck by name + rarity
+  const getCardCopiesInDeck = (card: Card) => {
+    return deckCards.filter((c) => c.name === card.name && c.rarity === card.rarity).length
   }
 
   // Get the maximum allowed copies for a card (minimum between deck limit and owned count)
-  const getMaxAllowedCopies = (cardName: string) => {
-    const ownedCopies = getOwnedCopies(cardName)
+  const getMaxAllowedCopies = (card: Card) => {
+    const ownedCopies = getOwnedCopies(card)
     return Math.min(MAX_COPIES_PER_CARD, ownedCopies)
   }
 
   // Centralized validation function
   const canAddCardToDeck = (card: Card): { canAdd: boolean; reason?: string; maxAllowed: number } => {
-    const copiesInDeck = getCardCopiesInDeck(card.name)
-    const maxAllowed = getMaxAllowedCopies(card.name)
+    const copiesInDeck = getCardCopiesInDeck(card)
+    const maxAllowed = getMaxAllowedCopies(card)
     
     if (deckCards.length >= MAX_CARDS) {
       return { canAdd: false, reason: "Deck cheio", maxAllowed }
     }
     
     if (copiesInDeck >= maxAllowed) {
-      const ownedCopies = getOwnedCopies(card.name)
+      const ownedCopies = getOwnedCopies(card)
       const limitReason = ownedCopies < MAX_COPIES_PER_CARD 
         ? `Voce possui apenas ${ownedCopies}` 
         : `Maximo de ${MAX_COPIES_PER_CARD} copias por deck`
@@ -377,9 +381,9 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
           {/* Card grid */}
           <div className="flex-1 p-3 overflow-y-auto">
             <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 gap-2">
-              {filteredCards.map((card) => {
-                const copiesInDeck = getCardCopiesInDeck(card.name)
-                const { canAdd, maxAllowed, reason } = canAddCardToDeck(card)
+                {filteredCards.map((card) => {
+                  const copiesInDeck = getCardCopiesInDeck(card)
+                  const { canAdd, maxAllowed, reason } = canAddCardToDeck(card)
                 const isAtLimit = copiesInDeck >= maxAllowed
 
                 return (

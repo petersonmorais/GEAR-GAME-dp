@@ -199,7 +199,7 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
       {/* Logo */}
       <div className="mb-10 relative z-10 text-center">
         {/* Version number above logo */}
-        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-2">v1.0.4</div>
+        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-2">v1.0.5</div>
         
         <div className="relative inline-block">
           {/* Glow effect behind logo */}
