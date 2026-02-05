@@ -758,4 +758,159 @@
   }
 }
 
+/* Card Destruction Animation */
+.destruction-container {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 70px;
+  height: 98px;
+}
+
+@media (min-width: 768px) {
+  .destruction-container {
+    width: 80px;
+    height: 112px;
+  }
+}
+
+.destruction-card {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  animation: destruction-shake 0.3s ease-out, destruction-fade 1.2s ease-out forwards;
+  box-shadow: 0 0 30px rgba(255, 50, 50, 0.8);
+}
+
+.destruction-flash {
+  position: absolute;
+  inset: -50px;
+  background: radial-gradient(circle, rgba(255, 100, 100, 0.9) 0%, transparent 70%);
+  animation: destruction-flash-anim 0.4s ease-out forwards;
+}
+
+.destruction-fragment {
+  position: absolute;
+  width: 25px;
+  height: 25px;
+  background-position: center;
+  border-radius: 2px;
+  box-shadow: 0 0 10px rgba(255, 50, 50, 0.6);
+}
+
+.destruction-fragment-1 { animation: fragment-fly-1 1s ease-out forwards; animation-delay: 0.2s; opacity: 0; }
+.destruction-fragment-2 { animation: fragment-fly-2 1s ease-out forwards; animation-delay: 0.22s; opacity: 0; }
+.destruction-fragment-3 { animation: fragment-fly-3 1s ease-out forwards; animation-delay: 0.24s; opacity: 0; }
+.destruction-fragment-4 { animation: fragment-fly-4 1s ease-out forwards; animation-delay: 0.26s; opacity: 0; }
+.destruction-fragment-5 { animation: fragment-fly-5 1s ease-out forwards; animation-delay: 0.28s; opacity: 0; }
+.destruction-fragment-6 { animation: fragment-fly-6 1s ease-out forwards; animation-delay: 0.3s; opacity: 0; }
+.destruction-fragment-7 { animation: fragment-fly-7 1s ease-out forwards; animation-delay: 0.25s; opacity: 0; }
+.destruction-fragment-8 { animation: fragment-fly-8 1s ease-out forwards; animation-delay: 0.27s; opacity: 0; }
+.destruction-fragment-9 { animation: fragment-fly-9 1s ease-out forwards; animation-delay: 0.29s; opacity: 0; }
+.destruction-fragment-10 { animation: fragment-fly-10 1s ease-out forwards; animation-delay: 0.31s; opacity: 0; }
+.destruction-fragment-11 { animation: fragment-fly-11 1s ease-out forwards; animation-delay: 0.23s; opacity: 0; }
+.destruction-fragment-12 { animation: fragment-fly-12 1s ease-out forwards; animation-delay: 0.21s; opacity: 0; }
+
+.destruction-name {
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 4px 12px;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(255, 50, 50, 0.5);
+  border-radius: 6px;
+  animation: destruction-name-anim 1.2s ease-out forwards;
+}
+
+@keyframes destruction-shake {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  20% { transform: translateX(-3px) rotate(-2deg); }
+  40% { transform: translateX(3px) rotate(2deg); }
+  60% { transform: translateX(-2px) rotate(-1deg); }
+  80% { transform: translateX(2px) rotate(1deg); }
+}
+
+@keyframes destruction-fade {
+  0%, 20% { opacity: 1; transform: scale(1); }
+  30% { opacity: 1; transform: scale(1.1); filter: brightness(2); }
+  50% { opacity: 0.5; transform: scale(0.9); }
+  100% { opacity: 0; transform: scale(0.3); }
+}
+
+@keyframes destruction-flash-anim {
+  0% { opacity: 0; transform: scale(0.5); }
+  30% { opacity: 1; transform: scale(1.5); }
+  100% { opacity: 0; transform: scale(2); }
+}
+
+@keyframes destruction-name-anim {
+  0%, 15% { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  30% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  70% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+}
+
+@keyframes fragment-fly-1 {
+  0% { opacity: 0; transform: translate(10px, 20px) rotate(0deg) scale(1); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-60px, -80px) rotate(-180deg) scale(0.3); }
+}
+@keyframes fragment-fly-2 {
+  0% { opacity: 0; transform: translate(35px, 10px) rotate(0deg) scale(1); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translate(80px, -70px) rotate(200deg) scale(0.3); }
+}
+@keyframes fragment-fly-3 {
+  0% { opacity: 0; transform: translate(20px, 50px) rotate(0deg) scale(1); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50px, 90px) rotate(-150deg) scale(0.3); }
+}
+@keyframes fragment-fly-4 {
+  0% { opacity: 0; transform: translate(45px, 40px) rotate(0deg) scale(1); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translate(90px, 70px) rotate(180deg) scale(0.3); }
+}
+@keyframes fragment-fly-5 {
+  0% { opacity: 0; transform: translate(5px, 70px) rotate(0deg) scale(1); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-80px, 50px) rotate(-220deg) scale(0.3); }
+}
+@keyframes fragment-fly-6 {
+  0% { opacity: 0; transform: translate(50px, 65px) rotate(0deg) scale(1); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translate(70px, 100px) rotate(160deg) scale(0.3); }
+}
+@keyframes fragment-fly-7 {
+  0% { opacity: 0; transform: translate(25px, 5px) rotate(0deg) scale(1); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translate(20px, -90px) rotate(-140deg) scale(0.3); }
+}
+@keyframes fragment-fly-8 {
+  0% { opacity: 0; transform: translate(0px, 35px) rotate(0deg) scale(1); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-90px, 20px) rotate(190deg) scale(0.3); }
+}
+@keyframes fragment-fly-9 {
+  0% { opacity: 0; transform: translate(55px, 30px) rotate(0deg) scale(1); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translate(100px, -20px) rotate(-170deg) scale(0.3); }
+}
+@keyframes fragment-fly-10 {
+  0% { opacity: 0; transform: translate(15px, 80px) rotate(0deg) scale(1); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-30px, 110px) rotate(210deg) scale(0.3); }
+}
+@keyframes fragment-fly-11 {
+  0% { opacity: 0; transform: translate(40px, 75px) rotate(0deg) scale(1); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translate(60px, 120px) rotate(-200deg) scale(0.3); }
+}
+@keyframes fragment-fly-12 {
+  0% { opacity: 0; transform: translate(30px, 25px) rotate(0deg) scale(1); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translate(0px, -100px) rotate(230deg) scale(0.3); }
+}
+
 

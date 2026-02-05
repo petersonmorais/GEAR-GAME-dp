@@ -938,6 +938,16 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
   const explosionCanvasRef = useRef<HTMLCanvasElement>(null)
   const activeParticlesRef = useRef<Map<string, { particles: Particle[], startTime: number, element: string, x: number, y: number }>>(new Map())
   const [impactFlash, setImpactFlash] = useState<{ active: boolean; color: string }>({ active: false, color: "#ffffff" })
+  
+  // Destruction animation state
+  const [destructionAnimation, setDestructionAnimation] = useState<{
+    id: string
+    cardName: string
+    cardImage: string
+    x: number
+    y: number
+    element: string
+  } | null>(null)
 
   const [draggedHandCard, setDraggedHandCard] = useState<{
     index: number
@@ -982,6 +992,20 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
       cardType: card.type,
     })
     setTimeout(() => setDrawAnimation(null), 1300)
+  }, [])
+  
+  // Helper to show destruction animation
+  const showDestructionAnimation = useCallback((card: GameCard, x: number, y: number) => {
+    const id = `destruction-${Date.now()}`
+    setDestructionAnimation({
+      id,
+      cardName: card.name,
+      cardImage: card.image,
+      x,
+      y,
+      element: card.element || "neutral",
+    })
+    setTimeout(() => setDestructionAnimation(null), 1200)
   }, [])
   
   // If mode is "player", show the multiplayer lobby system
@@ -2600,25 +2624,33 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
             const targetElement = document.querySelector(`[data-enemy-unit="${targetIndex}"]`)
             const targetRect = targetElement?.getBoundingClientRect()
 
-            setEnemyField((prev) => {
-              const newUnitZone = [...prev.unitZone]
-              const newGraveyard = [...prev.graveyard]
-              if (newDefenderDp <= 0) {
-                if (targetRect) {
-                  triggerExplosion(
-                    // Use triggerExplosion instead of createExplosionEffect
-                    targetRect.left + targetRect.width / 2,
-                    targetRect.top + targetRect.height / 2,
-                    attacker.element || "neutral",
-                  )
-                }
-                newGraveyard.push(defender)
-                newUnitZone[targetIndex] = null
-              } else {
-                newUnitZone[targetIndex] = { ...defender, currentDp: newDefenderDp }
-              }
-              return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
-            })
+  setEnemyField((prev) => {
+  const newUnitZone = [...prev.unitZone]
+  const newGraveyard = [...prev.graveyard]
+  if (newDefenderDp <= 0) {
+  if (targetRect) {
+  // Show destruction animation first
+  showDestructionAnimation(
+    defender,
+    targetRect.left + targetRect.width / 2,
+    targetRect.top + targetRect.height / 2
+  )
+  // Then trigger explosion particles
+  setTimeout(() => {
+    triggerExplosion(
+    targetRect.left + targetRect.width / 2,
+    targetRect.top + targetRect.height / 2,
+    attacker.element || "neutral",
+    )
+  }, 400)
+  }
+  newGraveyard.push(defender)
+  newUnitZone[targetIndex] = null
+  } else {
+  newUnitZone[targetIndex] = { ...defender, currentDp: newDefenderDp }
+  }
+  return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
+  })
 
             setPlayerField((prev) => {
               const newUnitZone = [...prev.unitZone]
@@ -4134,6 +4166,51 @@ const handleAllyUnitSelect = (index: number) => {
       <span className="text-white font-bold text-sm drop-shadow-lg">
         {drawAnimation.cardName}
       </span>
+    </div>
+  </div>
+  )}
+  
+  {/* Card Destruction Animation */}
+  {destructionAnimation && (
+  <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
+    {/* Shatter card animation at destruction position */}
+    <div 
+      className="destruction-container"
+      style={{
+        left: destructionAnimation.x,
+        top: destructionAnimation.y,
+      }}
+    >
+      {/* Card image that shatters */}
+      <div className="destruction-card">
+        <img 
+          src={destructionAnimation.cardImage} 
+          alt={destructionAnimation.cardName}
+          className="w-full h-full object-cover rounded"
+        />
+      </div>
+      
+      {/* Shatter fragments */}
+      {[...Array(12)].map((_, i) => (
+        <div 
+          key={i}
+          className={`destruction-fragment destruction-fragment-${i + 1}`}
+          style={{
+            backgroundImage: `url(${destructionAnimation.cardImage})`,
+            backgroundSize: '100% 100%',
+          }}
+        />
+      ))}
+      
+      {/* Flash effect */}
+      <div className="destruction-flash" />
+      
+      {/* Card name */}
+      <div className="destruction-name">
+        <span className="text-red-400 font-bold text-xs uppercase tracking-wider">
+          {destructionAnimation.cardName}
+        </span>
+      </div>
     </div>
   </div>
   )}
