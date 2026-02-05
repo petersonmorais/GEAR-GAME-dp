@@ -634,16 +634,16 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       { id: "lp", label: "Atacar LP", description: "Causa 3 de dano direto ao LP do oponente" },
     ],
     canActivate: (context) => {
-      // Check if player has Scandinavel Angel Hrotti on field
-      const hasHrotti = context.playerField.unitZone.some((u) => 
-        u !== null && u.name === "Scandinavel Angel Hrotti"
-      )
-      
-      if (!hasHrotti) {
-        return { canActivate: false, reason: "Voce precisa ter Scandinavel Angel Hrotti no campo" }
-      }
-      return { canActivate: true }
-    },
+  // Check if player has Scandinavian Angel Hrotti on field (any variant name)
+  const hasHrotti = context.playerField.unitZone.some((u) =>
+  u !== null && (u.name === "Scandinavian Angel Hrotti" || u.name?.toLowerCase().includes("hrotti"))
+  )
+  
+  if (!hasHrotti) {
+  return { canActivate: false, reason: "Voce precisa ter Scandinavian Angel Hrotti no campo" }
+  }
+  return { canActivate: true }
+  },
     resolve: (context, targets) => {
       const chosenOption = targets?.chosenOption
       
@@ -703,13 +703,13 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
       { id: "lp", label: "Atacar LP", description: "Causa 4 de dano direto ao LP do oponente" },
     ],
     canActivate: (context) => {
-      // Check if player has Scandinavel Angel Logi on field
+      // Check if player has Scandinavian Angel Logi on field (any variant name)
       const hasLogi = context.playerField.unitZone.some((u) => 
-        u !== null && u.name === "Scandinavel Angel Logi"
+        u !== null && (u.name === "Scandinavian Angel Logi" || u.name?.toLowerCase().includes("logi"))
       )
       
       if (!hasLogi) {
-        return { canActivate: false, reason: "Voce precisa ter Scandinavel Angel Logi no campo" }
+        return { canActivate: false, reason: "Voce precisa ter Scandinavian Angel Logi no campo" }
       }
       return { canActivate: true }
     },
