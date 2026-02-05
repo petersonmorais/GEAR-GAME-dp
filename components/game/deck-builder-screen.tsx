@@ -26,24 +26,28 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
   const [selectedPlaymatId, setSelectedPlaymatId] = useState<string | null>(null)
   const [useGlobalPlaymat, setUseGlobalPlaymat] = useState(true)
   const [showPlaymatSelector, setShowPlaymatSelector] = useState(false)
+  const [zoomedCard, setZoomedCard] = useState<Card | null>(null)
 
   const MIN_CARDS = 10
   const MAX_CARDS = 20
   const MAX_COPIES_PER_CARD = 4 // Maximum copies of same card allowed in deck
 
-  // Count how many copies of each card the player owns in collection
-  const getOwnedCopies = (cardName: string) => {
-    return collection.filter((c) => c.name === cardName).length
+  // Create unique card key using name + rarity (same character with different rarities are different cards)
+  const getCardKey = (card: Card) => `${card.name}-${card.rarity}`
+
+  // Count how many copies of each card the player owns in collection (by name + rarity)
+  const getOwnedCopies = (card: Card) => {
+    return collection.filter((c) => c.name === card.name && c.rarity === card.rarity).length
   }
 
-  // Get unique cards with their owned count
+  // Get unique cards with their owned count (grouped by name + rarity)
   const uniqueCards = collection.reduce(
     (acc, card) => {
-      const baseId = card.id.split("-").slice(0, -2).join("-") || card.id
-      if (!acc[baseId]) {
-        acc[baseId] = { ...card, ownedCount: 1 }
+      const cardKey = getCardKey(card)
+      if (!acc[cardKey]) {
+        acc[cardKey] = { ...card, ownedCount: 1 }
       } else {
-        acc[baseId].ownedCount = (acc[baseId].ownedCount || 1) + 1
+        acc[cardKey].ownedCount = (acc[cardKey].ownedCount || 1) + 1
       }
       return acc
     },
@@ -59,27 +63,28 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
     return matchesSearch && matchesRarity && matchesType
   })
 
-  const getCardCopiesInDeck = (cardName: string) => {
-    return deckCards.filter((c) => c.name === cardName).length
+  // Count copies in deck by name + rarity
+  const getCardCopiesInDeck = (card: Card) => {
+    return deckCards.filter((c) => c.name === card.name && c.rarity === card.rarity).length
   }
 
   // Get the maximum allowed copies for a card (minimum between deck limit and owned count)
-  const getMaxAllowedCopies = (cardName: string) => {
-    const ownedCopies = getOwnedCopies(cardName)
+  const getMaxAllowedCopies = (card: Card) => {
+    const ownedCopies = getOwnedCopies(card)
     return Math.min(MAX_COPIES_PER_CARD, ownedCopies)
   }
 
   // Centralized validation function
   const canAddCardToDeck = (card: Card): { canAdd: boolean; reason?: string; maxAllowed: number } => {
-    const copiesInDeck = getCardCopiesInDeck(card.name)
-    const maxAllowed = getMaxAllowedCopies(card.name)
+    const copiesInDeck = getCardCopiesInDeck(card)
+    const maxAllowed = getMaxAllowedCopies(card)
     
     if (deckCards.length >= MAX_CARDS) {
       return { canAdd: false, reason: "Deck cheio", maxAllowed }
     }
     
     if (copiesInDeck >= maxAllowed) {
-      const ownedCopies = getOwnedCopies(card.name)
+      const ownedCopies = getOwnedCopies(card)
       const limitReason = ownedCopies < MAX_COPIES_PER_CARD 
         ? `Voce possui apenas ${ownedCopies}` 
         : `Maximo de ${MAX_COPIES_PER_CARD} copias por deck`
@@ -377,29 +382,30 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
           {/* Card grid */}
           <div className="flex-1 p-3 overflow-y-auto">
             <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 gap-2">
-              {filteredCards.map((card) => {
-                const copiesInDeck = getCardCopiesInDeck(card.name)
-                const { canAdd, maxAllowed, reason } = canAddCardToDeck(card)
+                {filteredCards.map((card) => {
+                  const copiesInDeck = getCardCopiesInDeck(card)
+                  const { canAdd, maxAllowed, reason } = canAddCardToDeck(card)
                 const isAtLimit = copiesInDeck >= maxAllowed
 
-                return (
-                  <div
-                    key={card.id}
-                    onClick={() => canAdd && addCardToDeck(card)}
-                    className={`relative aspect-[3/4] rounded-lg overflow-hidden shadow-lg transition-all duration-200 ${
-                      canAdd ? "cursor-pointer transform hover:scale-110 hover:z-10" : "cursor-not-allowed opacity-50 grayscale"
-                    } ${
-                      card.rarity === "LR"
-                        ? "ring-2 ring-red-400"
-                        : card.rarity === "UR"
-                          ? "ring-2 ring-yellow-400"
-                          : card.rarity === "SR"
-                            ? "ring-1 ring-purple-400"
-                            : ""
-                    }`}
-                    title={!canAdd ? reason : `Clique para adicionar (${copiesInDeck}/${maxAllowed})`}
-                  >
-                    <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
+  return (
+  <div
+  key={card.id}
+  onClick={() => setZoomedCard(card)}
+  onDoubleClick={() => canAdd && addCardToDeck(card)}
+  className={`relative aspect-[3/4] rounded-lg overflow-hidden shadow-lg transition-all duration-200 ${
+  canAdd ? "cursor-pointer transform hover:scale-110 hover:z-10" : "cursor-not-allowed opacity-50 grayscale"
+  } ${
+  card.rarity === "LR"
+  ? "ring-2 ring-red-400"
+  : card.rarity === "UR"
+  ? "ring-2 ring-yellow-400"
+  : card.rarity === "SR"
+  ? "ring-1 ring-purple-400"
+  : ""
+  }`}
+  title={!canAdd ? reason : `Clique para ver, duplo clique para adicionar (${copiesInDeck}/${maxAllowed})`}
+  >
+  <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
                     
                     {/* Copies indicator: X/Y (in deck / max allowed) */}
                     <div className={`absolute top-1 right-1 text-white text-xs px-1.5 py-0.5 rounded-full font-bold shadow-lg ${
@@ -542,22 +548,78 @@ export default function DeckBuilderScreen({ onBack }: DeckBuilderScreenProps) {
           {/* Deck cards grid */}
           <div className="flex-1 p-3 overflow-y-auto">
             <div className="grid grid-cols-4 gap-2">
-              {deckCards.map((card, index) => (
-                <div
-                  key={`${card.id}-${index}`}
-                  onClick={() => removeCardFromDeck(index)}
-                  className="relative aspect-[3/4] rounded-lg overflow-hidden shadow-lg cursor-pointer transform hover:scale-110 transition-all group"
-                >
-                  <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
-                  <div className="absolute inset-0 bg-red-500/0 group-hover:bg-red-500/60 transition-colors flex items-center justify-center">
-                    <X className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+  {deckCards.map((card, index) => (
+  <div
+  key={`${card.id}-${index}`}
+  onClick={() => setZoomedCard(card)}
+  onDoubleClick={() => removeCardFromDeck(index)}
+  className="relative aspect-[3/4] rounded-lg overflow-hidden shadow-lg cursor-pointer transform hover:scale-110 transition-all group"
+  title="Clique para ver, duplo clique para remover"
+  >
+  <Image src={card.image || "/placeholder.svg"} alt={card.name} fill className="object-cover" />
+  <div className="absolute inset-0 bg-red-500/0 group-hover:bg-red-500/60 transition-colors flex items-center justify-center">
+  <X className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+  </div>
+  </div>
+  ))}
+  </div>
+  </div>
+  </div>
+  </div>
+  
+  {/* Card zoom modal */}
+  {zoomedCard && (
+    <div
+      className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={() => setZoomedCard(null)}
+    >
+      <div className="relative w-full max-w-sm aspect-[3/4] animate-float">
+        <div className="absolute inset-0 blur-3xl bg-gradient-to-r from-cyan-500 to-purple-500 opacity-30" />
+        <Image
+          src={zoomedCard.image || "/placeholder.svg"}
+          alt={zoomedCard.name}
+          fill
+          className={`object-contain rounded-2xl ${
+            zoomedCard.rarity === "LR"
+              ? "rarity-lr"
+              : zoomedCard.rarity === "UR"
+                ? "rarity-ur"
+                : zoomedCard.rarity === "SR"
+                  ? "rarity-sr"
+                  : "rarity-r"
+          }`}
+        />
       </div>
+
+      {/* Card info */}
+      <div className="absolute bottom-8 left-0 right-0 text-center">
+        <h3 className="text-2xl font-bold text-white mb-2">{zoomedCard.name}</h3>
+        <span
+          className={`px-4 py-1 rounded-full text-sm font-bold ${
+            zoomedCard.rarity === "LR"
+              ? "bg-gradient-to-r from-red-500 to-amber-500 text-white"
+              : zoomedCard.rarity === "UR"
+                ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-black"
+                : zoomedCard.rarity === "SR"
+                  ? "bg-purple-500 text-white"
+                  : "bg-slate-500 text-white"
+          }`}
+        >
+          {zoomedCard.rarity}
+        </span>
+        {zoomedCard.type === "unit" && zoomedCard.dp && (
+          <p className="text-cyan-400 font-bold mt-2">DP: {zoomedCard.dp}</p>
+        )}
+      </div>
+
+      <button
+        onClick={() => setZoomedCard(null)}
+        className="absolute top-4 right-4 p-2 glass rounded-full hover:bg-white/20 transition-colors"
+      >
+        <X className="w-6 h-6 text-white" />
+      </button>
     </div>
+  )}
+  </div>
   )
 }
