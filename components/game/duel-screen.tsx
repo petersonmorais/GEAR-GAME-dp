@@ -674,18 +674,33 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         
         const currentDp = enemyUnit.currentDp || enemyUnit.dp
         const newDp = Math.max(0, currentDp - 3)
+        const isDestroyed = newDp <= 0
         
         context.setEnemyField((prev) => {
           const newUnitZone = [...prev.unitZone]
-          if (newUnitZone[enemyIndex]) {
-            newUnitZone[enemyIndex] = {
-              ...newUnitZone[enemyIndex]!,
-              currentDp: newDp,
+          const newGraveyard = [...prev.graveyard]
+          
+          if (isDestroyed) {
+            // Unit is destroyed - send to graveyard
+            if (newUnitZone[enemyIndex]) {
+              newGraveyard.push(newUnitZone[enemyIndex]!)
+            }
+            newUnitZone[enemyIndex] = null
+          } else {
+            // Unit survives with reduced DP
+            if (newUnitZone[enemyIndex]) {
+              newUnitZone[enemyIndex] = {
+                ...newUnitZone[enemyIndex]!,
+                currentDp: newDp,
+              }
             }
           }
-          return { ...prev, unitZone: newUnitZone }
+          return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
         })
         
+        if (isDestroyed) {
+          return { success: true, message: `Fafnisbani! ${enemyUnit.name} foi destruido!` }
+        }
         return { success: true, message: `Fafnisbani! ${enemyUnit.name} recebeu 3 de dano! (${currentDp} -> ${newDp})` }
       }
       
@@ -743,18 +758,33 @@ const FUNCTION_CARD_EFFECTS: Record<string, FunctionCardEffect> = {
         
         const currentDp = enemyUnit.currentDp || enemyUnit.dp
         const newDp = Math.max(0, currentDp - 4)
+        const isDestroyed = newDp <= 0
         
         context.setEnemyField((prev) => {
           const newUnitZone = [...prev.unitZone]
-          if (newUnitZone[enemyIndex]) {
-            newUnitZone[enemyIndex] = {
-              ...newUnitZone[enemyIndex]!,
-              currentDp: newDp,
+          const newGraveyard = [...prev.graveyard]
+          
+          if (isDestroyed) {
+            // Unit is destroyed - send to graveyard
+            if (newUnitZone[enemyIndex]) {
+              newGraveyard.push(newUnitZone[enemyIndex]!)
+            }
+            newUnitZone[enemyIndex] = null
+          } else {
+            // Unit survives with reduced DP
+            if (newUnitZone[enemyIndex]) {
+              newUnitZone[enemyIndex] = {
+                ...newUnitZone[enemyIndex]!,
+                currentDp: newDp,
+              }
             }
           }
-          return { ...prev, unitZone: newUnitZone }
+          return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
         })
         
+        if (isDestroyed) {
+          return { success: true, message: `Devorar o Mundo! ${enemyUnit.name} foi destruido!` }
+        }
         return { success: true, message: `Devorar o Mundo! ${enemyUnit.name} recebeu 4 de dano! (${currentDp} -> ${newDp})` }
       }
       
