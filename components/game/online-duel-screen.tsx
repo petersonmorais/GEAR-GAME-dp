@@ -212,7 +212,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       cardImage: card.image,
       cardType: card.type,
     })
-    setTimeout(() => setDrawAnimation(null), 1800)
+    setTimeout(() => setDrawAnimation(null), 1300)
   }, [])
 
   // Get my deck and opponent deck
@@ -2074,47 +2074,42 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
   </div>
   )}
   
-  {/* Draw Card Animation - Realistic deck to hand movement */}
+  {/* Draw Card Animation - Card pulled from deck to hand */}
   {drawAnimation && (
   <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
-    {/* Subtle background dim */}
-    <div className="absolute inset-0 bg-black/20 animate-fade-in" />
-    
-    {/* Card moving from deck (bottom-right) to hand (bottom-center) */}
-    <div className="absolute animate-deck-to-hand">
-      {/* Card glow trail */}
-      <div className="absolute -inset-2 rounded-lg bg-amber-400/40 blur-md animate-glow-trail" />
+    {/* Card moving from deck position to hand */}
+    <div className="draw-card-container">
+      {/* Glow effect - follows card */}
+      <div className="draw-card-glow" />
       
-      {/* Card frame */}
-      <div className="relative w-24 h-36 md:w-28 md:h-40 rounded-lg overflow-hidden border-2 border-amber-400/80 shadow-[0_0_20px_rgba(251,191,36,0.5)] animate-card-flip">
-        {/* Card back (visible at start) */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 backface-hidden animate-hide-back">
-          <div className="absolute inset-2 border border-amber-500/30 rounded-md" />
+      {/* The card itself */}
+      <div className="draw-card-frame">
+        {/* Card back */}
+        <div className="draw-card-back">
+          <div className="absolute inset-1.5 border border-cyan-500/40 rounded" />
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 opacity-60" />
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 opacity-70" />
           </div>
         </div>
         
-        {/* Card front (revealed) */}
-        <div className="absolute inset-0 backface-hidden animate-show-front">
+        {/* Card front */}
+        <div className="draw-card-front">
           <img 
             src={drawAnimation.cardImage} 
             alt={drawAnimation.cardName}
             className="w-full h-full object-cover"
           />
-          {/* Single clean shine sweep */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent animate-shine-sweep" />
+          {/* Shine effect */}
+          <div className="draw-card-shine" />
         </div>
       </div>
     </div>
     
-    {/* Card name tooltip - appears briefly */}
-    <div className="absolute bottom-32 left-1/2 -translate-x-1/2 animate-name-fade">
-      <div className="bg-slate-900/90 px-4 py-2 rounded-lg border border-amber-500/50 shadow-lg">
-        <p className="text-amber-400 font-bold text-sm text-center whitespace-nowrap">
-          {drawAnimation.cardName}
-        </p>
-      </div>
+    {/* Card name - appears at peak */}
+    <div className="draw-card-name">
+      <span className="text-white font-bold text-sm drop-shadow-lg">
+        {drawAnimation.cardName}
+      </span>
     </div>
   </div>
   )}

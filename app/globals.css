@@ -574,95 +574,137 @@
   background: linear-gradient(135deg, #60a5fa, #a78bfa);
 }
 
-/* Draw Card Animation - Realistic deck to hand movement */
-@keyframes deck-to-hand {
+/* Draw Card Animation - Smooth deck to hand */
+.draw-card-container {
+  position: absolute;
+  bottom: 12%;
+  right: 5%;
+  width: 80px;
+  height: 112px;
+  animation: draw-path 1.2s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+  transform-style: preserve-3d;
+}
+
+@media (min-width: 768px) {
+  .draw-card-container {
+    width: 96px;
+    height: 134px;
+  }
+}
+
+.draw-card-glow {
+  position: absolute;
+  inset: -4px;
+  border-radius: 10px;
+  background: radial-gradient(ellipse, rgba(56, 189, 248, 0.6) 0%, transparent 70%);
+  filter: blur(8px);
+  animation: draw-glow 1.2s ease-out forwards;
+}
+
+.draw-card-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+  transform-style: preserve-3d;
+  animation: draw-flip 1.2s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+}
+
+.draw-card-back {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border: 2px solid rgba(56, 189, 248, 0.5);
+  border-radius: 8px;
+  backface-visibility: hidden;
+  transform: rotateY(180deg);
+}
+
+.draw-card-front {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.draw-card-shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.5) 50%, transparent 60%);
+  animation: draw-shine 1.2s ease-out forwards;
+}
+
+.draw-card-name {
+  position: absolute;
+  bottom: 40%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 16px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  border-radius: 8px;
+  animation: draw-name 1.2s ease-out forwards;
+  white-space: nowrap;
+}
+
+@keyframes draw-path {
   0% {
-    bottom: 15%;
-    right: 8%;
-    transform: scale(0.5) rotateY(180deg);
-    opacity: 0;
-  }
-  10% {
-    bottom: 18%;
-    right: 8%;
-    transform: scale(0.7) rotateY(180deg);
-    opacity: 1;
-  }
-  35% {
-    bottom: 45%;
-    right: 25%;
-    transform: scale(1) rotateY(90deg);
-  }
-  55% {
-    bottom: 50%;
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%) scale(1.05) rotateY(0deg);
-  }
-  75% {
-    bottom: 30%;
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%) scale(1) rotateY(0deg);
-  }
-  100% {
     bottom: 12%;
-    left: 50%;
+    right: 5%;
+    left: auto;
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  15% {
+    bottom: 18%;
+    right: 5%;
+    left: auto;
+    transform: scale(0.85);
+  }
+  50% {
+    bottom: 45%;
     right: auto;
-    transform: translateX(-50%) scale(0.8) rotateY(0deg);
-    opacity: 0;
+    left: 50%;
+    transform: translateX(-50%) scale(1.1);
   }
-}
-
-@keyframes card-flip {
-  0%, 25% {
-    transform: perspective(800px) rotateY(180deg);
-  }
-  45% {
-    transform: perspective(800px) rotateY(90deg);
-  }
-  65%, 100% {
-    transform: perspective(800px) rotateY(0deg);
-  }
-}
-
-@keyframes hide-back {
-  0%, 35% {
-    opacity: 1;
-  }
-  45%, 100% {
-    opacity: 0;
-  }
-}
-
-@keyframes show-front {
-  0%, 35% {
-    opacity: 0;
-  }
-  45%, 100% {
-    opacity: 1;
-  }
-}
-
-@keyframes shine-sweep {
-  0%, 45% {
-    transform: translateX(-150%);
-    opacity: 0;
-  }
-  55% {
-    opacity: 1;
+  70% {
+    bottom: 38%;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%) scale(1);
   }
   100% {
-    transform: translateX(150%);
+    bottom: 18%;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%) scale(0.85);
     opacity: 0;
   }
 }
 
-@keyframes glow-trail {
+@keyframes draw-flip {
+  0%, 20% {
+    transform: perspective(600px) rotateY(180deg);
+  }
+  50% {
+    transform: perspective(600px) rotateY(0deg);
+  }
+  100% {
+    transform: perspective(600px) rotateY(0deg);
+  }
+}
+
+@keyframes draw-glow {
   0% {
     opacity: 0;
   }
-  15%, 65% {
+  20%, 60% {
     opacity: 1;
   }
   100% {
@@ -670,22 +712,40 @@
   }
 }
 
-@keyframes name-fade {
-  0%, 45% {
+@keyframes draw-shine {
+  0%, 40% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  70% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes draw-name {
+  0%, 35% {
     opacity: 0;
     transform: translateX(-50%) translateY(10px);
   }
-  60% {
+  50% {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
-  85% {
+  80% {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
   100% {
     opacity: 0;
-    transform: translateX(-50%) translateY(-5px);
+    transform: translateX(-50%) translateY(-10px);
   }
 }
 
@@ -698,40 +758,4 @@
   }
 }
 
-.animate-deck-to-hand {
-  position: absolute;
-  animation: deck-to-hand 1.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
 
-.animate-card-flip {
-  animation: card-flip 1.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  transform-style: preserve-3d;
-}
-
-.animate-hide-back {
-  animation: hide-back 1.3s ease-out forwards;
-}
-
-.animate-show-front {
-  animation: show-front 1.3s ease-out forwards;
-}
-
-.animate-shine-sweep {
-  animation: shine-sweep 1.3s ease-out forwards;
-}
-
-.animate-glow-trail {
-  animation: glow-trail 1.3s ease-out forwards;
-}
-
-.animate-name-fade {
-  animation: name-fade 1.3s ease-out forwards;
-}
-
-.animate-fade-in {
-  animation: fade-in 0.2s ease-out forwards;
-}
-
-.backface-hidden {
-  backface-visibility: hidden;
-}
