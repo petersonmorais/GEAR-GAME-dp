@@ -106,9 +106,6 @@ interface FunctionCardEffect {
   canActivate: (context: EffectContext) => { canActivate: boolean; reason?: string }
   resolve: (context: EffectContext, targets?: EffectTargets) => EffectResult
 }
-  canActivate: (context: EffectContext) => { canActivate: boolean; reason?: string }
-  resolve: (context: EffectContext, targets?: EffectTargets) => EffectResult
-}
 
 interface EffectContext {
   playerField: FieldState
