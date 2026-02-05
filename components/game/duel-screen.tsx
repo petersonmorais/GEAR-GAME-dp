@@ -4098,64 +4098,46 @@ const handleAllyUnitSelect = (index: number) => {
   </div>
   )}
   
-  {/* Draw Card Animation */}
+  {/* Draw Card Animation - Realistic deck to hand movement */}
   {drawAnimation && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-    {/* Background glow effect */}
-    <div className="absolute inset-0 bg-black/40 animate-fade-in" />
+  <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
+    {/* Subtle background dim */}
+    <div className="absolute inset-0 bg-black/20 animate-fade-in" />
     
-    {/* Card container with animations */}
-    <div className="relative animate-card-draw">
-      {/* Outer glow ring */}
-      <div className="absolute -inset-8 rounded-full bg-gradient-to-r from-cyan-500 via-purple-500 to-amber-500 opacity-60 blur-2xl animate-pulse" />
-      
-      {/* Inner glow */}
-      <div className="absolute -inset-4 rounded-xl bg-gradient-to-b from-white/30 to-transparent blur-xl animate-glow-pulse" />
+    {/* Card moving from deck (bottom-right) to hand (bottom-center) */}
+    <div className="absolute animate-deck-to-hand">
+      {/* Card glow trail */}
+      <div className="absolute -inset-2 rounded-lg bg-amber-400/40 blur-md animate-glow-trail" />
       
       {/* Card frame */}
-      <div className="relative w-48 h-72 md:w-56 md:h-80 rounded-xl overflow-hidden border-4 border-white/50 shadow-2xl transform transition-all duration-500 animate-card-reveal">
-        {/* Card image */}
-        <img 
-          src={drawAnimation.cardImage} 
-          alt={drawAnimation.cardName}
-          className="w-full h-full object-cover"
-        />
+      <div className="relative w-24 h-36 md:w-28 md:h-40 rounded-lg overflow-hidden border-2 border-amber-400/80 shadow-[0_0_20px_rgba(251,191,36,0.5)] animate-card-flip">
+        {/* Card back (visible at start) */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 backface-hidden animate-hide-back">
+          <div className="absolute inset-2 border border-amber-500/30 rounded-md" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 opacity-60" />
+          </div>
+        </div>
         
-        {/* Shine effect overlay */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent animate-shine" />
-        
-        {/* Card type indicator */}
-        <div className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-          drawAnimation.cardType === "unit" 
-            ? "bg-red-500/90 text-white" 
-            : drawAnimation.cardType === "item" 
-            ? "bg-purple-500/90 text-white"
-            : drawAnimation.cardType === "scenario"
-            ? "bg-blue-500/90 text-white"
-            : "bg-amber-500/90 text-white"
-        }`}>
-          {drawAnimation.cardType === "unit" ? "Unidade" : 
-           drawAnimation.cardType === "item" ? "Function" :
-           drawAnimation.cardType === "scenario" ? "Cenario" : "Carta"}
+        {/* Card front (revealed) */}
+        <div className="absolute inset-0 backface-hidden animate-show-front">
+          <img 
+            src={drawAnimation.cardImage} 
+            alt={drawAnimation.cardName}
+            className="w-full h-full object-cover"
+          />
+          {/* Single clean shine sweep */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent animate-shine-sweep" />
         </div>
       </div>
-      
-      {/* Sparkle particles */}
-      <div className="absolute -top-4 -left-4 w-3 h-3 rounded-full bg-cyan-400 animate-sparkle-1" />
-      <div className="absolute -top-2 -right-6 w-2 h-2 rounded-full bg-purple-400 animate-sparkle-2" />
-      <div className="absolute -bottom-4 -left-2 w-2 h-2 rounded-full bg-amber-400 animate-sparkle-3" />
-      <div className="absolute -bottom-2 -right-4 w-3 h-3 rounded-full bg-pink-400 animate-sparkle-4" />
-      <div className="absolute top-1/2 -left-6 w-2 h-2 rounded-full bg-green-400 animate-sparkle-5" />
-      <div className="absolute top-1/2 -right-6 w-2 h-2 rounded-full bg-blue-400 animate-sparkle-6" />
     </div>
     
-    {/* Card name label */}
-    <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 animate-name-reveal">
-      <div className="bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-900/95 px-6 py-3 rounded-xl border border-white/30 shadow-2xl">
-        <p className="text-white font-bold text-lg md:text-xl text-center whitespace-nowrap">
+    {/* Card name tooltip - appears briefly */}
+    <div className="absolute bottom-32 left-1/2 -translate-x-1/2 animate-name-fade">
+      <div className="bg-slate-900/90 px-4 py-2 rounded-lg border border-amber-500/50 shadow-lg">
+        <p className="text-amber-400 font-bold text-sm text-center whitespace-nowrap">
           {drawAnimation.cardName}
         </p>
-        <p className="text-cyan-400 text-xs text-center mt-1 uppercase tracking-widest">Carta Comprada</p>
       </div>
     </div>
   </div>
