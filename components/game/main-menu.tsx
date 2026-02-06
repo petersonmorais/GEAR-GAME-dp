@@ -199,23 +199,23 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
       {/* Logo */}
       <div className="mb-10 relative z-10 text-center flex flex-col items-center">
         {/* Version number above logo */}
-        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-3">v1.1.1</div>
+        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-4">v1.1.2</div>
         
         <div className="relative inline-block">
           {/* Glow effect behind logo */}
-          <div className="absolute inset-0 blur-3xl bg-gradient-to-r from-cyan-500/40 via-blue-500/30 to-cyan-500/40 opacity-50 animate-pulse scale-110" />
+          <div className="absolute inset-0 blur-[60px] bg-gradient-to-r from-cyan-500/50 via-blue-400/40 to-cyan-500/50 opacity-60 animate-pulse scale-125" />
 
           <Image
             src="/images/gp-cg-logo.png"
             alt="Gear Perks Card Game"
-            width={400}
-            height={400}
-            className="relative w-64 h-auto sm:w-72 md:w-80 lg:w-96 drop-shadow-[0_0_25px_rgba(56,189,248,0.4)]"
+            width={600}
+            height={600}
+            className="relative w-80 h-auto sm:w-96 md:w-[28rem] lg:w-[32rem] drop-shadow-[0_0_35px_rgba(56,189,248,0.5)]"
             priority
           />
         </div>
 
-        <p className="text-slate-500 text-sm mt-2 tracking-wider">2025 Gear Perks Oficial Card Game, Made in BRAZIL</p>
+        <p className="text-slate-500 text-sm mt-3 tracking-wider">2025 Gear Perks Oficial Card Game, Made in BRAZIL</p>
       </div>
 
       {/* Menu buttons */}
