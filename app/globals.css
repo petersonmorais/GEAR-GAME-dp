@@ -93,23 +93,33 @@
 
   /* ===== FALLING CARDS BACKGROUND ===== */
   .falling-card-wrapper {
-    top: -130px;
+    top: -140px;
     will-change: transform, opacity;
+  }
+
+  .falling-card-face {
+    will-change: transform;
   }
 
   @keyframes fallingCard {
     0% {
-      transform: translateY(-130px);
+      transform: translateY(-140px);
       opacity: 0;
     }
-    2% {
-      opacity: 1;
+    3% {
+      opacity: 0.55;
     }
-    94% {
-      opacity: 1;
+    8% {
+      opacity: 0.7;
+    }
+    90% {
+      opacity: 0.7;
+    }
+    96% {
+      opacity: 0.3;
     }
     100% {
-      transform: translateY(calc(100vh + 150px));
+      transform: translateY(calc(100vh + 160px));
       opacity: 0;
     }
   }
@@ -118,50 +128,63 @@
     0%, 100% {
       transform: translateX(0);
     }
-    25% {
-      transform: translateX(24px);
+    20% {
+      transform: translateX(18px);
     }
-    75% {
-      transform: translateX(-24px);
+    50% {
+      transform: translateX(-12px);
+    }
+    80% {
+      transform: translateX(20px);
     }
   }
   
   @keyframes cardFlipSpin {
     0% {
-      transform: perspective(800px) rotateY(0deg) rotateZ(-4deg);
+      transform: perspective(900px) rotateY(0deg) rotateZ(-3deg);
     }
-    12% {
-      transform: perspective(800px) rotateY(50deg) rotateZ(-1deg);
+    14% {
+      transform: perspective(900px) rotateY(55deg) rotateZ(-1deg);
     }
-    25% {
-      transform: perspective(800px) rotateY(90deg) rotateZ(2deg);
+    28% {
+      transform: perspective(900px) rotateY(95deg) rotateZ(1deg);
     }
-    37% {
-      transform: perspective(800px) rotateY(50deg) rotateZ(4deg);
+    36% {
+      transform: perspective(900px) rotateY(55deg) rotateZ(3deg);
     }
     50% {
-      transform: perspective(800px) rotateY(0deg) rotateZ(2deg);
+      transform: perspective(900px) rotateY(0deg) rotateZ(2deg);
     }
-    62% {
-      transform: perspective(800px) rotateY(-50deg) rotateZ(-1deg);
+    64% {
+      transform: perspective(900px) rotateY(-55deg) rotateZ(0deg);
     }
-    75% {
-      transform: perspective(800px) rotateY(-90deg) rotateZ(-3deg);
+    78% {
+      transform: perspective(900px) rotateY(-95deg) rotateZ(-2deg);
     }
-    87% {
-      transform: perspective(800px) rotateY(-50deg) rotateZ(-4deg);
+    86% {
+      transform: perspective(900px) rotateY(-55deg) rotateZ(-3deg);
     }
     100% {
-      transform: perspective(800px) rotateY(0deg) rotateZ(-4deg);
+      transform: perspective(900px) rotateY(0deg) rotateZ(-3deg);
     }
   }
   
-  @keyframes cardShimmer {
+  /* Holographic light sweep across each card */
+  @keyframes cardHoloShift {
     0%, 100% {
-      opacity: 0.4;
+      opacity: 0;
+      transform: translateX(-60%) skewX(-8deg);
+    }
+    40% {
+      opacity: 1;
     }
     50% {
-      opacity: 0.65;
+      opacity: 1;
+      transform: translateX(60%) skewX(-8deg);
+    }
+    60% {
+      opacity: 0;
+      transform: translateX(80%) skewX(-8deg);
     }
   }
   

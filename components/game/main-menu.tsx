@@ -34,14 +34,14 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
   const [isOpening, setIsOpening] = useState(false)
   const [isClaimingAll, setIsClaimingAll] = useState(false)
   const [claimAllResults, setClaimAllResults] = useState<{ cards: any[]; coins: number } | null>(null)
-  // Falling card color configs - more vibrant and visible
-  const CARD_COLORS = [
-    { gradient: "linear-gradient(135deg, #3b82f6, #1d4ed8)", border: "#60a5fa", glow: "0 0 12px rgba(59,130,246,0.5)" },
-    { gradient: "linear-gradient(135deg, #ef4444, #b91c1c)", border: "#f87171", glow: "0 0 12px rgba(239,68,68,0.5)" },
-    { gradient: "linear-gradient(135deg, #f59e0b, #d97706)", border: "#fbbf24", glow: "0 0 12px rgba(245,158,11,0.5)" },
-    { gradient: "linear-gradient(135deg, #a855f7, #7c3aed)", border: "#c084fc", glow: "0 0 12px rgba(168,85,247,0.5)" },
-    { gradient: "linear-gradient(135deg, #10b981, #059669)", border: "#34d399", glow: "0 0 12px rgba(16,185,129,0.5)" },
-    { gradient: "linear-gradient(135deg, #cbd5e1, #94a3b8)", border: "#e2e8f0", glow: "0 0 12px rgba(203,213,225,0.5)" },
+  // Card rarity themes - rich metallic/jewel tones
+  const CARD_THEMES = [
+    { bg: "linear-gradient(145deg, #1e3a5f, #0c4a6e, #164e63)", border: "#38bdf8", glow: "rgba(56,189,248,0.35)", accent: "#7dd3fc", inner: "#0c4a6e" },
+    { bg: "linear-gradient(145deg, #5b1a1a, #7f1d1d, #991b1b)", border: "#fca5a5", glow: "rgba(252,165,165,0.3)", accent: "#fecaca", inner: "#7f1d1d" },
+    { bg: "linear-gradient(145deg, #713f12, #92400e, #78350f)", border: "#fcd34d", glow: "rgba(252,211,77,0.35)", accent: "#fde68a", inner: "#92400e" },
+    { bg: "linear-gradient(145deg, #3b0764, #581c87, #6b21a8)", border: "#d8b4fe", glow: "rgba(216,180,254,0.3)", accent: "#e9d5ff", inner: "#581c87" },
+    { bg: "linear-gradient(145deg, #064e3b, #065f46, #047857)", border: "#6ee7b7", glow: "rgba(110,231,183,0.3)", accent: "#a7f3d0", inner: "#065f46" },
+    { bg: "linear-gradient(145deg, #1e293b, #334155, #475569)", border: "#e2e8f0", glow: "rgba(226,232,240,0.25)", accent: "#f1f5f9", inner: "#334155" },
   ]
 
   const [fallingCards, setFallingCards] = useState<Array<{
@@ -51,22 +51,20 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
     duration: number
     width: number
     height: number
-    colorIndex: number
-    initialRotate: number
-    swayDirection: number
+    themeIndex: number
+    shimmerAngle: number
   }>>([])
 
   useEffect(() => {
-    const cards = Array.from({ length: 28 }, (_, i) => ({
+    const cards = Array.from({ length: 20 }, (_, i) => ({
       id: i,
-      x: (i * 3.7) % 96 + 2 + (Math.random() * 4 - 2),
-      delay: (i * 0.65) % 14 + Math.random() * 1.5,
-      duration: 16 + Math.random() * 10,
-      width: 44 + Math.random() * 18,
-      height: 62 + Math.random() * 24,
-      colorIndex: i % CARD_COLORS.length,
-      initialRotate: -15 + Math.random() * 30,
-      swayDirection: Math.random() > 0.5 ? 1 : -1,
+      x: (i * 5.1) % 94 + 3 + (Math.random() * 3 - 1.5),
+      delay: (i * 0.85) % 16 + Math.random() * 2,
+      duration: 18 + Math.random() * 12,
+      width: 48 + Math.random() * 16,
+      height: 68 + Math.random() * 20,
+      themeIndex: i % CARD_THEMES.length,
+      shimmerAngle: 110 + Math.random() * 40,
     }))
     setFallingCards(cards)
   }, [])
@@ -128,13 +126,12 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.5)_100%)]" />
       </div>
 
-      {/* Falling glowing cards */}
+      {/* Falling cards background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-[1]">
         {fallingCards.map((card) => {
-          const color = CARD_COLORS[card.colorIndex]
-          const swayDuration = 4.5 + (card.id % 5) * 0.6
-          const flipDuration = 8 + (card.id % 6) * 1.5
-          const shimmerDuration = 3 + (card.id % 4) * 1
+          const theme = CARD_THEMES[card.themeIndex]
+          const swayDur = 5 + (card.id % 4) * 0.8
+          const flipDur = 9 + (card.id % 5) * 1.5
           return (
             <div
               key={card.id}
@@ -145,79 +142,120 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
                 animationDelay: `${card.delay}s`,
               }}
             >
-              {/* Sway wrapper - horizontal drift */}
-              <div
-                style={{
-                  animation: `cardSway ${swayDuration}s ease-in-out infinite`,
-                  animationDelay: `${card.delay * 0.4}s`,
-                }}
-              >
-                {/* Flip/Rotate wrapper - 3D rotation */}
-                <div
-                  style={{
-                    animation: `cardFlipSpin ${flipDuration}s ease-in-out infinite`,
-                    animationDelay: `${card.delay * 0.7}s`,
-                    transformStyle: "preserve-3d",
-                  }}
-                >
-                  {/* Card front */}
+              {/* Sway */}
+              <div style={{ animation: `cardSway ${swayDur}s ease-in-out infinite`, animationDelay: `${card.delay * 0.4}s` }}>
+                {/* 3D flip */}
+                <div style={{ animation: `cardFlipSpin ${flipDur}s ease-in-out infinite`, animationDelay: `${card.delay * 0.7}s`, transformStyle: "preserve-3d" }}>
+                  {/* ---- CARD FRONT ---- */}
                   <div
+                    className="falling-card-face"
                     style={{
                       width: `${card.width}px`,
                       height: `${card.height}px`,
-                      background: color.gradient,
-                      border: `1.5px solid ${color.border}`,
-                      boxShadow: `${color.glow}, inset 0 1px 0 rgba(255,255,255,0.2)`,
-                      borderRadius: "7px",
-                      animation: `cardShimmer ${shimmerDuration}s ease-in-out infinite`,
-                      animationDelay: `${card.delay * 0.2}s`,
+                      background: theme.bg,
+                      border: `1.5px solid ${theme.border}`,
+                      borderRadius: "8px",
+                      boxShadow: `0 0 16px ${theme.glow}, 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15)`,
                       backfaceVisibility: "hidden",
+                      overflow: "hidden",
+                      position: "relative",
                     }}
                   >
-                    <div style={{ padding: "4px", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden", borderRadius: "6px" }}>
+                    {/* Holographic shine overlay */}
+                    <div className="falling-card-holo" style={{
+                      position: "absolute", inset: 0, borderRadius: "7px",
+                      background: `linear-gradient(${card.shimmerAngle}deg, transparent 30%, rgba(255,255,255,0.12) 45%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.12) 55%, transparent 70%)`,
+                      animation: `cardHoloShift ${3 + (card.id % 3) * 0.8}s ease-in-out infinite`,
+                      animationDelay: `${card.delay * 0.3}s`,
+                    }} />
+                    {/* Card inner structure */}
+                    <div style={{ position: "relative", padding: "5px", height: "100%", display: "flex", flexDirection: "column", gap: "4px" }}>
+                      {/* Art frame */}
                       <div style={{
-                        width: "100%",
-                        height: "50%",
+                        flex: "1",
                         borderRadius: "4px",
-                        background: "rgba(255,255,255,0.18)",
-                        boxShadow: "inset 0 1px 3px rgba(0,0,0,0.25)",
-                      }} />
-                      <div style={{ display: "flex", flexDirection: "column", gap: "3px", marginTop: "auto" }}>
-                        <div style={{ width: "80%", height: "3px", borderRadius: "2px", background: "rgba(255,255,255,0.22)" }} />
-                        <div style={{ width: "60%", height: "3px", borderRadius: "2px", background: "rgba(255,255,255,0.15)" }} />
-                        <div style={{ width: "45%", height: "3px", borderRadius: "2px", background: "rgba(255,255,255,0.09)" }} />
+                        background: `linear-gradient(180deg, ${theme.inner} 0%, rgba(0,0,0,0.3) 100%)`,
+                        border: `1px solid rgba(255,255,255,0.08)`,
+                        boxShadow: "inset 0 2px 6px rgba(0,0,0,0.4)",
+                        position: "relative",
+                        overflow: "hidden",
+                      }}>
+                        {/* Decorative diamond */}
+                        <div style={{
+                          position: "absolute", top: "50%", left: "50%",
+                          width: "40%", height: "40%",
+                          transform: "translate(-50%,-50%) rotate(45deg)",
+                          border: `1px solid ${theme.accent}`,
+                          opacity: 0.2,
+                          borderRadius: "2px",
+                        }} />
+                        <div style={{
+                          position: "absolute", top: "50%", left: "50%",
+                          width: "20%", height: "20%",
+                          transform: "translate(-50%,-50%) rotate(45deg)",
+                          background: theme.accent,
+                          opacity: 0.1,
+                          borderRadius: "1px",
+                        }} />
+                      </div>
+                      {/* Info strip */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "2px", padding: "0 1px" }}>
+                        <div style={{ width: "75%", height: "2.5px", borderRadius: "2px", background: `${theme.accent}`, opacity: 0.2 }} />
+                        <div style={{ width: "50%", height: "2px", borderRadius: "2px", background: `${theme.accent}`, opacity: 0.12 }} />
                       </div>
                     </div>
+                    {/* Border glow accent at top */}
+                    <div style={{
+                      position: "absolute", top: 0, left: "15%", right: "15%", height: "1px",
+                      background: `linear-gradient(90deg, transparent, ${theme.accent}, transparent)`,
+                      opacity: 0.4,
+                    }} />
                   </div>
-                  {/* Card back (when flipped) */}
+
+                  {/* ---- CARD BACK ---- */}
                   <div
+                    className="falling-card-face"
                     style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
+                      position: "absolute", top: 0, left: 0,
                       width: `${card.width}px`,
                       height: `${card.height}px`,
-                      background: `linear-gradient(135deg, #1e293b, #334155)`,
-                      border: `1.5px solid ${color.border}`,
-                      boxShadow: color.glow,
-                      borderRadius: "7px",
+                      background: "linear-gradient(145deg, #0f172a, #1e293b, #0f172a)",
+                      border: `1.5px solid ${theme.border}`,
+                      borderRadius: "8px",
+                      boxShadow: `0 0 14px ${theme.glow}, 0 2px 8px rgba(0,0,0,0.4)`,
                       backfaceVisibility: "hidden",
                       transform: "rotateY(180deg)",
+                      overflow: "hidden",
                     }}
                   >
-                    <div style={{ 
-                      width: "100%", height: "100%", 
+                    {/* Pattern */}
+                    <div style={{
+                      width: "100%", height: "100%",
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      borderRadius: "6px",
-                      background: `repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,0.03) 4px, rgba(255,255,255,0.03) 8px)`,
+                      background: `repeating-conic-gradient(rgba(255,255,255,0.02) 0% 25%, transparent 0% 50%) 0 0 / 10px 10px`,
                     }}>
+                      {/* Center emblem */}
                       <div style={{
-                        width: "60%", height: "60%",
-                        borderRadius: "4px",
-                        border: `1px solid rgba(255,255,255,0.1)`,
-                        background: "rgba(255,255,255,0.04)",
-                      }} />
+                        width: "50%", height: "50%",
+                        borderRadius: "6px",
+                        border: `1px solid rgba(255,255,255,0.06)`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <div style={{
+                          width: "50%", height: "50%",
+                          transform: "rotate(45deg)",
+                          border: `1px solid ${theme.border}`,
+                          opacity: 0.15,
+                          borderRadius: "3px",
+                        }} />
+                      </div>
                     </div>
+                    {/* Top edge shine */}
+                    <div style={{
+                      position: "absolute", top: 0, left: "20%", right: "20%", height: "1px",
+                      background: `linear-gradient(90deg, transparent, ${theme.accent}, transparent)`,
+                      opacity: 0.25,
+                    }} />
                   </div>
                 </div>
               </div>
@@ -226,11 +264,11 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
         })}
       </div>
 
-      {/* Subtle ambient light - no pulsing blur */}
+      {/* Ambient light blobs */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-[0]">
-        <div className="absolute top-[10%] left-[15%] w-72 h-72 bg-blue-500/[0.04] rounded-full blur-[100px]" />
-        <div className="absolute top-[55%] right-[10%] w-56 h-56 bg-purple-500/[0.04] rounded-full blur-[80px]" />
-        <div className="absolute bottom-[15%] left-[25%] w-64 h-64 bg-cyan-500/[0.04] rounded-full blur-[90px]" />
+        <div className="absolute top-[8%] left-[12%] w-80 h-80 bg-blue-500/[0.04] rounded-full blur-[120px]" />
+        <div className="absolute top-[50%] right-[8%] w-64 h-64 bg-purple-500/[0.04] rounded-full blur-[100px]" />
+        <div className="absolute bottom-[12%] left-[20%] w-72 h-72 bg-cyan-500/[0.04] rounded-full blur-[110px]" />
       </div>
 
       {/* Top bar */}
