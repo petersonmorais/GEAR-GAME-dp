@@ -202,10 +202,7 @@
     59% { opacity: 0; filter: brightness(1); }
   }
   
-  @keyframes logoShineSwipe {
-    0%, 40% { transform: translateX(-250%) rotate(25deg); }
-    60%, 100% { transform: translateX(250%) rotate(25deg); }
-  }
+
 
   /* Custom animations */
   @keyframes spin-slow {
