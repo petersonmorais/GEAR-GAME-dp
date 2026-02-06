@@ -1655,8 +1655,8 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           <div className="relative h-full flex flex-col justify-between p-1.5 pb-3 z-10">
             {/* Enemy Field */}
             <div className="flex justify-center items-center gap-3">
-              {/* Enemy Deck, Graveyard and Scenario */}
-              <div className="flex items-center gap-1">
+              {/* Enemy Deck, Graveyard, Scenario and Ultimate */}
+              <div className="flex items-start gap-1">
                 <div className="flex flex-col gap-1">
                   <div
                     className="w-14 h-20 bg-purple-900/80 rounded text-sm text-purple-300 flex items-center justify-center border border-purple-500/50 cursor-pointer hover:bg-purple-800/80 transition-colors"
@@ -1668,23 +1668,46 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                     {opponentField.deck.length}
                   </div>
                 </div>
-                {/* Enemy Scenario Zone - Horizontal slot */}
-                <div className="h-14 w-20 bg-amber-900/40 border border-amber-600/40 rounded flex items-center justify-center relative overflow-hidden">
-                  {opponentField.scenarioZone ? (
-                    <Image
-                      src={opponentField.scenarioZone.image || "/placeholder.svg"}
-                      alt={opponentField.scenarioZone.name}
-                      fill
-                      className="object-cover rounded"
-                      onMouseDown={() => handleCardPressStart(opponentField.scenarioZone!)}
-                      onMouseUp={handleCardPressEnd}
-                      onMouseLeave={handleCardPressEnd}
-                      onTouchStart={() => handleCardPressStart(opponentField.scenarioZone!)}
-                      onTouchEnd={handleCardPressEnd}
-                    />
-                  ) : (
-                    <span className="text-amber-500/50 text-[8px] text-center">SCENARIO</span>
-                  )}
+                <div className="flex flex-col gap-1">
+                  {/* Enemy Scenario Zone - Horizontal slot, aligned with unit zone */}
+                  <div className="h-14 w-20 bg-amber-900/40 border border-amber-600/40 rounded flex items-center justify-center relative overflow-hidden">
+                    {opponentField.scenarioZone ? (
+                      <Image
+                        src={opponentField.scenarioZone.image || "/placeholder.svg"}
+                        alt={opponentField.scenarioZone.name}
+                        fill
+                        className="object-cover rounded"
+                        onMouseDown={() => handleCardPressStart(opponentField.scenarioZone!)}
+                        onMouseUp={handleCardPressEnd}
+                        onMouseLeave={handleCardPressEnd}
+                        onTouchStart={() => handleCardPressStart(opponentField.scenarioZone!)}
+                        onTouchEnd={handleCardPressEnd}
+                      />
+                    ) : (
+                      <span className="text-amber-500/50 text-[8px] text-center">SCENARIO</span>
+                    )}
+                  </div>
+                  {/* Enemy Ultimate Zone - single green slot below scenario */}
+                  <div className="w-14 h-20 bg-emerald-900/40 border border-emerald-600/40 rounded flex items-center justify-center relative overflow-hidden mx-auto">
+                    {opponentField.ultimateZone ? (
+                      <>
+                        <Image
+                          src={opponentField.ultimateZone.image || "/placeholder.svg"}
+                          alt={opponentField.ultimateZone.name}
+                          fill
+                          className="object-cover rounded"
+                          onMouseDown={() => handleCardPressStart(opponentField.ultimateZone!)}
+                          onMouseUp={handleCardPressEnd}
+                          onMouseLeave={handleCardPressEnd}
+                          onTouchStart={() => handleCardPressStart(opponentField.ultimateZone!)}
+                          onTouchEnd={handleCardPressEnd}
+                        />
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-center text-xs text-white font-bold py-0.5">
+                          {opponentField.ultimateZone.currentDp} DP
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
                 </div>
               </div>
 
@@ -1907,53 +1930,107 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
                 </div>
               </div>
 
-              {/* Player Scenario Zone and Deck/Graveyard */}
-              <div className="flex items-center gap-1">
-                {/* Player Scenario Zone - Horizontal slot */}
-                {(() => {
-                  const isSelectedTarget =
-                    selectedHandCard !== null &&
-                    myField.hand[selectedHandCard]?.type === "scenario" &&
-                    !myField.scenarioZone
-                  const isDragTarget =
-                    draggedHandCard && draggedHandCard.card.type === "scenario" && !myField.scenarioZone
-                  const isDropping = dropTarget?.type === "scenario"
-                  const isValidDropTarget = isSelectedTarget || isDragTarget
+              {/* Player Scenario, Ultimate Zone and Deck/Graveyard */}
+              <div className="flex items-start gap-1">
+                <div className="flex flex-col gap-1">
+                  {/* Player Scenario Zone - Horizontal slot, aligned with unit zone */}
+                  {(() => {
+                    const isSelectedTarget =
+                      selectedHandCard !== null &&
+                      myField.hand[selectedHandCard]?.type === "scenario" &&
+                      !myField.scenarioZone
+                    const isDragTarget =
+                      draggedHandCard && draggedHandCard.card.type === "scenario" && !myField.scenarioZone
+                    const isDropping = dropTarget?.type === "scenario"
+                    const isValidDropTarget = isSelectedTarget || isDragTarget
 
-                  return (
-                    <div
-                      data-player-scenario-slot
-                      onClick={() => {
-                        if (selectedHandCard !== null && myField.hand[selectedHandCard]?.type === "scenario" && !draggedHandCard) {
-                          placeScenarioCard()
-                        }
-                      }}
-                      className={`h-14 w-20 bg-amber-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-200 ${
-                        isDropping
-                          ? "border-green-400 bg-green-500/50 scale-110 shadow-lg shadow-green-500/50"
-                          : isValidDropTarget
-                            ? "border-green-500 bg-green-900/40 cursor-pointer"
-                            : "border-amber-600/40"
-                      }`}
-                    >
-                      {myField.scenarioZone ? (
-                        <Image
-                          src={myField.scenarioZone.image || "/placeholder.svg"}
-                          alt={myField.scenarioZone.name}
-                          fill
-                          className="object-cover rounded"
-                          onMouseDown={() => handleCardPressStart(myField.scenarioZone!)}
-                          onMouseUp={handleCardPressEnd}
-                          onMouseLeave={handleCardPressEnd}
-                          onTouchStart={() => handleCardPressStart(myField.scenarioZone!)}
-                          onTouchEnd={handleCardPressEnd}
-                        />
-                      ) : (
-                        <span className="text-amber-500/50 text-[8px] text-center">SCENARIO</span>
-                      )}
-                    </div>
-                  )
-                })()}
+                    return (
+                      <div
+                        data-player-scenario-slot
+                        onClick={() => {
+                          if (selectedHandCard !== null && myField.hand[selectedHandCard]?.type === "scenario" && !draggedHandCard) {
+                            placeScenarioCard()
+                          }
+                        }}
+                        className={`h-14 w-20 bg-amber-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-200 ${
+                          isDropping
+                            ? "border-green-400 bg-green-500/50 scale-110 shadow-lg shadow-green-500/50"
+                            : isValidDropTarget
+                              ? "border-green-500 bg-green-900/40 cursor-pointer"
+                              : "border-amber-600/40"
+                        }`}
+                      >
+                        {myField.scenarioZone ? (
+                          <Image
+                            src={myField.scenarioZone.image || "/placeholder.svg"}
+                            alt={myField.scenarioZone.name}
+                            fill
+                            className="object-cover rounded"
+                            onMouseDown={() => handleCardPressStart(myField.scenarioZone!)}
+                            onMouseUp={handleCardPressEnd}
+                            onMouseLeave={handleCardPressEnd}
+                            onTouchStart={() => handleCardPressStart(myField.scenarioZone!)}
+                            onTouchEnd={handleCardPressEnd}
+                          />
+                        ) : (
+                          <span className="text-amber-500/50 text-[8px] text-center">SCENARIO</span>
+                        )}
+                      </div>
+                    )
+                  })()}
+                  {/* Player Ultimate Zone - single green slot below scenario */}
+                  {(() => {
+                    const isSelectedUltimate =
+                      selectedHandCard !== null &&
+                      myField.hand[selectedHandCard] &&
+                      isUltimateCard(myField.hand[selectedHandCard]) &&
+                      !myField.ultimateZone
+                    const isDragUltimate =
+                      draggedHandCard && isUltimateCard(draggedHandCard.card) && !myField.ultimateZone
+                    const isDroppingUltimate = dropTarget?.type === "ultimate"
+                    const isValidUltimateTarget = isSelectedUltimate || isDragUltimate
+
+                    return (
+                      <div
+                        data-player-ultimate-slot
+                        onClick={() => {
+                          if (selectedHandCard !== null && myField.hand[selectedHandCard] && isUltimateCard(myField.hand[selectedHandCard]) && !draggedHandCard) {
+                            placeUltimateCard()
+                          }
+                        }}
+                        className={`w-14 h-20 bg-emerald-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-200 mx-auto ${
+                          isDroppingUltimate
+                            ? "border-green-400 bg-green-500/60 scale-110 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
+                            : isValidUltimateTarget
+                              ? "border-emerald-400 bg-emerald-900/40 cursor-pointer"
+                              : "border-emerald-600/40"
+                        }`}
+                      >
+                        {myField.ultimateZone ? (
+                          <>
+                            <Image
+                              src={myField.ultimateZone.image || "/placeholder.svg"}
+                              alt={myField.ultimateZone.name}
+                              fill
+                              className="object-cover rounded"
+                              onMouseDown={() => handleCardPressStart(myField.ultimateZone!)}
+                              onMouseUp={handleCardPressEnd}
+                              onMouseLeave={handleCardPressEnd}
+                              onTouchStart={() => handleCardPressStart(myField.ultimateZone!)}
+                              onTouchEnd={handleCardPressEnd}
+                            />
+                            <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-center text-xs text-white font-bold py-0.5">
+                              {myField.ultimateZone.currentDp} DP
+                            </div>
+                          </>
+                        ) : null}
+                        {!myField.ultimateZone && isDroppingUltimate && (
+                          <span className="text-green-400 text-[10px] font-bold animate-pulse">SOLTAR</span>
+                        )}
+                      </div>
+                    )
+                  })()}
+                </div>
                 <div className="flex flex-col gap-1">
                   <div className="w-14 h-20 bg-blue-700/80 rounded text-sm text-white flex items-center justify-center font-bold border border-blue-500/50">
                     {myField.deck.length}
@@ -2036,11 +2113,13 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
               const isDragging = draggedHandCard?.index === i
 
               // Check if card can be played
-              const hasSpaceInZone = isUnitCard(card)
-                ? myField.unitZone.some((slot) => slot === null)
+              const hasSpaceInZone = isUltimateCard(card)
+                ? myField.ultimateZone === null
                 : card.type === "scenario"
                   ? myField.scenarioZone === null
-                  : myField.functionZone.some((slot) => slot === null)
+                  : isUnitCard(card)
+                    ? myField.unitZone.some((slot) => slot === null)
+                    : myField.functionZone.some((slot) => slot === null)
               const canPlay = isMyTurn && phase === "main" && hasSpaceInZone
 
               return (
