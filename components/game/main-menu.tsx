@@ -34,14 +34,14 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
   const [isOpening, setIsOpening] = useState(false)
   const [isClaimingAll, setIsClaimingAll] = useState(false)
   const [claimAllResults, setClaimAllResults] = useState<{ cards: any[]; coins: number } | null>(null)
-  // Falling card colors for background animation
+  // Falling card color configs - more vibrant and visible
   const CARD_COLORS = [
-    { bg: "from-blue-500/25 to-blue-700/20", glow: "shadow-blue-500/20", border: "border-blue-400/30" },
-    { bg: "from-red-500/25 to-red-700/20", glow: "shadow-red-500/20", border: "border-red-400/30" },
-    { bg: "from-amber-400/25 to-yellow-600/20", glow: "shadow-amber-400/20", border: "border-amber-400/30" },
-    { bg: "from-purple-500/25 to-purple-700/20", glow: "shadow-purple-500/20", border: "border-purple-400/30" },
-    { bg: "from-emerald-500/25 to-emerald-700/20", glow: "shadow-emerald-500/20", border: "border-emerald-400/30" },
-    { bg: "from-slate-300/25 to-slate-500/20", glow: "shadow-slate-300/20", border: "border-slate-300/30" },
+    { gradient: "linear-gradient(135deg, #3b82f6, #1d4ed8)", border: "#60a5fa", glow: "0 0 12px rgba(59,130,246,0.5)" },
+    { gradient: "linear-gradient(135deg, #ef4444, #b91c1c)", border: "#f87171", glow: "0 0 12px rgba(239,68,68,0.5)" },
+    { gradient: "linear-gradient(135deg, #f59e0b, #d97706)", border: "#fbbf24", glow: "0 0 12px rgba(245,158,11,0.5)" },
+    { gradient: "linear-gradient(135deg, #a855f7, #7c3aed)", border: "#c084fc", glow: "0 0 12px rgba(168,85,247,0.5)" },
+    { gradient: "linear-gradient(135deg, #10b981, #059669)", border: "#34d399", glow: "0 0 12px rgba(16,185,129,0.5)" },
+    { gradient: "linear-gradient(135deg, #cbd5e1, #94a3b8)", border: "#e2e8f0", glow: "0 0 12px rgba(203,213,225,0.5)" },
   ]
 
   const [fallingCards, setFallingCards] = useState<Array<{
@@ -49,26 +49,24 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
     x: number
     delay: number
     duration: number
-    size: number
+    width: number
+    height: number
     colorIndex: number
-    rotateStart: number
-    rotateEnd: number
-    opacity: number
-    swayAmount: number
+    initialRotate: number
+    swayDirection: number
   }>>([])
 
   useEffect(() => {
-    const cards = Array.from({ length: 18 }, (_, i) => ({
+    const cards = Array.from({ length: 24 }, (_, i) => ({
       id: i,
-      x: Math.random() * 100,
-      delay: Math.random() * 14,
-      duration: 12 + Math.random() * 10,
-      size: 28 + Math.random() * 24,
-      colorIndex: Math.floor(Math.random() * CARD_COLORS.length),
-      rotateStart: -30 + Math.random() * 60,
-      rotateEnd: -30 + Math.random() * 60,
-      opacity: 0.15 + Math.random() * 0.25,
-      swayAmount: 20 + Math.random() * 40,
+      x: (i * 4.3) % 100 + (Math.random() * 6 - 3), // spread evenly then jitter
+      delay: (i * 0.8) % 16 + Math.random() * 2,
+      duration: 14 + Math.random() * 8,
+      width: 40 + Math.random() * 20,
+      height: 56 + Math.random() * 28,
+      colorIndex: i % CARD_COLORS.length,
+      initialRotate: -15 + Math.random() * 30,
+      swayDirection: Math.random() > 0.5 ? 1 : -1,
     }))
     setFallingCards(cards)
   }, [])
@@ -134,32 +132,52 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-[1]">
         {fallingCards.map((card) => {
           const color = CARD_COLORS[card.colorIndex]
+          const swayDuration = 3.5 + (card.id % 5) * 0.6
           return (
             <div
               key={card.id}
-              className="absolute"
+              className="absolute falling-card-wrapper"
               style={{
                 left: `${card.x}%`,
-                top: "-60px",
-                animation: `fallingCard ${card.duration}s ${card.delay}s linear infinite`,
-                opacity: 0,
+                animation: `fallingCard ${card.duration}s linear infinite`,
+                animationDelay: `${card.delay}s`,
               }}
             >
+              {/* Sway wrapper */}
               <div
-                className={`rounded-lg border bg-gradient-to-br ${color.bg} ${color.border} shadow-lg ${color.glow} backdrop-blur-[1px]`}
                 style={{
-                  width: `${card.size * 0.65}px`,
-                  height: `${card.size}px`,
-                  animation: `cardSway ${4 + Math.random() * 3}s ease-in-out infinite, cardRotate ${6 + Math.random() * 4}s ease-in-out infinite`,
-                  animationDelay: `${card.delay}s`,
+                  animation: `cardSway ${swayDuration}s ease-in-out infinite`,
+                  animationDelay: `${card.delay * 0.5}s`,
                 }}
               >
-                {/* Card inner detail - small lines to look like a card */}
-                <div className="w-full h-full p-[3px] flex flex-col justify-between overflow-hidden rounded-md">
-                  <div className={`w-full h-[55%] rounded-sm bg-gradient-to-br ${color.bg} opacity-60`} />
-                  <div className="flex flex-col gap-[2px] mt-auto">
-                    <div className={`w-[70%] h-[2px] rounded-full bg-gradient-to-r ${color.bg} opacity-40`} />
-                    <div className={`w-[50%] h-[2px] rounded-full bg-gradient-to-r ${color.bg} opacity-30`} />
+                {/* Card element */}
+                <div
+                  style={{
+                    width: `${card.width}px`,
+                    height: `${card.height}px`,
+                    background: color.gradient,
+                    border: `1.5px solid ${color.border}`,
+                    boxShadow: color.glow,
+                    borderRadius: "6px",
+                    transform: `rotate(${card.initialRotate}deg)`,
+                    animation: `cardRotate ${5 + (card.id % 4)}s ease-in-out infinite`,
+                    animationDelay: `${card.delay * 0.3}s`,
+                    opacity: 0.45,
+                  }}
+                >
+                  {/* Card face details */}
+                  <div style={{ padding: "4px", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                    <div style={{
+                      width: "100%",
+                      height: "52%",
+                      borderRadius: "3px",
+                      background: "rgba(255,255,255,0.15)",
+                    }} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                      <div style={{ width: "75%", height: "3px", borderRadius: "2px", background: "rgba(255,255,255,0.2)" }} />
+                      <div style={{ width: "55%", height: "3px", borderRadius: "2px", background: "rgba(255,255,255,0.13)" }} />
+                      <div style={{ width: "40%", height: "3px", borderRadius: "2px", background: "rgba(255,255,255,0.08)" }} />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -170,9 +188,9 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
 
       {/* Ambient light orbs for depth */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-[0]">
-        <div className="absolute top-[10%] left-[15%] w-64 h-64 bg-blue-500/[0.04] rounded-full blur-[80px] animate-pulse" style={{ animationDuration: "8s" }} />
-        <div className="absolute top-[60%] right-[10%] w-48 h-48 bg-purple-500/[0.05] rounded-full blur-[60px] animate-pulse" style={{ animationDuration: "11s" }} />
-        <div className="absolute bottom-[15%] left-[30%] w-56 h-56 bg-cyan-500/[0.04] rounded-full blur-[70px] animate-pulse" style={{ animationDuration: "9s" }} />
+        <div className="absolute top-[10%] left-[15%] w-72 h-72 bg-blue-500/[0.06] rounded-full blur-[80px] animate-pulse" style={{ animationDuration: "8s" }} />
+        <div className="absolute top-[55%] right-[10%] w-56 h-56 bg-purple-500/[0.07] rounded-full blur-[60px] animate-pulse" style={{ animationDuration: "11s" }} />
+        <div className="absolute bottom-[15%] left-[25%] w-64 h-64 bg-cyan-500/[0.06] rounded-full blur-[70px] animate-pulse" style={{ animationDuration: "9s" }} />
       </div>
 
       {/* Top bar */}
@@ -217,7 +235,7 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
       {/* Logo */}
       <div className="mb-10 relative z-10 text-center flex flex-col items-center">
         {/* Version number above logo */}
-        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-4">v1.1.3</div>
+        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-4">v1.1.4</div>
         
         <div className="relative inline-block">
           {/* Glow effect behind logo */}
