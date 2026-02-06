@@ -1169,4 +1169,84 @@
   100% { opacity: 1; }
 }
 
+/* ===== MOBILE MODE ADAPTATIONS ===== */
+/* When .mobile-mode is applied to html, scale and reorganize all elements for mobile */
 
+.mobile-mode {
+  /* Base font size adjustment for mobile readability */
+  font-size: 15px;
+}
+
+/* Menu - larger touch targets, more spacing */
+.mobile-mode .menu-btn-play,
+.mobile-mode .menu-btn-gacha,
+.mobile-mode .menu-btn-collection,
+.mobile-mode .menu-btn-deck,
+.mobile-mode .menu-btn-friends,
+.mobile-mode .menu-btn-gift {
+  min-height: 56px;
+  font-size: 1rem;
+}
+
+/* Gacha buttons: bigger touch area */
+.mobile-mode .gacha-btn {
+  min-height: 52px;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* Glass panels: ensure proper padding on mobile */
+.mobile-mode .glass,
+.mobile-mode .glass-dark {
+  padding: 0.75rem;
+}
+
+/* Cards in collection/deck builder - adjust grid for smaller screens */
+.mobile-mode .card-container {
+  max-width: 100%;
+}
+
+/* Duel screen adaptations - scales proportionally */
+.mobile-mode [class*="duel"] {
+  font-size: 0.875rem;
+}
+
+/* Settings tabs: stack if 4 tabs on small screen */
+.mobile-mode [class*="border-b"][class*="flex"] button {
+  font-size: 0.75rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+/* Scrollbar - thinner on mobile */
+.mobile-mode::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+/* Viewport meta - hint for maximum scale */
+.mobile-mode body {
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Ensure no horizontal overflow */
+.mobile-mode * {
+  max-width: 100vw;
+}
+
+/* Falling cards - reduce count visually and shrink for mobile */
+.mobile-mode .falling-card-wrapper {
+  opacity: 0.5;
+}
+
+.mobile-mode .falling-card-face {
+  transform: scale(0.8);
+}
+
+/* Logo smaller on mobile mode for more room */
+.mobile-mode .aura-logo {
+  max-width: 280px;
+  height: auto;
+}

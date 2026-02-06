@@ -22,11 +22,13 @@ import Image from "next/image"
 
 interface MainMenuProps {
   onNavigate: (screen: GameScreen) => void
+  statusMessage?: string | null
+  onClearMessage?: () => void
 }
 
-export default function MainMenu({ onNavigate }: MainMenuProps) {
+export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: MainMenuProps) {
   const { t } = useLanguage()
-  const { coins, giftBoxes, claimGift, hasUnclaimedGifts, playerProfile } = useGame()
+  const { coins, giftBoxes, claimGift, hasUnclaimedGifts, playerProfile, mobileMode } = useGame()
   const [showPlayMenu, setShowPlayMenu] = useState(false)
   const [showGiftBox, setShowGiftBox] = useState(false)
   const [claimedCard, setClaimedCard] = useState<ReturnType<typeof claimGift>>(null)
@@ -34,6 +36,14 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
   const [isOpening, setIsOpening] = useState(false)
   const [isClaimingAll, setIsClaimingAll] = useState(false)
   const [claimAllResults, setClaimAllResults] = useState<{ cards: any[]; coins: number } | null>(null)
+  
+  // Auto-clear status message after 4 seconds
+  useEffect(() => {
+    if (statusMessage && onClearMessage) {
+      const timer = setTimeout(() => onClearMessage(), 4000)
+      return () => clearTimeout(timer)
+    }
+  }, [statusMessage, onClearMessage])
   // Card rarity themes - rich metallic/jewel tones
   const CARD_THEMES = [
     { bg: "linear-gradient(145deg, #1e3a5f, #0c4a6e, #164e63)", border: "#38bdf8", glow: "rgba(56,189,248,0.35)", accent: "#7dd3fc", inner: "#0c4a6e" },
@@ -272,7 +282,16 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
       </div>
 
       {/* Top bar */}
-      <div className="fixed top-0 left-0 right-0 p-4 flex justify-end items-center z-40">
+      <div className="fixed top-0 left-0 right-0 p-4 flex justify-between items-start z-40">
+        {/* Mobile mode indicator */}
+        <div className="flex items-center">
+          {mobileMode && (
+            <div className="flex items-center gap-1.5 glass px-3 py-1.5 rounded-full">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-emerald-400 text-xs font-medium">Mobile</span>
+            </div>
+          )}
+        </div>
         {/* Coins and Player Profile display */}
         <div className="flex flex-col items-end gap-2">
           {/* Coins */}
@@ -309,6 +328,22 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
           </div>
         </div>
       </div>
+
+      {/* Status Message Banner */}
+      {statusMessage && (
+        <div className="relative z-50 w-full max-w-sm mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border backdrop-blur-sm text-sm font-medium shadow-lg ${
+            statusMessage.includes("ativado")
+              ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-emerald-500/10"
+              : "bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-amber-500/10"
+          }`}>
+            <span className={`w-2 h-2 rounded-full ${
+              statusMessage.includes("ativado") ? "bg-emerald-400 animate-pulse" : "bg-amber-400 animate-pulse"
+            }`} />
+            {statusMessage}
+          </div>
+        </div>
+      )}
 
       {/* Logo */}
       <div className="mb-10 relative z-10 text-center flex flex-col items-center">

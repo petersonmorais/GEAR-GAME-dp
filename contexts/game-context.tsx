@@ -155,6 +155,8 @@ interface GameContextType {
   redeemCode: (code: string) => { success: boolean; message: string }
   redeemedCodes: string[]
   deleteAccountData: () => Promise<{ success: boolean; error?: string }>
+  mobileMode: boolean
+  setMobileMode: (enabled: boolean) => void
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined)
@@ -1235,6 +1237,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [ownedPlaymats, setOwnedPlaymats] = useState<Playmat[]>([])
   const [globalPlaymatId, setGlobalPlaymatId] = useState<string | null>(null)
   const [redeemedCodes, setRedeemedCodes] = useState<string[]>([])
+  const [mobileMode, setMobileModeState] = useState(false)
   
   // Helper to get localStorage with fallback keys (old format vs new format)
   const getLS = (key: string): string | null => {
@@ -1392,6 +1395,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
       const savedRedeemedCodes = getLS("redeemed-codes")
       if (savedRedeemedCodes) {
         try { setRedeemedCodes(JSON.parse(savedRedeemedCodes)) } catch {}
+      }
+      
+      // Mobile mode
+      const savedMobileMode = getLS("mobile-mode")
+      if (savedMobileMode === "true") {
+        setMobileModeState(true)
       }
     }
 
@@ -2298,6 +2307,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
   redeemCode,
   redeemedCodes,
   deleteAccountData,
+  mobileMode,
+  setMobileMode: (enabled: boolean) => {
+    setMobileModeState(enabled)
+    if (typeof window !== "undefined") {
+      localStorage.setItem("gearperks-mobile-mode", enabled ? "true" : "false")
+      localStorage.setItem("gear-perks-mobile-mode", enabled ? "true" : "false")
+    }
+  },
   }}
   >
       {children}
