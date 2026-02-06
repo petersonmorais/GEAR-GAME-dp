@@ -165,101 +165,77 @@
     }
   }
   
-  /* ===== LOGO LIGHTNING - EPIC BOLT SYSTEM ===== */
+  /* ===== LOGO LIGHTNING SYSTEM ===== */
 
-  /* Epic primary bolts: long dramatic strikes with sustained visibility */
-  @keyframes boltEpic {
-    0%       { opacity: 0; filter: brightness(1); }
-    0.8%     { opacity: 1; filter: brightness(3); }
-    2%       { opacity: 0.4; filter: brightness(1.5); }
-    3%       { opacity: 1; filter: brightness(3.2); }
-    4.5%     { opacity: 0.85; filter: brightness(2.4); }
-    7%       { opacity: 0.95; filter: brightness(2); }
-    12%      { opacity: 0.8; filter: brightness(1.8); }
-    20%      { opacity: 0.55; filter: brightness(1.5); }
-    30%      { opacity: 0.25; filter: brightness(1.2); }
-    40%      { opacity: 0; filter: brightness(1); }
-    50%      { opacity: 0; filter: brightness(1); }
-    50.8%    { opacity: 0.95; filter: brightness(2.8); }
-    52%      { opacity: 0.35; filter: brightness(1.4); }
-    53%      { opacity: 1; filter: brightness(3); }
-    55%      { opacity: 0.9; filter: brightness(2.2); }
-    60%      { opacity: 0.75; filter: brightness(1.7); }
-    70%      { opacity: 0.45; filter: brightness(1.4); }
-    80%      { opacity: 0.15; filter: brightness(1.1); }
-    90%      { opacity: 0; filter: brightness(1); }
-    100%     { opacity: 0; filter: brightness(1); }
+  /* Primary bolt flash: realistic strike with afterglow fade */
+  @keyframes boltFlash {
+    0%       { opacity: 0; }
+    1%       { opacity: 1; }
+    2.5%     { opacity: 0.3; }
+    3.5%     { opacity: 1; }
+    5%       { opacity: 0.85; }
+    8%       { opacity: 0.7; }
+    14%      { opacity: 0.5; }
+    22%      { opacity: 0.25; }
+    32%      { opacity: 0; }
+    50%      { opacity: 0; }
+    51%      { opacity: 0.95; }
+    52.5%    { opacity: 0.25; }
+    53.5%    { opacity: 1; }
+    56%      { opacity: 0.8; }
+    62%      { opacity: 0.55; }
+    72%      { opacity: 0.2; }
+    82%      { opacity: 0; }
+    100%     { opacity: 0; }
   }
   
-  /* Secondary bolts: medium intensity, offset for continuous coverage */
-  @keyframes boltSecondary {
-    0%       { opacity: 0; filter: brightness(1); }
-    1.5%     { opacity: 0.9; filter: brightness(2.6); }
-    3%       { opacity: 0.25; filter: brightness(1.2); }
-    4.5%     { opacity: 1; filter: brightness(2.8); }
-    7%       { opacity: 0.85; filter: brightness(2); }
-    14%      { opacity: 0.65; filter: brightness(1.6); }
-    24%      { opacity: 0.3; filter: brightness(1.2); }
-    34%      { opacity: 0; filter: brightness(1); }
-    52%      { opacity: 0; filter: brightness(1); }
-    53.5%    { opacity: 0.85; filter: brightness(2.4); }
-    55%      { opacity: 0.3; filter: brightness(1.2); }
-    56.5%    { opacity: 0.95; filter: brightness(2.6); }
-    60%      { opacity: 0.7; filter: brightness(1.7); }
-    70%      { opacity: 0.35; filter: brightness(1.3); }
-    80%      { opacity: 0; filter: brightness(1); }
-    100%     { opacity: 0; filter: brightness(1); }
+  /* Quick accent bolt flash */
+  @keyframes boltFlashQuick {
+    0%       { opacity: 0; }
+    2%       { opacity: 1; }
+    4%       { opacity: 0.2; }
+    6%       { opacity: 0.9; }
+    10%      { opacity: 0.6; }
+    18%      { opacity: 0.2; }
+    26%      { opacity: 0; }
+    52%      { opacity: 0; }
+    54%      { opacity: 0.95; }
+    56%      { opacity: 0.15; }
+    58%      { opacity: 0.85; }
+    64%      { opacity: 0.4; }
+    72%      { opacity: 0; }
+    100%     { opacity: 0; }
   }
   
-  /* Accent bolts: punchy rapid flashes */
-  @keyframes boltAccent {
-    0%       { opacity: 0; filter: brightness(1); }
-    2%       { opacity: 1; filter: brightness(3); }
-    4%       { opacity: 0.15; filter: brightness(1); }
-    5.5%     { opacity: 0.95; filter: brightness(2.5); }
-    8%       { opacity: 0.7; filter: brightness(1.8); }
-    15%      { opacity: 0.35; filter: brightness(1.3); }
-    24%      { opacity: 0; filter: brightness(1); }
-    50%      { opacity: 0; filter: brightness(1); }
-    52%      { opacity: 0.95; filter: brightness(2.8); }
-    53.5%    { opacity: 0.1; filter: brightness(1); }
-    55%      { opacity: 0.9; filter: brightness(2.4); }
-    60%      { opacity: 0.5; filter: brightness(1.5); }
-    70%      { opacity: 0; filter: brightness(1); }
-    100%     { opacity: 0; filter: brightness(1); }
+  /* Spark glow: simple scale pulse, no rotation */
+  @keyframes sparkGlow {
+    0%       { opacity: 0; transform: scale(0.3); }
+    3%       { opacity: 1; transform: scale(1.2); }
+    6%       { opacity: 0.7; transform: scale(1); }
+    14%      { opacity: 0.3; transform: scale(0.7); }
+    22%      { opacity: 0; transform: scale(0.3); }
+    50%      { opacity: 0; transform: scale(0.3); }
+    53%      { opacity: 0.9; transform: scale(1.15); }
+    56%      { opacity: 0.6; transform: scale(0.95); }
+    64%      { opacity: 0.2; transform: scale(0.6); }
+    74%      { opacity: 0; transform: scale(0.3); }
+    100%     { opacity: 0; transform: scale(0.3); }
   }
   
-  /* Spark pop: starburst flash */
-  @keyframes sparkPop {
-    0%       { opacity: 0; transform: scale(0.2) rotate(0deg); }
-    3%       { opacity: 1; transform: scale(1.4) rotate(15deg); }
-    6%       { opacity: 0.7; transform: scale(1) rotate(10deg); }
-    12%      { opacity: 0.45; transform: scale(0.85) rotate(5deg); }
-    20%      { opacity: 0; transform: scale(0.3) rotate(0deg); }
-    50%      { opacity: 0; transform: scale(0.2) rotate(0deg); }
-    53%      { opacity: 0.95; transform: scale(1.3) rotate(-12deg); }
-    56%      { opacity: 0.65; transform: scale(1.05) rotate(-8deg); }
-    64%      { opacity: 0.3; transform: scale(0.75) rotate(-4deg); }
-    74%      { opacity: 0; transform: scale(0.2) rotate(0deg); }
-    100%     { opacity: 0; transform: scale(0.2) rotate(0deg); }
-  }
-  
-  /* Arc flicker: electric crackle lines */
-  @keyframes arcFlicker {
-    0%, 100% { opacity: 0; transform: scaleX(0.08); }
-    1.5%     { opacity: 1; transform: scaleX(1.15); }
-    3%       { opacity: 0.1; transform: scaleX(0.25); }
-    4.5%     { opacity: 1; transform: scaleX(1.1); }
-    7%       { opacity: 0.65; transform: scaleX(0.85); }
-    10%      { opacity: 0.9; transform: scaleX(1); }
-    14%      { opacity: 0; transform: scaleX(0.08); }
-    48%      { opacity: 0; transform: scaleX(0.08); }
-    49.5%    { opacity: 0.95; transform: scaleX(1.12); }
-    51%      { opacity: 0.08; transform: scaleX(0.2); }
-    52.5%    { opacity: 1; transform: scaleX(1.1); }
-    55%      { opacity: 0.55; transform: scaleX(0.75); }
-    58%      { opacity: 0.85; transform: scaleX(0.95); }
-    62%      { opacity: 0; transform: scaleX(0.08); }
+  /* Tendril flicker: opacity-only, no scaleX distortion */
+  @keyframes tendrilFlicker {
+    0%, 100% { opacity: 0; }
+    1.5%     { opacity: 1; }
+    3%       { opacity: 0.15; }
+    5%       { opacity: 0.9; }
+    8%       { opacity: 0.5; }
+    12%      { opacity: 0; }
+    48%      { opacity: 0; }
+    49.5%    { opacity: 0.95; }
+    51%      { opacity: 0.1; }
+    53%      { opacity: 0.85; }
+    56%      { opacity: 0.4; }
+    60%      { opacity: 0; }
   }
   
 
