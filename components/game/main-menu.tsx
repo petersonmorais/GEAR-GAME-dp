@@ -274,196 +274,47 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
 
       {/* Logo */}
       <div className="mb-10 relative z-10 text-center flex flex-col items-center">
-        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-4">v1.4.0</div>
+        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-4">v1.5.0</div>
         
-        {/* Logo container - no clipping */}
-        <div className="relative" style={{ overflow: "visible" }}>
+        {/* Logo container with aura glow */}
+        <div className="relative">
 
-          {/* === SVG DEFS (shared gradients) === */}
-          <svg className="absolute w-0 h-0" aria-hidden="true">
-            <defs>
-              <linearGradient id="zG1" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#f0f9ff" />
-                <stop offset="20%" stopColor="#7dd3fc" />
-                <stop offset="50%" stopColor="#22d3ee" />
-                <stop offset="80%" stopColor="#0891b2" />
-                <stop offset="100%" stopColor="#164e63" />
-              </linearGradient>
-              <linearGradient id="zG2" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#ffffff" />
-                <stop offset="50%" stopColor="#e0f2fe" />
-                <stop offset="100%" stopColor="#bae6fd" />
-              </linearGradient>
-              <linearGradient id="zG3" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#cffafe" />
-                <stop offset="100%" stopColor="#0e7490" />
-              </linearGradient>
-            </defs>
-          </svg>
+          {/* Aura layer 1: wide soft outer glow (slowest pulse) */}
+          <div
+            className="absolute inset-0 -inset-x-8 -inset-y-6 pointer-events-none rounded-[50%]"
+            style={{
+              background: "radial-gradient(ellipse at center, rgba(34,211,238,0.12) 0%, rgba(8,145,178,0.06) 40%, transparent 70%)",
+              animation: "auraOuter 5s ease-in-out infinite",
+            }}
+          />
 
-          {/* ============================================================ */}
-          {/*  LIGHTNING BOLT COMPONENT (reusable via .map)                 */}
-          {/*  Each bolt: 3-layer stroke (ambient + core + hot center)     */}
-          {/*  + organic fork branches                                     */}
-          {/* ============================================================ */}
+          {/* Aura layer 2: mid glow ring (offset timing) */}
+          <div
+            className="absolute inset-0 -inset-x-5 -inset-y-4 pointer-events-none rounded-[50%]"
+            style={{
+              background: "radial-gradient(ellipse at center, rgba(103,232,249,0.14) 0%, rgba(34,211,238,0.07) 45%, transparent 72%)",
+              animation: "auraMid 4s ease-in-out infinite",
+              animationDelay: "1.2s",
+            }}
+          />
 
-          {/* --- PRIMARY BOLT A (left) --- */}
-          <svg className="absolute pointer-events-none" viewBox="0 0 90 240" preserveAspectRatio="xMidYMid meet"
-            style={{ left: "-70px", top: "-6%", width: "90px", height: "240px", overflow: "visible", animation: "zBolt 3.8s linear infinite" }}>
-            <path d="M58,0 Q52,18 46,36 L52,34 Q42,58 34,80 L40,77 Q30,106 22,132 L28,128 Q18,162 10,192 L16,188 Q8,212 2,240"
-              fill="none" stroke="#22d3ee" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" opacity="0.18" />
-            <path d="M58,0 Q52,18 46,36 L52,34 Q42,58 34,80 L40,77 Q30,106 22,132 L28,128 Q18,162 10,192 L16,188 Q8,212 2,240"
-              fill="none" stroke="url(#zG1)" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M58,0 Q52,18 46,36 L52,34 Q42,58 34,80 L40,77 Q30,106 22,132 L28,128 Q18,162 10,192 L16,188 Q8,212 2,240"
-              fill="none" stroke="url(#zG2)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
-            {/* Fork 1 */}
-            <path d="M46,36 Q32,50 20,62 L26,60 Q16,72 8,86" fill="none" stroke="url(#zG3)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.75" />
-            <path d="M46,36 Q32,50 20,62 L26,60 Q16,72 8,86" fill="none" stroke="white" strokeWidth="0.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.35" />
-            {/* Fork 2 */}
-            <path d="M34,80 Q48,96 56,114" fill="none" stroke="url(#zG3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.55" />
-            {/* Fork 3 */}
-            <path d="M22,132 Q10,146 2,158" fill="none" stroke="url(#zG3)" strokeWidth="1.2" strokeLinecap="round" opacity="0.4" />
-          </svg>
+          {/* Aura layer 3: tight inner glow (subtle, fast breathing) */}
+          <div
+            className="absolute inset-0 -inset-x-2 -inset-y-2 pointer-events-none rounded-[45%]"
+            style={{
+              background: "radial-gradient(ellipse at center, rgba(165,243,252,0.1) 0%, rgba(34,211,238,0.05) 50%, transparent 75%)",
+              animation: "auraInner 3s ease-in-out infinite",
+              animationDelay: "0.5s",
+            }}
+          />
 
-          {/* --- PRIMARY BOLT B (right, mirrored) --- */}
-          <svg className="absolute pointer-events-none" viewBox="0 0 90 240" preserveAspectRatio="xMidYMid meet"
-            style={{ right: "-70px", top: "-8%", width: "90px", height: "240px", overflow: "visible", animation: "zBolt 3.8s linear infinite", animationDelay: "1.9s", transform: "scaleX(-1)" }}>
-            <path d="M58,0 Q52,18 46,36 L52,34 Q42,58 34,80 L40,77 Q30,106 22,132 L28,128 Q18,162 10,192 L16,188 Q8,212 2,240"
-              fill="none" stroke="#22d3ee" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" opacity="0.18" />
-            <path d="M58,0 Q52,18 46,36 L52,34 Q42,58 34,80 L40,77 Q30,106 22,132 L28,128 Q18,162 10,192 L16,188 Q8,212 2,240"
-              fill="none" stroke="url(#zG1)" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M58,0 Q52,18 46,36 L52,34 Q42,58 34,80 L40,77 Q30,106 22,132 L28,128 Q18,162 10,192 L16,188 Q8,212 2,240"
-              fill="none" stroke="url(#zG2)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
-            <path d="M46,36 Q32,50 20,62 L26,60 Q16,72 8,86" fill="none" stroke="url(#zG3)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.75" />
-            <path d="M46,36 Q32,50 20,62 L26,60 Q16,72 8,86" fill="none" stroke="white" strokeWidth="0.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.35" />
-            <path d="M34,80 Q48,96 56,114" fill="none" stroke="url(#zG3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.55" />
-            <path d="M22,132 Q10,146 2,158" fill="none" stroke="url(#zG3)" strokeWidth="1.2" strokeLinecap="round" opacity="0.4" />
-          </svg>
-
-          {/* --- SECONDARY BOLT C (left, mid) --- */}
-          <svg className="absolute pointer-events-none" viewBox="0 0 65 160" preserveAspectRatio="xMidYMid meet"
-            style={{ left: "-42px", top: "38%", width: "65px", height: "160px", overflow: "visible", animation: "zBolt 3.2s linear infinite", animationDelay: "0.7s" }}>
-            <path d="M44,0 Q38,20 32,40 L38,38 Q28,64 20,88 L26,84 Q16,114 8,140 L14,136 Q8,150 4,160"
-              fill="none" stroke="#22d3ee" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.15" />
-            <path d="M44,0 Q38,20 32,40 L38,38 Q28,64 20,88 L26,84 Q16,114 8,140 L14,136 Q8,150 4,160"
-              fill="none" stroke="url(#zG1)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M44,0 Q38,20 32,40 L38,38 Q28,64 20,88 L26,84 Q16,114 8,140 L14,136 Q8,150 4,160"
-              fill="none" stroke="url(#zG2)" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.85" />
-            <path d="M32,40 Q18,52 8,64" fill="none" stroke="url(#zG3)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" opacity="0.6" />
-          </svg>
-
-          {/* --- SECONDARY BOLT D (right, mid, mirrored) --- */}
-          <svg className="absolute pointer-events-none" viewBox="0 0 65 160" preserveAspectRatio="xMidYMid meet"
-            style={{ right: "-42px", top: "34%", width: "65px", height: "160px", overflow: "visible", animation: "zBolt 3.2s linear infinite", animationDelay: "2.6s", transform: "scaleX(-1)" }}>
-            <path d="M44,0 Q38,20 32,40 L38,38 Q28,64 20,88 L26,84 Q16,114 8,140 L14,136 Q8,150 4,160"
-              fill="none" stroke="#22d3ee" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.15" />
-            <path d="M44,0 Q38,20 32,40 L38,38 Q28,64 20,88 L26,84 Q16,114 8,140 L14,136 Q8,150 4,160"
-              fill="none" stroke="url(#zG1)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M44,0 Q38,20 32,40 L38,38 Q28,64 20,88 L26,84 Q16,114 8,140 L14,136 Q8,150 4,160"
-              fill="none" stroke="url(#zG2)" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.85" />
-            <path d="M32,40 Q18,52 8,64" fill="none" stroke="url(#zG3)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" opacity="0.6" />
-          </svg>
-
-          {/* --- ACCENT BOLTS (small, quick) --- */}
-          {[
-            { side: "left" as const, x: -18, y: "bottom", bot: "-5%", w: 40, h: 80, d: "M28,0 Q22,16 18,30 L22,28 Q14,50 8,68 L12,64 Q6,74 2,80", delay: "0.3s" },
-            { side: "right" as const, x: -18, y: "bottom", bot: "-2%", w: 40, h: 80, d: "M28,0 Q22,16 18,30 L22,28 Q14,50 8,68 L12,64 Q6,74 2,80", delay: "1.5s" },
-            { side: "left" as const, x: -10, y: "top", bot: "-2%", w: 32, h: 55, d: "M22,0 Q18,12 14,22 L18,20 Q12,36 6,50 L10,46 Q6,52 4,55", delay: "2.8s" },
-            { side: "right" as const, x: -10, y: "top", bot: "-4%", w: 32, h: 55, d: "M22,0 Q18,12 14,22 L18,20 Q12,36 6,50 L10,46 Q6,52 4,55", delay: "1.1s" },
-          ].map((b, i) => (
-            <svg key={`ab${i}`} className="absolute pointer-events-none" viewBox={`0 0 ${b.w} ${b.h}`} preserveAspectRatio="xMidYMid meet"
-              style={{
-                [b.side]: `${b.x}px`,
-                ...(b.y === "bottom" ? { bottom: b.bot } : { top: b.bot }),
-                width: `${b.w}px`, height: `${b.h}px`, overflow: "visible",
-                animation: `zBoltQuick 2.8s linear infinite`,
-                animationDelay: b.delay,
-                ...(b.side === "right" ? { transform: "scaleX(-1)" } : {}),
-              }}>
-              <path d={b.d} fill="none" stroke="#22d3ee" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.15" />
-              <path d={b.d} fill="none" stroke="url(#zG1)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              <path d={b.d} fill="none" stroke="url(#zG2)" strokeWidth="0.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
-            </svg>
-          ))}
-
-          {/* === ELECTRIC TENDRILS (organic SVG arcs radiating from logo edge) === */}
-          {[
-            { side: "left" as const, y: "18%", w: 48, rot: -6, d: "M48,6 Q36,3 24,7 Q12,4 0,6", delay: "0s", dur: 2.6 },
-            { side: "left" as const, y: "36%", w: 56, rot: -10, d: "M56,5 Q42,8 28,4 Q14,7 0,5", delay: "1s", dur: 3 },
-            { side: "left" as const, y: "56%", w: 40, rot: 4, d: "M40,6 Q28,3 16,7 Q8,5 0,6", delay: "2.1s", dur: 2.4 },
-            { side: "left" as const, y: "74%", w: 34, rot: 9, d: "M34,5 Q24,7 14,4 Q6,6 0,5", delay: "0.4s", dur: 2.8 },
-            { side: "right" as const, y: "14%", w: 48, rot: 5, d: "M0,6 Q12,3 24,7 Q36,4 48,6", delay: "0.3s", dur: 2.6 },
-            { side: "right" as const, y: "32%", w: 60, rot: 10, d: "M0,5 Q16,8 32,4 Q46,7 60,5", delay: "1.5s", dur: 3 },
-            { side: "right" as const, y: "52%", w: 40, rot: -5, d: "M0,6 Q12,3 24,7 Q32,5 40,6", delay: "0.1s", dur: 2.4 },
-            { side: "right" as const, y: "70%", w: 34, rot: -8, d: "M0,5 Q10,7 20,4 Q28,6 34,5", delay: "1.8s", dur: 2.8 },
-          ].map((t, i) => (
-            <svg key={`td${i}`} className="absolute pointer-events-none"
-              viewBox={`0 0 ${t.w} 12`} preserveAspectRatio="xMidYMid meet"
-              style={{
-                [t.side]: `-${t.w}px`,
-                top: t.y,
-                width: `${t.w}px`,
-                height: "12px",
-                overflow: "visible",
-                transform: `rotate(${t.rot}deg)`,
-                transformOrigin: t.side === "left" ? "right center" : "left center",
-                animation: `zTendril ${t.dur}s linear infinite`,
-                animationDelay: t.delay,
-              }}>
-              <path d={t.d} fill="none" stroke="#22d3ee" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.15" />
-              <path d={t.d} fill="none" stroke="url(#zG3)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-              <path d={t.d} fill="none" stroke="white" strokeWidth="0.35" strokeLinecap="round" strokeLinejoin="round" opacity="0.45" />
-            </svg>
-          ))}
-
-          {/* === SPARKS (small radial dots at energy junctions) === */}
-          {[
-            { side: "left" as const, x: -52, y: "10%", s: 8, d: 0, dur: 3.8 },
-            { side: "left" as const, x: -30, y: "44%", s: 6, d: 0.8, dur: 3.2 },
-            { side: "left" as const, x: -38, y: "76%", s: 5, d: 2.3, dur: 3.5 },
-            { side: "right" as const, x: -50, y: "14%", s: 8, d: 2, dur: 3.8 },
-            { side: "right" as const, x: -28, y: "50%", s: 6, d: 2.7, dur: 3.2 },
-            { side: "right" as const, x: -36, y: "72%", s: 5, d: 0.3, dur: 3.5 },
-          ].map((sp, i) => (
-            <span key={`sk${i}`} className="absolute pointer-events-none rounded-full"
-              style={{
-                [sp.side]: `${sp.x}px`,
-                top: sp.y,
-                width: `${sp.s}px`,
-                height: `${sp.s}px`,
-                background: "radial-gradient(circle, #ecfeff 0%, #67e8f9 40%, #22d3ee 70%, transparent 100%)",
-                animation: `zSpark ${sp.dur}s ease-in-out infinite`,
-                animationDelay: `${sp.d}s`,
-              }} />
-          ))}
-
-          {/* === AMBIENT ENERGY PARTICLES (persistent low-level glow between bolts) === */}
-          {[
-            { side: "left" as const, x: -44, y: "24%", d: 0, dur: 5 },
-            { side: "left" as const, x: -20, y: "62%", d: 1.8, dur: 4.5 },
-            { side: "right" as const, x: -42, y: "28%", d: 2.5, dur: 5 },
-            { side: "right" as const, x: -18, y: "58%", d: 0.8, dur: 4.5 },
-          ].map((p, i) => (
-            <span key={`am${i}`} className="absolute pointer-events-none rounded-full"
-              style={{
-                [p.side]: `${p.x}px`,
-                top: p.y,
-                width: "3px",
-                height: "3px",
-                background: "#22d3ee",
-                animation: `zAmbient ${p.dur}s ease-in-out infinite`,
-                animationDelay: `${p.d}s`,
-              }} />
-          ))}
-
-          {/* === LOGO IMAGE === */}
+          {/* Logo image with subtle animated drop-shadow as the primary aura effect */}
           <Image
             src="/images/gp-cg-logo.png"
             alt="Gear Perks Card Game"
             width={600}
             height={600}
-            className="relative w-80 h-auto sm:w-96 md:w-[28rem] lg:w-[32rem]"
-            style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.5))" }}
+            className="relative w-80 h-auto sm:w-96 md:w-[28rem] lg:w-[32rem] aura-logo"
             priority
           />
         </div>
