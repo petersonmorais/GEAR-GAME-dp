@@ -274,150 +274,155 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
 
       {/* Logo */}
       <div className="mb-10 relative z-10 text-center flex flex-col items-center">
-        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-4">v1.2.1</div>
+        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-4">v1.2.2</div>
         
-        {/* Logo wrapper - overflow visible, no invisible box */}
+        {/* Logo wrapper - overflow visible so bolts extend freely */}
         <div className="relative" style={{ overflow: "visible" }}>
 
-          {/* Shared SVG gradients (defined once, referenced by all bolts) */}
+          {/* Shared SVG defs */}
           <svg className="absolute w-0 h-0" aria-hidden="true">
             <defs>
-              <linearGradient id="bolt-main" x1="0%" y1="0%" x2="0%" y2="100%">
+              <linearGradient id="blt-epic" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stopColor="#ffffff" />
-                <stop offset="12%" stopColor="#ecfeff" />
-                <stop offset="35%" stopColor="#67e8f9" />
-                <stop offset="65%" stopColor="#22d3ee" />
+                <stop offset="10%" stopColor="#ecfeff" />
+                <stop offset="30%" stopColor="#67e8f9" />
+                <stop offset="55%" stopColor="#22d3ee" />
+                <stop offset="80%" stopColor="#06b6d4" />
                 <stop offset="100%" stopColor="#0891b2" />
               </linearGradient>
-              <linearGradient id="bolt-branch" x1="0%" y1="0%" x2="0%" y2="100%">
+              <linearGradient id="blt-mid" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stopColor="#ecfeff" />
-                <stop offset="50%" stopColor="#22d3ee" />
+                <stop offset="35%" stopColor="#22d3ee" />
                 <stop offset="100%" stopColor="#0e7490" />
               </linearGradient>
-              <linearGradient id="bolt-small" x1="0%" y1="0%" x2="0%" y2="100%">
+              <linearGradient id="blt-sm" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stopColor="#a5f3fc" />
                 <stop offset="100%" stopColor="#0891b2" />
               </linearGradient>
-              <filter id="bolt-glow">
-                <feGaussianBlur stdDeviation="2" result="glow" />
-                <feMerge>
-                  <feMergeNode in="glow" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
+              <filter id="elec-glow">
+                <feGaussianBlur stdDeviation="2.5" result="g" />
+                <feMerge><feMergeNode in="g" /><feMergeNode in="SourceGraphic" /></feMerge>
+              </filter>
+              <filter id="elec-glow-lg">
+                <feGaussianBlur stdDeviation="4" result="g" />
+                <feMerge><feMergeNode in="g" /><feMergeNode in="SourceGraphic" /></feMerge>
               </filter>
             </defs>
           </svg>
 
-          {/* ========== EPIC BOLT LEFT (primary) ========== */}
-          <svg
-            className="absolute pointer-events-none"
-            viewBox="0 0 110 200"
-            style={{ left: "-75px", top: "2%", width: "110px", height: "200px", overflow: "visible", animation: "boltStrikePrimary 4s ease-out infinite" }}
-          >
-            <g filter="url(#bolt-glow)">
-              {/* Main trunk */}
-              <path d="M62 0 L44 48 L56 46 L30 95 L46 92 L18 150 L38 144 L2 200 L50 152 L32 156 L52 102 L38 105 L58 56 L46 58 Z" fill="url(#bolt-main)" />
-              <path d="M62 0 L44 48 L56 46 L30 95 L46 92 L18 150 L38 144 L2 200 L50 152 L32 156 L52 102 L38 105 L58 56 L46 58 Z" fill="none" stroke="#ecfeff" strokeWidth="0.5" opacity="0.9" />
-              {/* Branch upper */}
-              <path d="M44 48 L18 72 L30 70 L8 98" fill="none" stroke="url(#bolt-branch)" strokeWidth="3" strokeLinecap="round" opacity="0.8" />
-              {/* Branch middle */}
-              <path d="M30 95 L56 120 L48 118 L65 140" fill="none" stroke="url(#bolt-branch)" strokeWidth="2.5" strokeLinecap="round" opacity="0.65" />
-              {/* Branch lower-small */}
-              <path d="M18 150 L0 168" fill="none" stroke="url(#bolt-small)" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
+          {/* ========== EPIC PRIMARY BOLT - LEFT ========== */}
+          <svg className="absolute pointer-events-none" viewBox="0 0 130 240" style={{ left: "-90px", top: "-5%", width: "130px", height: "240px", overflow: "visible", animation: "boltEpic 3.5s linear infinite" }}>
+            <g filter="url(#elec-glow-lg)">
+              <path d="M72 0 L50 55 L66 52 L34 115 L54 110 L20 175 L42 170 L0 240 L56 180 L36 184 L60 122 L42 126 L68 64 L52 66 Z" fill="url(#blt-epic)" />
+              <path d="M72 0 L50 55 L66 52 L34 115 L54 110 L20 175 L42 170 L0 240 L56 180 L36 184 L60 122 L42 126 L68 64 L52 66 Z" fill="none" stroke="white" strokeWidth="0.6" opacity="0.7" />
+              <path d="M50 55 L20 80 L34 78 L6 110 L18 108 L0 130" fill="none" stroke="url(#blt-mid)" strokeWidth="3" strokeLinecap="round" opacity="0.85" />
+              <path d="M34 115 L62 145 L52 142 L74 170" fill="none" stroke="url(#blt-mid)" strokeWidth="2.8" strokeLinecap="round" opacity="0.7" />
+              <path d="M20 175 L0 195" fill="none" stroke="url(#blt-sm)" strokeWidth="2.2" strokeLinecap="round" opacity="0.55" />
+              <path d="M6 110 L0 120 L8 126" fill="none" stroke="url(#blt-sm)" strokeWidth="1.8" strokeLinecap="round" opacity="0.45" />
             </g>
           </svg>
 
-          {/* ========== EPIC BOLT RIGHT (primary) ========== */}
-          <svg
-            className="absolute pointer-events-none"
-            viewBox="0 0 110 200"
-            style={{ right: "-75px", top: "0%", width: "110px", height: "200px", overflow: "visible", animation: "boltStrikePrimary 4s ease-out infinite", animationDelay: "2s", transform: "scaleX(-1)" }}
-          >
-            <g filter="url(#bolt-glow)">
-              <path d="M62 0 L44 48 L56 46 L30 95 L46 92 L18 150 L38 144 L2 200 L50 152 L32 156 L52 102 L38 105 L58 56 L46 58 Z" fill="url(#bolt-main)" />
-              <path d="M62 0 L44 48 L56 46 L30 95 L46 92 L18 150 L38 144 L2 200 L50 152 L32 156 L52 102 L38 105 L58 56 L46 58 Z" fill="none" stroke="#ecfeff" strokeWidth="0.5" opacity="0.9" />
-              <path d="M44 48 L18 72 L30 70 L8 98" fill="none" stroke="url(#bolt-branch)" strokeWidth="3" strokeLinecap="round" opacity="0.8" />
-              <path d="M30 95 L56 120 L48 118 L65 140" fill="none" stroke="url(#bolt-branch)" strokeWidth="2.5" strokeLinecap="round" opacity="0.65" />
-              <path d="M18 150 L0 168" fill="none" stroke="url(#bolt-small)" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
+          {/* ========== EPIC PRIMARY BOLT - RIGHT ========== */}
+          <svg className="absolute pointer-events-none" viewBox="0 0 130 240" style={{ right: "-90px", top: "-8%", width: "130px", height: "240px", overflow: "visible", animation: "boltEpic 3.5s linear infinite", animationDelay: "1.75s", transform: "scaleX(-1)" }}>
+            <g filter="url(#elec-glow-lg)">
+              <path d="M72 0 L50 55 L66 52 L34 115 L54 110 L20 175 L42 170 L0 240 L56 180 L36 184 L60 122 L42 126 L68 64 L52 66 Z" fill="url(#blt-epic)" />
+              <path d="M72 0 L50 55 L66 52 L34 115 L54 110 L20 175 L42 170 L0 240 L56 180 L36 184 L60 122 L42 126 L68 64 L52 66 Z" fill="none" stroke="white" strokeWidth="0.6" opacity="0.7" />
+              <path d="M50 55 L20 80 L34 78 L6 110 L18 108 L0 130" fill="none" stroke="url(#blt-mid)" strokeWidth="3" strokeLinecap="round" opacity="0.85" />
+              <path d="M34 115 L62 145 L52 142 L74 170" fill="none" stroke="url(#blt-mid)" strokeWidth="2.8" strokeLinecap="round" opacity="0.7" />
+              <path d="M20 175 L0 195" fill="none" stroke="url(#blt-sm)" strokeWidth="2.2" strokeLinecap="round" opacity="0.55" />
+              <path d="M6 110 L0 120 L8 126" fill="none" stroke="url(#blt-sm)" strokeWidth="1.8" strokeLinecap="round" opacity="0.45" />
             </g>
           </svg>
 
-          {/* ========== SECONDARY BOLT LEFT ========== */}
-          <svg
-            className="absolute pointer-events-none"
-            viewBox="0 0 80 140"
-            style={{ left: "-48px", top: "42%", width: "80px", height: "140px", overflow: "visible", animation: "boltStrikeSecondary 3.5s ease-out infinite", animationDelay: "1s" }}
-          >
-            <g filter="url(#bolt-glow)">
-              <path d="M48 0 L32 38 L44 36 L18 78 L34 75 L4 140 L40 82 L26 85 L46 44 L34 46 Z" fill="url(#bolt-branch)" />
-              <path d="M48 0 L32 38 L44 36 L18 78 L34 75 L4 140 L40 82 L26 85 L46 44 L34 46 Z" fill="none" stroke="#ecfeff" strokeWidth="0.4" opacity="0.7" />
-              <path d="M32 38 L12 58 L22 56 L5 75" fill="none" stroke="url(#bolt-small)" strokeWidth="2.2" strokeLinecap="round" opacity="0.6" />
+          {/* ========== SECONDARY BOLT - LEFT ========== */}
+          <svg className="absolute pointer-events-none" viewBox="0 0 90 160" style={{ left: "-55px", top: "40%", width: "90px", height: "160px", overflow: "visible", animation: "boltSecondary 3s linear infinite", animationDelay: "0.8s" }}>
+            <g filter="url(#elec-glow)">
+              <path d="M55 0 L38 42 L50 40 L22 88 L38 85 L6 160 L44 92 L28 96 L52 50 L40 52 Z" fill="url(#blt-mid)" />
+              <path d="M55 0 L38 42 L50 40 L22 88 L38 85 L6 160 L44 92 L28 96 L52 50 L40 52 Z" fill="none" stroke="#ecfeff" strokeWidth="0.4" opacity="0.8" />
+              <path d="M38 42 L14 64 L26 62 L4 82" fill="none" stroke="url(#blt-sm)" strokeWidth="2.5" strokeLinecap="round" opacity="0.7" />
+              <path d="M22 88 L44 112" fill="none" stroke="url(#blt-sm)" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
             </g>
           </svg>
 
-          {/* ========== SECONDARY BOLT RIGHT ========== */}
-          <svg
-            className="absolute pointer-events-none"
-            viewBox="0 0 80 140"
-            style={{ right: "-48px", top: "38%", width: "80px", height: "140px", overflow: "visible", animation: "boltStrikeSecondary 3.5s ease-out infinite", animationDelay: "2.5s", transform: "scaleX(-1)" }}
-          >
-            <g filter="url(#bolt-glow)">
-              <path d="M48 0 L32 38 L44 36 L18 78 L34 75 L4 140 L40 82 L26 85 L46 44 L34 46 Z" fill="url(#bolt-branch)" />
-              <path d="M48 0 L32 38 L44 36 L18 78 L34 75 L4 140 L40 82 L26 85 L46 44 L34 46 Z" fill="none" stroke="#ecfeff" strokeWidth="0.4" opacity="0.7" />
-              <path d="M32 38 L12 58 L22 56 L5 75" fill="none" stroke="url(#bolt-small)" strokeWidth="2.2" strokeLinecap="round" opacity="0.6" />
+          {/* ========== SECONDARY BOLT - RIGHT ========== */}
+          <svg className="absolute pointer-events-none" viewBox="0 0 90 160" style={{ right: "-55px", top: "36%", width: "90px", height: "160px", overflow: "visible", animation: "boltSecondary 3s linear infinite", animationDelay: "2.3s", transform: "scaleX(-1)" }}>
+            <g filter="url(#elec-glow)">
+              <path d="M55 0 L38 42 L50 40 L22 88 L38 85 L6 160 L44 92 L28 96 L52 50 L40 52 Z" fill="url(#blt-mid)" />
+              <path d="M55 0 L38 42 L50 40 L22 88 L38 85 L6 160 L44 92 L28 96 L52 50 L40 52 Z" fill="none" stroke="#ecfeff" strokeWidth="0.4" opacity="0.8" />
+              <path d="M38 42 L14 64 L26 62 L4 82" fill="none" stroke="url(#blt-sm)" strokeWidth="2.5" strokeLinecap="round" opacity="0.7" />
+              <path d="M22 88 L44 112" fill="none" stroke="url(#blt-sm)" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
             </g>
           </svg>
 
-          {/* ========== SMALL ACCENT BOLTS ========== */}
-          <svg className="absolute pointer-events-none" viewBox="0 0 50 80" style={{ left: "-22px", bottom: "0%", width: "50px", height: "80px", overflow: "visible", animation: "boltStrikeAccent 3s ease-out infinite", animationDelay: "0.5s" }}>
-            <g filter="url(#bolt-glow)">
-              <path d="M30 0 L20 30 L28 28 L10 80 L36 34 L26 36 Z" fill="url(#bolt-small)" />
-              <path d="M20 30 L8 45" fill="none" stroke="url(#bolt-small)" strokeWidth="1.8" strokeLinecap="round" opacity="0.5" />
+          {/* ========== ACCENT BOLTS - SMALL ========== */}
+          <svg className="absolute pointer-events-none" viewBox="0 0 55 90" style={{ left: "-28px", bottom: "-2%", width: "55px", height: "90px", overflow: "visible", animation: "boltAccent 2.8s linear infinite", animationDelay: "0.4s" }}>
+            <g filter="url(#elec-glow)">
+              <path d="M34 0 L22 32 L32 30 L12 90 L38 36 L28 38 Z" fill="url(#blt-sm)" />
+              <path d="M22 32 L8 48" fill="none" stroke="url(#blt-sm)" strokeWidth="2" strokeLinecap="round" opacity="0.55" />
             </g>
           </svg>
-          <svg className="absolute pointer-events-none" viewBox="0 0 50 80" style={{ right: "-22px", bottom: "3%", width: "50px", height: "80px", overflow: "visible", animation: "boltStrikeAccent 3s ease-out infinite", animationDelay: "3s", transform: "scaleX(-1)" }}>
-            <g filter="url(#bolt-glow)">
-              <path d="M30 0 L20 30 L28 28 L10 80 L36 34 L26 36 Z" fill="url(#bolt-small)" />
-              <path d="M20 30 L8 45" fill="none" stroke="url(#bolt-small)" strokeWidth="1.8" strokeLinecap="round" opacity="0.5" />
+          <svg className="absolute pointer-events-none" viewBox="0 0 55 90" style={{ right: "-28px", bottom: "0%", width: "55px", height: "90px", overflow: "visible", animation: "boltAccent 2.8s linear infinite", animationDelay: "1.6s", transform: "scaleX(-1)" }}>
+            <g filter="url(#elec-glow)">
+              <path d="M34 0 L22 32 L32 30 L12 90 L38 36 L28 38 Z" fill="url(#blt-sm)" />
+              <path d="M22 32 L8 48" fill="none" stroke="url(#blt-sm)" strokeWidth="2" strokeLinecap="round" opacity="0.55" />
+            </g>
+          </svg>
+          {/* Top accent bolt - center-left */}
+          <svg className="absolute pointer-events-none" viewBox="0 0 45 70" style={{ left: "5%", top: "-18px", width: "45px", height: "70px", overflow: "visible", animation: "boltAccent 3.2s linear infinite", animationDelay: "2.6s", transform: "rotate(-15deg)" }}>
+            <g filter="url(#elec-glow)">
+              <path d="M28 0 L18 26 L26 24 L10 70 L32 28 L22 30 Z" fill="url(#blt-sm)" />
+            </g>
+          </svg>
+          {/* Top accent bolt - center-right */}
+          <svg className="absolute pointer-events-none" viewBox="0 0 45 70" style={{ right: "5%", top: "-15px", width: "45px", height: "70px", overflow: "visible", animation: "boltAccent 3.2s linear infinite", animationDelay: "1s", transform: "rotate(15deg)" }}>
+            <g filter="url(#elec-glow)">
+              <path d="M28 0 L18 26 L26 24 L10 70 L32 28 L22 30 Z" fill="url(#blt-sm)" />
             </g>
           </svg>
 
-          {/* ========== ELECTRIC SPARKS (star shapes) ========== */}
-          <svg className="absolute pointer-events-none" viewBox="0 0 40 40" style={{ left: "-34px", top: "18%", width: "28px", height: "28px", overflow: "visible", animation: "sparkPop 2.5s ease-out infinite", animationDelay: "0.2s" }}>
-            <path d="M20 2 L17 15 L4 18 L17 21 L20 34 L23 21 L36 18 L23 15 Z" fill="#67e8f9" />
-            <path d="M20 8 L18.5 17 L10 18 L18.5 19 L20 28 L21.5 19 L30 18 L21.5 17 Z" fill="#ecfeff" />
-          </svg>
-          <svg className="absolute pointer-events-none" viewBox="0 0 40 40" style={{ right: "-32px", top: "24%", width: "24px", height: "24px", overflow: "visible", animation: "sparkPop 2.5s ease-out infinite", animationDelay: "1.5s" }}>
-            <path d="M20 2 L17 15 L4 18 L17 21 L20 34 L23 21 L36 18 L23 15 Z" fill="#67e8f9" />
-            <path d="M20 8 L18.5 17 L10 18 L18.5 19 L20 28 L21.5 19 L30 18 L21.5 17 Z" fill="#ecfeff" />
-          </svg>
-          <svg className="absolute pointer-events-none" viewBox="0 0 40 40" style={{ left: "-18px", top: "65%", width: "20px", height: "20px", overflow: "visible", animation: "sparkPop 2.8s ease-out infinite", animationDelay: "2.2s" }}>
-            <path d="M20 2 L17 15 L4 18 L17 21 L20 34 L23 21 L36 18 L23 15 Z" fill="#a5f3fc" />
-          </svg>
-          <svg className="absolute pointer-events-none" viewBox="0 0 40 40" style={{ right: "-18px", top: "60%", width: "20px", height: "20px", overflow: "visible", animation: "sparkPop 2.8s ease-out infinite", animationDelay: "0.8s" }}>
-            <path d="M20 2 L17 15 L4 18 L17 21 L20 34 L23 21 L36 18 L23 15 Z" fill="#a5f3fc" />
-          </svg>
+          {/* ========== ELECTRIC SPARKS ========== */}
+          {[
+            { x: "-38px", y: "15%", s: "30px", d: "0.15s", dur: "2.4s" },
+            { x: "-20px", y: "48%", s: "22px", d: "1.3s", dur: "2.6s" },
+            { x: "-30px", y: "78%", s: "18px", d: "2.5s", dur: "2.8s" },
+          ].map((sp, i) => (
+            <svg key={`spL${i}`} className="absolute pointer-events-none" viewBox="0 0 40 40" style={{ left: sp.x, top: sp.y, width: sp.s, height: sp.s, overflow: "visible", animation: `sparkPop ${sp.dur} ease-out infinite`, animationDelay: sp.d }}>
+              <path d="M20 0 L17 14 L2 17 L14 20 L17 36 L20 22 L36 20 L22 17 Z" fill="#67e8f9" />
+              <path d="M20 6 L18 16 L8 18 L16 20 L18 30 L20 22 L30 20 L22 18 Z" fill="#ecfeff" />
+            </svg>
+          ))}
+          {[
+            { x: "-36px", y: "22%", s: "28px", d: "0.7s", dur: "2.4s" },
+            { x: "-18px", y: "55%", s: "20px", d: "1.9s", dur: "2.6s" },
+            { x: "-28px", y: "72%", s: "18px", d: "0.3s", dur: "2.8s" },
+          ].map((sp, i) => (
+            <svg key={`spR${i}`} className="absolute pointer-events-none" viewBox="0 0 40 40" style={{ right: sp.x, top: sp.y, width: sp.s, height: sp.s, overflow: "visible", animation: `sparkPop ${sp.dur} ease-out infinite`, animationDelay: sp.d }}>
+              <path d="M20 0 L17 14 L2 17 L14 20 L17 36 L20 22 L36 20 L22 17 Z" fill="#67e8f9" />
+              <path d="M20 6 L18 16 L8 18 L16 20 L18 30 L20 22 L30 20 L22 18 Z" fill="#ecfeff" />
+            </svg>
+          ))}
 
           {/* ========== ELECTRIC ARC LINES ========== */}
-          {/* Left side arcs */}
-          <div className="absolute top-[20%] -left-14 h-[2px] pointer-events-none origin-right rotate-[-5deg]"
-            style={{ width: "56px", animation: "arcFlicker 2.4s linear infinite", animationDelay: "0.1s", background: "linear-gradient(90deg, transparent 0%, #22d3ee 40%, #ecfeff 100%)" }} />
-          <div className="absolute top-[38%] -left-16 h-[2px] pointer-events-none origin-right rotate-[-12deg]"
-            style={{ width: "64px", animation: "arcFlicker 2.8s linear infinite", animationDelay: "1.2s", background: "linear-gradient(90deg, transparent 0%, #38bdf8 40%, #ecfeff 100%)" }} />
-          <div className="absolute top-[56%] -left-12 h-[1.5px] pointer-events-none origin-right rotate-[5deg]"
-            style={{ width: "48px", animation: "arcFlicker 2.6s linear infinite", animationDelay: "2.2s", background: "linear-gradient(90deg, transparent 0%, #22d3ee 40%, #a5f3fc 100%)" }} />
-          <div className="absolute top-[74%] -left-10 h-[1.5px] pointer-events-none origin-right rotate-[10deg]"
-            style={{ width: "40px", animation: "arcFlicker 3s linear infinite", animationDelay: "0.6s", background: "linear-gradient(90deg, transparent 0%, #67e8f9 40%, #ecfeff 100%)" }} />
-          
-          {/* Right side arcs */}
-          <div className="absolute top-[16%] -right-14 h-[2px] pointer-events-none origin-left rotate-[6deg]"
-            style={{ width: "56px", animation: "arcFlicker 2.4s linear infinite", animationDelay: "0.5s", background: "linear-gradient(270deg, transparent 0%, #22d3ee 40%, #ecfeff 100%)" }} />
-          <div className="absolute top-[34%] -right-[72px] h-[2px] pointer-events-none origin-left rotate-[10deg]"
-            style={{ width: "72px", animation: "arcFlicker 2.8s linear infinite", animationDelay: "1.7s", background: "linear-gradient(270deg, transparent 0%, #38bdf8 40%, #ecfeff 100%)" }} />
-          <div className="absolute top-[52%] -right-12 h-[1.5px] pointer-events-none origin-left rotate-[-4deg]"
-            style={{ width: "48px", animation: "arcFlicker 2.6s linear infinite", animationDelay: "0.3s", background: "linear-gradient(270deg, transparent 0%, #22d3ee 40%, #a5f3fc 100%)" }} />
-          <div className="absolute top-[70%] -right-10 h-[1.5px] pointer-events-none origin-left rotate-[-8deg]"
-            style={{ width: "40px", animation: "arcFlicker 3s linear infinite", animationDelay: "1.9s", background: "linear-gradient(270deg, transparent 0%, #67e8f9 40%, #ecfeff 100%)" }} />
+          {/* Left arcs */}
+          {[
+            { top: "18%", w: 60, rot: -4, d: "0s" },
+            { top: "32%", w: 72, rot: -10, d: "1.1s" },
+            { top: "48%", w: 52, rot: 3, d: "2s" },
+            { top: "62%", w: 44, rot: 8, d: "0.5s" },
+            { top: "78%", w: 38, rot: 12, d: "1.6s" },
+          ].map((a, i) => (
+            <div key={`arcL${i}`} className="absolute pointer-events-none origin-right" style={{ top: a.top, left: `-${a.w}px`, width: `${a.w}px`, height: "2px", transform: `rotate(${a.rot}deg)`, animation: `arcFlicker ${2.2 + i * 0.3}s linear infinite`, animationDelay: a.d, background: `linear-gradient(90deg, transparent 0%, #22d3ee 35%, #ecfeff 100%)` }} />
+          ))}
+          {/* Right arcs */}
+          {[
+            { top: "14%", w: 60, rot: 5, d: "0.4s" },
+            { top: "28%", w: 76, rot: 9, d: "1.5s" },
+            { top: "44%", w: 52, rot: -3, d: "2.3s" },
+            { top: "58%", w: 44, rot: -7, d: "0.8s" },
+            { top: "74%", w: 38, rot: -11, d: "1.8s" },
+          ].map((a, i) => (
+            <div key={`arcR${i}`} className="absolute pointer-events-none origin-left" style={{ top: a.top, right: `-${a.w}px`, width: `${a.w}px`, height: "2px", transform: `rotate(${a.rot}deg)`, animation: `arcFlicker ${2.2 + i * 0.3}s linear infinite`, animationDelay: a.d, background: `linear-gradient(270deg, transparent 0%, #22d3ee 35%, #ecfeff 100%)` }} />
+          ))}
 
           {/* === LOGO IMAGE === */}
           <Image
