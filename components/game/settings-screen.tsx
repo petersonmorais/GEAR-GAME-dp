@@ -282,7 +282,7 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
 
       {/* Header */}
       <div className="relative z-10 flex items-center justify-between p-4 bg-gradient-to-r from-black/80 via-cyan-900/30 to-black/80 border-b border-cyan-500/30 backdrop-blur-sm">
-        <Button onClick={onBack} variant="ghost" className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10">
+        <Button onClick={() => onBack()} variant="ghost" className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10">
           <ArrowLeft className="mr-2 h-5 w-5" />
           {t("back")}
         </Button>
