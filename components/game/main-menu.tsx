@@ -275,117 +275,102 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
       {/* Logo */}
       <div className="mb-10 relative z-10 text-center flex flex-col items-center">
         {/* Version number above logo */}
-        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-4">v1.1.6</div>
+        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-4">v1.1.7</div>
         
         <div className="relative inline-block">
-          {/* Main ambient glow behind logo */}
-          <div 
-            className="absolute inset-0 scale-[1.6]"
-            style={{ animation: "logoGlowPulse 3.5s ease-in-out infinite" }}
-          >
-            <div className="w-full h-full bg-gradient-to-r from-cyan-500 via-blue-400 to-cyan-500 rounded-full" />
-          </div>
           
-          {/* Secondary glow layer - offset for depth */}
-          <div 
-            className="absolute inset-0 scale-[1.3] translate-y-2"
-            style={{ animation: "logoGlowPulse 3.5s ease-in-out infinite", animationDelay: "1.8s" }}
-          >
-            <div className="w-full h-full bg-gradient-to-r from-blue-600 via-cyan-400 to-blue-600 rounded-full" />
-          </div>
-          
-          {/* Electric ray burst - top left */}
-          <div 
-            className="absolute -top-10 -left-16 w-48 h-28 pointer-events-none"
-            style={{ animation: "logoRayPulse 3s ease-in-out infinite" }}
-          >
-            <div className="w-full h-full bg-gradient-to-br from-cyan-300/90 via-blue-500/50 to-transparent blur-[10px] rounded-full" />
-          </div>
-          
-          {/* Electric ray burst - top right */}
-          <div 
-            className="absolute -top-8 -right-14 w-44 h-24 pointer-events-none"
-            style={{ animation: "logoRayPulse 3s ease-in-out infinite", animationDelay: "1s" }}
-          >
-            <div className="w-full h-full bg-gradient-to-bl from-blue-300/90 via-cyan-500/50 to-transparent blur-[10px] rounded-full" />
-          </div>
-          
-          {/* Electric ray burst - bottom */}
-          <div 
-            className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-56 h-20 pointer-events-none"
-            style={{ animation: "logoRayPulse 3s ease-in-out infinite", animationDelay: "0.5s" }}
-          >
-            <div className="w-full h-full bg-gradient-to-t from-cyan-300/80 via-blue-400/40 to-transparent blur-[12px] rounded-full" />
-          </div>
-          
-          {/* Lightning bolt - left */}
-          <svg className="absolute -left-10 top-1/2 -translate-y-1/2 w-16 h-24 pointer-events-none" viewBox="0 0 60 100" style={{ animation: "logoBoltStrike 4s ease-in-out infinite" }}>
-            <path d="M35 0 L20 40 L32 38 L15 100 L45 50 L30 53 Z" fill="url(#boltGrad1)" />
+          {/* Lightning bolt SVG - large left */}
+          <svg className="absolute -left-14 top-[20%] w-20 h-32 pointer-events-none" viewBox="0 0 80 130" style={{ animation: "logoBoltStrike 3.5s ease-in-out infinite" }}>
+            <path d="M45 0 L25 50 L40 47 L10 130 L55 60 L38 64 Z" fill="url(#boltL1)" stroke="#a5f3fc" strokeWidth="0.5" />
+            <path d="M45 0 L25 50 L40 47 L10 130 L55 60 L38 64 Z" fill="none" stroke="white" strokeWidth="0.3" opacity="0.6" />
             <defs>
-              <linearGradient id="boltGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+              <linearGradient id="boltL1" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stopColor="#67e8f9" />
-                <stop offset="50%" stopColor="#38bdf8" />
-                <stop offset="100%" stopColor="#3b82f6" />
+                <stop offset="40%" stopColor="#22d3ee" />
+                <stop offset="100%" stopColor="#0ea5e9" />
               </linearGradient>
             </defs>
           </svg>
           
-          {/* Lightning bolt - right */}
-          <svg className="absolute -right-10 top-1/3 w-14 h-20 pointer-events-none" viewBox="0 0 60 100" style={{ animation: "logoBoltStrike 4s ease-in-out infinite", animationDelay: "2s", transform: "scaleX(-1)" }}>
-            <path d="M35 0 L20 40 L32 38 L15 100 L45 50 L30 53 Z" fill="url(#boltGrad2)" />
+          {/* Lightning bolt SVG - large right */}
+          <svg className="absolute -right-14 top-[15%] w-20 h-32 pointer-events-none" viewBox="0 0 80 130" style={{ animation: "logoBoltStrike 3.5s ease-in-out infinite", animationDelay: "1.8s", transform: "scaleX(-1)" }}>
+            <path d="M45 0 L25 50 L40 47 L10 130 L55 60 L38 64 Z" fill="url(#boltR1)" stroke="#a5f3fc" strokeWidth="0.5" />
+            <path d="M45 0 L25 50 L40 47 L10 130 L55 60 L38 64 Z" fill="none" stroke="white" strokeWidth="0.3" opacity="0.6" />
             <defs>
-              <linearGradient id="boltGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#93c5fd" />
-                <stop offset="50%" stopColor="#60a5fa" />
-                <stop offset="100%" stopColor="#3b82f6" />
+              <linearGradient id="boltR1" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#67e8f9" />
+                <stop offset="40%" stopColor="#22d3ee" />
+                <stop offset="100%" stopColor="#0ea5e9" />
               </linearGradient>
             </defs>
           </svg>
           
-          {/* Electric flicker lines - left */}
-          <div 
-            className="absolute top-[40%] -left-8 w-24 h-[2px] pointer-events-none origin-right"
-            style={{ animation: "logoElectricFlicker 3.5s ease-in-out infinite", animationDelay: "0.3s" }}
-          >
-            <div className="w-full h-full bg-gradient-to-r from-transparent via-cyan-200 to-cyan-400 blur-[1px] rounded-full" />
-          </div>
-          <div 
-            className="absolute top-[55%] -left-6 w-16 h-[2px] pointer-events-none origin-right"
-            style={{ animation: "logoElectricFlicker 3.5s ease-in-out infinite", animationDelay: "1.8s" }}
-          >
-            <div className="w-full h-full bg-gradient-to-r from-transparent via-blue-200 to-blue-400 blur-[1px] rounded-full" />
-          </div>
+          {/* Small lightning bolt - bottom left */}
+          <svg className="absolute -left-6 bottom-[10%] w-12 h-20 pointer-events-none" viewBox="0 0 50 80" style={{ animation: "logoBoltStrike 4s ease-in-out infinite", animationDelay: "0.8s" }}>
+            <path d="M30 0 L18 32 L28 30 L10 80 L38 38 L26 41 Z" fill="url(#boltL2)" stroke="#a5f3fc" strokeWidth="0.4" />
+            <defs>
+              <linearGradient id="boltL2" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#a5f3fc" />
+                <stop offset="100%" stopColor="#38bdf8" />
+              </linearGradient>
+            </defs>
+          </svg>
           
-          {/* Electric flicker lines - right */}
-          <div 
-            className="absolute top-[35%] -right-7 w-20 h-[2px] pointer-events-none origin-left"
-            style={{ animation: "logoElectricFlicker 3.5s ease-in-out infinite", animationDelay: "1s" }}
-          >
-            <div className="w-full h-full bg-gradient-to-l from-transparent via-cyan-200 to-cyan-400 blur-[1px] rounded-full" />
-          </div>
-          <div 
-            className="absolute top-[60%] -right-5 w-14 h-[2px] pointer-events-none origin-left"
-            style={{ animation: "logoElectricFlicker 3.5s ease-in-out infinite", animationDelay: "2.5s" }}
-          >
-            <div className="w-full h-full bg-gradient-to-l from-transparent via-blue-200 to-blue-400 blur-[1px] rounded-full" />
-          </div>
+          {/* Small lightning bolt - bottom right */}
+          <svg className="absolute -right-6 bottom-[15%] w-12 h-20 pointer-events-none" viewBox="0 0 50 80" style={{ animation: "logoBoltStrike 4s ease-in-out infinite", animationDelay: "2.6s", transform: "scaleX(-1)" }}>
+            <path d="M30 0 L18 32 L28 30 L10 80 L38 38 L26 41 Z" fill="url(#boltR2)" stroke="#a5f3fc" strokeWidth="0.4" />
+            <defs>
+              <linearGradient id="boltR2" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#a5f3fc" />
+                <stop offset="100%" stopColor="#38bdf8" />
+              </linearGradient>
+            </defs>
+          </svg>
 
-          {/* Bright outline glow ring */}
-          <div className="absolute inset-0 scale-105">
-            <div 
-              className="w-full h-full rounded-3xl"
-              style={{
-                boxShadow: "0 0 30px rgba(56,189,248,0.35), 0 0 60px rgba(59,130,246,0.2), 0 0 100px rgba(56,189,248,0.1)",
-                animation: "logoGlowPulse 3s ease-in-out infinite",
-              }}
-            />
-          </div>
+          {/* Electric arc lines - left side */}
+          <div 
+            className="absolute top-[30%] -left-10 w-14 h-[2px] pointer-events-none origin-right"
+            style={{ animation: "logoElectricFlicker 3s linear infinite", animationDelay: "0.2s", background: "linear-gradient(90deg, transparent, #22d3ee, #67e8f9)" }}
+          />
+          <div 
+            className="absolute top-[50%] -left-12 w-16 h-[2px] pointer-events-none origin-right rotate-[-8deg]"
+            style={{ animation: "logoElectricFlicker 3s linear infinite", animationDelay: "1.5s", background: "linear-gradient(90deg, transparent, #38bdf8, #a5f3fc)" }}
+          />
+          <div 
+            className="absolute top-[70%] -left-8 w-10 h-[1.5px] pointer-events-none origin-right rotate-[5deg]"
+            style={{ animation: "logoElectricFlicker 3.5s linear infinite", animationDelay: "2.8s", background: "linear-gradient(90deg, transparent, #22d3ee, #67e8f9)" }}
+          />
+          
+          {/* Electric arc lines - right side */}
+          <div 
+            className="absolute top-[25%] -right-10 w-14 h-[2px] pointer-events-none origin-left"
+            style={{ animation: "logoElectricFlicker 3s linear infinite", animationDelay: "0.9s", background: "linear-gradient(270deg, transparent, #22d3ee, #67e8f9)" }}
+          />
+          <div 
+            className="absolute top-[45%] -right-14 w-18 h-[2px] pointer-events-none origin-left rotate-[6deg]"
+            style={{ animation: "logoElectricFlicker 3s linear infinite", animationDelay: "2.2s", background: "linear-gradient(270deg, transparent, #38bdf8, #a5f3fc)" }}
+          />
+          <div 
+            className="absolute top-[65%] -right-8 w-10 h-[1.5px] pointer-events-none origin-left rotate-[-4deg]"
+            style={{ animation: "logoElectricFlicker 3.5s linear infinite", animationDelay: "0.5s", background: "linear-gradient(270deg, transparent, #22d3ee, #67e8f9)" }}
+          />
+          
+          {/* Electric arc - top */}
+          <div 
+            className="absolute -top-3 left-[30%] w-[40%] h-[2px] pointer-events-none"
+            style={{ animation: "logoElectricFlicker 4s linear infinite", animationDelay: "1.2s", background: "linear-gradient(90deg, transparent 10%, #67e8f9 30%, #22d3ee 50%, #67e8f9 70%, transparent 90%)" }}
+          />
+          
+          {/* Subtle static glow (no blur animation, just a fixed soft light) */}
+          <div className="absolute inset-0 -m-4 rounded-3xl pointer-events-none" style={{
+            boxShadow: "0 0 20px rgba(34,211,238,0.15), 0 0 50px rgba(56,189,248,0.08)",
+          }} />
           
           {/* Shine swipe across logo */}
           <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none">
             <div 
-              className="absolute inset-0 w-[30%] h-full bg-gradient-to-r from-transparent via-white/10 to-transparent"
-              style={{ animation: "logoShineSwipe 5s ease-in-out infinite" }}
+              className="absolute inset-0 w-[25%] h-full bg-gradient-to-r from-transparent via-white/8 to-transparent"
+              style={{ animation: "logoShineSwipe 6s ease-in-out infinite" }}
             />
           </div>
 
@@ -396,7 +381,7 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
             height={600}
             className="relative w-80 h-auto sm:w-96 md:w-[28rem] lg:w-[32rem]"
             style={{
-              filter: "drop-shadow(0 0 15px rgba(56,189,248,0.6)) drop-shadow(0 0 40px rgba(59,130,246,0.3))",
+              filter: "drop-shadow(0 0 8px rgba(34,211,238,0.4)) drop-shadow(0 0 25px rgba(56,189,248,0.15))",
             }}
             priority
           />
