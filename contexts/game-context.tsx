@@ -1236,150 +1236,211 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [globalPlaymatId, setGlobalPlaymatId] = useState<string | null>(null)
   const [redeemedCodes, setRedeemedCodes] = useState<string[]>([])
   
-  // Load saved data from localStorage on mount
-  useEffect(() => {
-    const savedCoins = localStorage.getItem("gearperks-coins")
-    const savedCollection = localStorage.getItem("gearperks-collection")
-    const savedDecks = localStorage.getItem("gearperks-decks")
-    const savedHistory = localStorage.getItem("gearperks-history")
-    const savedGifts = localStorage.getItem("gearperks-giftboxes")
-    const savedPlayerId = localStorage.getItem("gearperks-playerid")
-    const savedProfile = localStorage.getItem("gearperks-profile")
-    const savedFriends = localStorage.getItem("gearperks-friends")
-    const savedRequests = localStorage.getItem("gearperks-friendrequests")
-    const savedFP = localStorage.getItem("gearperks-fp")
-    const savedSpendableFP = localStorage.getItem("gearperks-spendablefp")
-    // const savedAccountAuth = localStorage.getItem("gearperks-accountAuth") // Replaced by gear-perks-auth
-
-    // Load account auth from localStorage
-    const savedAuth = localStorage.getItem("gear-perks-auth")
-    if (savedAuth) {
-      try {
-        const auth = JSON.parse(savedAuth)
-        setAccountAuth(auth)
-      } catch (e) {
-        console.error("Failed to parse auth data")
-      }
-    }
-
-    if (savedCoins) setCoins(Number.parseInt(savedCoins))
-    if (savedCollection) setCollection(JSON.parse(savedCollection))
-    if (savedDecks) setDecks(JSON.parse(savedDecks))
-    if (savedHistory) setMatchHistory(JSON.parse(savedHistory))
-    if (savedGifts) {
-      const parsed = JSON.parse(savedGifts) as GiftBox[]
-      const merged = INITIAL_GIFT_BOXES.map((gift) => {
-        const saved = parsed.find((p) => p.id === gift.id)
-        return saved ? { ...gift, claimed: saved.claimed } : gift
-      })
-      // Add any new gifts not in initial
-      const newGifts = parsed.filter((p) => !INITIAL_GIFT_BOXES.find((g) => g.id === p.id))
-      setGiftBoxes([...merged, ...newGifts])
-    }
-
-    // Player ID
-    if (savedPlayerId) {
-      setPlayerId(savedPlayerId)
-    } else {
-      const newId = generatePlayerId()
-      setPlayerId(newId)
-      localStorage.setItem("gearperks-playerid", newId)
-    }
-
-    // Profile
-    if (savedProfile) {
-      setPlayerProfile(JSON.parse(savedProfile))
-    }
-
-    // Friends - ensure GUEST is always present
-    if (savedFriends) {
-      const parsed = JSON.parse(savedFriends) as Friend[]
-      const hasGuest = parsed.some((f) => f.id === "GUEST-001")
-      if (!hasGuest) {
-        setFriends([DEFAULT_GUEST_FRIEND, ...parsed])
-      } else {
-        setFriends(parsed)
-      }
-    }
-
-    if (savedRequests) setFriendRequests(JSON.parse(savedRequests))
-    if (savedFP) setFriendPoints(Number.parseInt(savedFP))
-    if (savedSpendableFP) setSpendableFP(Number.parseInt(savedSpendableFP))
-
-    // Account Auth - handled above
-    // if (savedAccountAuth) {
-    //   setAccountAuth(JSON.parse(savedAccountAuth))
-    // }
-
-    const savedOwnedPlaymats = localStorage.getItem("gearperks_owned_playmats")
-    const savedGlobalPlaymat = localStorage.getItem("gearperks_global_playmat")
-
-    if (savedOwnedPlaymats) {
-      try {
-        const playmatIds = JSON.parse(savedOwnedPlaymats)
-        setOwnedPlaymats(ALL_PLAYMATS.filter((p) => playmatIds.includes(p.id)))
-      } catch (e) {
-        console.error("Failed to load owned playmats")
-      }
-    }
-
-  if (savedGlobalPlaymat) {
-  setGlobalPlaymatId(savedGlobalPlaymat)
+  // Helper to get localStorage with fallback keys (old format vs new format)
+  const getLS = (key: string): string | null => {
+    // Try new format first (gear-perks-*), then old format (gearperks-*)
+    return localStorage.getItem(`gear-perks-${key}`) || localStorage.getItem(`gearperks-${key}`) || null
   }
   
-  const savedRedeemedCodes = localStorage.getItem("gearperks-redeemed-codes")
-  if (savedRedeemedCodes) {
-    try {
-      setRedeemedCodes(JSON.parse(savedRedeemedCodes))
-    } catch (e) {
-      console.error("Failed to load redeemed codes")
-    }
+  // Save to localStorage with unified key format
+  const setLS = (key: string, value: string) => {
+    localStorage.setItem(`gearperks-${key}`, value)
+    localStorage.setItem(`gear-perks-${key}`, value) // save to both for compatibility
   }
+
+  // Load saved data from localStorage on mount, and from cloud if logged in
+  useEffect(() => {
+    const loadData = async () => {
+      // 1. Load auth first
+      const savedAuth = localStorage.getItem("gear-perks-auth")
+      let auth: AccountAuth | null = null
+      if (savedAuth) {
+        try {
+          auth = JSON.parse(savedAuth)
+          if (auth) setAccountAuth(auth)
+        } catch (e) {
+          console.error("Failed to parse auth data")
+        }
+      }
+
+      // 2. If logged in with a unique code, try loading from Supabase cloud first
+      let cloudLoaded = false
+      if (auth?.isLoggedIn && auth?.uniqueCode) {
+        try {
+          const supabase = createClient()
+          const { data: profileData, error: profileError } = await supabase
+            .from("player_profiles")
+            .select("*")
+            .eq("user_code", auth.uniqueCode)
+            .single()
+
+          if (profileData && !profileError) {
+            // Load all data from cloud
+            setCoins(profileData.coins ?? 999)
+            setCollection(profileData.collection ?? [])
+            setDecks(profileData.decks ?? [])
+            setMatchHistory(profileData.duel_history ?? [])
+            
+            const loadedProfile: PlayerProfile = {
+              id: profileData.id,
+              name: profileData.player_name || "Jogador",
+              title: profileData.player_title || "Iniciante",
+              level: 1,
+              avatarUrl: profileData.avatar_id,
+              showcaseCards: [],
+              hasCompletedSetup: true,
+            }
+            setPlayerProfile(loadedProfile)
+            if (profileData.player_id) setPlayerId(profileData.player_id)
+
+            // Sync cloud data to localStorage for offline access
+            setLS("coins", (profileData.coins ?? 999).toString())
+            setLS("collection", JSON.stringify(profileData.collection ?? []))
+            setLS("decks", JSON.stringify(profileData.decks ?? []))
+            setLS("history", JSON.stringify(profileData.duel_history ?? []))
+            setLS("profile", JSON.stringify(loadedProfile))
+            
+            cloudLoaded = true
+          }
+        } catch (err) {
+          console.error("Failed to load from cloud, falling back to localStorage:", err)
+        }
+      }
+
+      // 3. If not loaded from cloud, load from localStorage
+      if (!cloudLoaded) {
+        const savedCoins = getLS("coins")
+        const savedCollection = getLS("collection")
+        const savedDecks = getLS("decks")
+        const savedHistory = getLS("history")
+        const savedProfile = getLS("profile")
+
+        if (savedCoins) setCoins(Number.parseInt(savedCoins))
+        if (savedCollection) {
+          try { setCollection(JSON.parse(savedCollection)) } catch {}
+        }
+        if (savedDecks) {
+          try { setDecks(JSON.parse(savedDecks)) } catch {}
+        }
+        if (savedHistory) {
+          try { setMatchHistory(JSON.parse(savedHistory)) } catch {}
+        }
+        if (savedProfile) {
+          try { setPlayerProfile(JSON.parse(savedProfile)) } catch {}
+        }
+      }
+
+      // 4. Load gift boxes (always from localStorage since not in cloud)
+      const savedGifts = getLS("giftboxes")
+      if (savedGifts) {
+        try {
+          const parsed = JSON.parse(savedGifts) as GiftBox[]
+          const merged = INITIAL_GIFT_BOXES.map((gift) => {
+            const saved = parsed.find((p) => p.id === gift.id)
+            return saved ? { ...gift, claimed: saved.claimed } : gift
+          })
+          const newGifts = parsed.filter((p) => !INITIAL_GIFT_BOXES.find((g) => g.id === p.id))
+          setGiftBoxes([...merged, ...newGifts])
+        } catch {}
+      }
+
+      // Player ID
+      const savedPlayerId = getLS("playerid") || localStorage.getItem("gear-perks-player-id")
+      if (savedPlayerId) {
+        setPlayerId(savedPlayerId)
+      } else {
+        const newId = generatePlayerId()
+        setPlayerId(newId)
+        setLS("playerid", newId)
+      }
+
+      // Friends - ensure GUEST is always present
+      const savedFriends = getLS("friends")
+      if (savedFriends) {
+        try {
+          const parsed = JSON.parse(savedFriends) as Friend[]
+          const hasGuest = parsed.some((f) => f.id === "GUEST-001")
+          if (!hasGuest) {
+            setFriends([DEFAULT_GUEST_FRIEND, ...parsed])
+          } else {
+            setFriends(parsed)
+          }
+        } catch {}
+      }
+
+      const savedRequests = getLS("friendrequests")
+      const savedFP = getLS("fp")
+      const savedSpendableFP = getLS("spendablefp")
+      if (savedRequests) { try { setFriendRequests(JSON.parse(savedRequests)) } catch {} }
+      if (savedFP) setFriendPoints(Number.parseInt(savedFP))
+      if (savedSpendableFP) setSpendableFP(Number.parseInt(savedSpendableFP))
+
+      // Playmats
+      const savedOwnedPlaymats = localStorage.getItem("gearperks_owned_playmats")
+      const savedGlobalPlaymat = localStorage.getItem("gearperks_global_playmat")
+      if (savedOwnedPlaymats) {
+        try {
+          const playmatIds = JSON.parse(savedOwnedPlaymats)
+          setOwnedPlaymats(ALL_PLAYMATS.filter((p) => playmatIds.includes(p.id)))
+        } catch {}
+      }
+      if (savedGlobalPlaymat) {
+        setGlobalPlaymatId(savedGlobalPlaymat)
+      }
+      
+      // Redeemed codes
+      const savedRedeemedCodes = getLS("redeemed-codes")
+      if (savedRedeemedCodes) {
+        try { setRedeemedCodes(JSON.parse(savedRedeemedCodes)) } catch {}
+      }
+    }
+
+    loadData()
   }, [])
 
-  // Save to localStorage when data changes
+  // Save to localStorage when data changes (both key formats for compatibility)
   useEffect(() => {
-    localStorage.setItem("gearperks-coins", coins.toString())
+    setLS("coins", coins.toString())
   }, [coins])
-
+  
   useEffect(() => {
-    localStorage.setItem("gearperks-collection", JSON.stringify(collection))
+    setLS("collection", JSON.stringify(collection))
   }, [collection])
-
+  
   useEffect(() => {
-    localStorage.setItem("gearperks-decks", JSON.stringify(decks))
+    setLS("decks", JSON.stringify(decks))
   }, [decks])
-
+  
   useEffect(() => {
-    localStorage.setItem("gearperks-history", JSON.stringify(matchHistory))
+    setLS("history", JSON.stringify(matchHistory))
   }, [matchHistory])
-
+  
   useEffect(() => {
-    localStorage.setItem("gearperks-giftboxes", JSON.stringify(giftBoxes))
+    setLS("giftboxes", JSON.stringify(giftBoxes))
   }, [giftBoxes])
-
+  
   useEffect(() => {
-    if (playerId) localStorage.setItem("gearperks-playerid", playerId)
+    if (playerId) setLS("playerid", playerId)
   }, [playerId])
-
+  
   useEffect(() => {
-    localStorage.setItem("gearperks-profile", JSON.stringify(playerProfile))
+    setLS("profile", JSON.stringify(playerProfile))
   }, [playerProfile])
-
+  
   useEffect(() => {
-    localStorage.setItem("gearperks-friends", JSON.stringify(friends))
+    setLS("friends", JSON.stringify(friends))
   }, [friends])
-
+  
   useEffect(() => {
-    localStorage.setItem("gearperks-friendrequests", JSON.stringify(friendRequests))
+    setLS("friendrequests", JSON.stringify(friendRequests))
   }, [friendRequests])
-
+  
   useEffect(() => {
-    localStorage.setItem("gearperks-fp", friendPoints.toString())
+    setLS("fp", friendPoints.toString())
   }, [friendPoints])
-
+  
   useEffect(() => {
-    localStorage.setItem("gearperks-spendablefp", spendableFP.toString())
+    setLS("spendablefp", spendableFP.toString())
   }, [spendableFP])
 
   // useEffect(() => {
@@ -1392,6 +1453,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   // Save account auth state to localStorage
   useEffect(() => {
     localStorage.setItem("gear-perks-auth", JSON.stringify(accountAuth))
+    localStorage.setItem("gearperks-accountAuth", JSON.stringify(accountAuth))
   }, [accountAuth])
 
   useEffect(() => {
@@ -1881,13 +1943,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
         setPlayerProfile(loadedProfile)
         setPlayerId(codeData.user_id)
 
-        // Also save to localStorage for offline access
-        localStorage.setItem("gear-perks-coins", profileData.coins?.toString() ?? "999")
-        localStorage.setItem("gear-perks-collection", JSON.stringify(profileData.collection ?? []))
-        localStorage.setItem("gear-perks-decks", JSON.stringify(profileData.decks ?? []))
-        localStorage.setItem("gear-perks-match-history", JSON.stringify(profileData.duel_history ?? []))
-        localStorage.setItem("gear-perks-player-profile", JSON.stringify(loadedProfile))
-        localStorage.setItem("gear-perks-player-id", codeData.user_id)
+        // Also save to localStorage for offline access (both key formats)
+        setLS("coins", profileData.coins?.toString() ?? "999")
+        setLS("collection", JSON.stringify(profileData.collection ?? []))
+        setLS("decks", JSON.stringify(profileData.decks ?? []))
+        setLS("history", JSON.stringify(profileData.duel_history ?? []))
+        setLS("profile", JSON.stringify(loadedProfile))
+        setLS("playerid", codeData.user_id)
       } else {
         // Profile not found in cloud, use local data but still log in
         console.log("Profile not found in cloud, using local data")
@@ -2015,12 +2077,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
         console.error("Error saving progress:", err)
       }
 
-      // Also save to localStorage for offline access
-      localStorage.setItem("gear-perks-coins", coins.toString())
-      localStorage.setItem("gear-perks-collection", JSON.stringify(collection))
-      localStorage.setItem("gear-perks-decks", JSON.stringify(decks))
-      localStorage.setItem("gear-perks-match-history", JSON.stringify(matchHistory))
-      localStorage.setItem("gear-perks-player-profile", JSON.stringify(playerProfile))
+      // Also save to localStorage for offline access (both key formats)
+      setLS("coins", coins.toString())
+      setLS("collection", JSON.stringify(collection))
+      setLS("decks", JSON.stringify(decks))
+      setLS("history", JSON.stringify(matchHistory))
+      setLS("profile", JSON.stringify(playerProfile))
       
       setAccountAuth((prev) => ({ ...prev, lastSaved: now }))
       localStorage.setItem("gear-perks-auth", JSON.stringify({ ...accountAuth, lastSaved: now }))
