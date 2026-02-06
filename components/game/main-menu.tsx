@@ -274,162 +274,165 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
 
       {/* Logo */}
       <div className="mb-10 relative z-10 text-center flex flex-col items-center">
-        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-4">v1.2.4</div>
+        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-4">v1.3.0</div>
         
-        {/* Logo container - no clipping, no invisible box */}
+        {/* Logo container */}
         <div className="relative" style={{ overflow: "visible" }}>
 
-          {/* Shared SVG defs - no blur filters */}
+          {/* SVG gradient defs (defined once) */}
           <svg className="absolute w-0 h-0" aria-hidden="true">
             <defs>
-              <linearGradient id="ltn-core" x1="0%" y1="0%" x2="0%" y2="100%">
+              <linearGradient id="bl-main" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#f0f9ff" />
+                <stop offset="25%" stopColor="#7dd3fc" />
+                <stop offset="55%" stopColor="#22d3ee" />
+                <stop offset="85%" stopColor="#0891b2" />
+                <stop offset="100%" stopColor="#155e75" />
+              </linearGradient>
+              <linearGradient id="bl-hot" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stopColor="#ffffff" />
-                <stop offset="15%" stopColor="#e0f2fe" />
-                <stop offset="40%" stopColor="#67e8f9" />
-                <stop offset="70%" stopColor="#22d3ee" />
-                <stop offset="100%" stopColor="#06b6d4" />
+                <stop offset="40%" stopColor="#e0f2fe" />
+                <stop offset="100%" stopColor="#bae6fd" />
               </linearGradient>
-              <linearGradient id="ltn-outer" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#a5f3fc" stopOpacity="0.7" />
-                <stop offset="50%" stopColor="#22d3ee" stopOpacity="0.5" />
-                <stop offset="100%" stopColor="#0891b2" stopOpacity="0.3" />
-              </linearGradient>
-              <linearGradient id="ltn-branch" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#ecfeff" />
+              <linearGradient id="bl-fork" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#a5f3fc" />
                 <stop offset="100%" stopColor="#0e7490" />
               </linearGradient>
             </defs>
           </svg>
 
-          {/* ===== MAIN BOLT LEFT - stroke-based, no fill distortion ===== */}
-          <svg className="absolute pointer-events-none" viewBox="0 0 100 200" preserveAspectRatio="xMidYMid meet"
-            style={{ left: "-72px", top: "-2%", width: "100px", height: "200px", overflow: "visible", animation: "boltFlash 4s linear infinite" }}>
-            {/* Outer glow stroke - wider, semi-transparent */}
-            <polyline points="60,0 42,45 55,43 28,95 44,92 14,150 34,146 0,200"
-              fill="none" stroke="url(#ltn-outer)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
-            {/* Mid stroke */}
-            <polyline points="60,0 42,45 55,43 28,95 44,92 14,150 34,146 0,200"
-              fill="none" stroke="url(#ltn-core)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
-            {/* Hot white center */}
-            <polyline points="60,0 42,45 55,43 28,95 44,92 14,150 34,146 0,200"
-              fill="none" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.85" />
-            {/* Branch 1 - upper fork */}
-            <polyline points="42,45 18,68 30,66 6,90" fill="none" stroke="url(#ltn-branch)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            <polyline points="42,45 18,68 30,66 6,90" fill="none" stroke="white" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
-            {/* Branch 2 - mid fork */}
-            <polyline points="28,95 50,118 42,116 60,135" fill="none" stroke="url(#ltn-branch)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.75" />
-            {/* Branch 3 - small lower */}
-            <polyline points="14,150 0,165" fill="none" stroke="url(#ltn-branch)" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+          {/* === PRIMARY BOLT LEFT === */}
+          <svg className="absolute pointer-events-none" viewBox="0 0 80 210" preserveAspectRatio="xMidYMid meet"
+            style={{ left: "-62px", top: "-4%", width: "80px", height: "210px", overflow: "visible", animation: "boltFlash 4.2s linear infinite" }}>
+            {/* Ambient outer */}
+            <path d="M52,2 L44,32 L36,50 L42,48 L30,84 L22,104 L28,100 L18,138 L12,160 L18,156 L6,198 L2,210"
+              fill="none" stroke="#22d3ee" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" opacity="0.25" />
+            {/* Core */}
+            <path d="M52,2 L44,32 L36,50 L42,48 L30,84 L22,104 L28,100 L18,138 L12,160 L18,156 L6,198 L2,210"
+              fill="none" stroke="url(#bl-main)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            {/* Hot center */}
+            <path d="M52,2 L44,32 L36,50 L42,48 L30,84 L22,104 L28,100 L18,138 L12,160 L18,156 L6,198 L2,210"
+              fill="none" stroke="url(#bl-hot)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+            {/* Fork upper */}
+            <path d="M36,50 L22,66 L28,64 L14,82" fill="none" stroke="url(#bl-fork)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
+            <path d="M36,50 L22,66 L28,64 L14,82" fill="none" stroke="white" strokeWidth="0.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+            {/* Fork mid */}
+            <path d="M22,104 L38,120 L34,118 L48,136" fill="none" stroke="url(#bl-fork)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.65" />
+            {/* Fork small lower */}
+            <path d="M12,160 L2,172" fill="none" stroke="url(#bl-fork)" strokeWidth="1.2" strokeLinecap="round" opacity="0.45" />
           </svg>
 
-          {/* ===== MAIN BOLT RIGHT ===== */}
-          <svg className="absolute pointer-events-none" viewBox="0 0 100 200" preserveAspectRatio="xMidYMid meet"
-            style={{ right: "-72px", top: "-5%", width: "100px", height: "200px", overflow: "visible", animation: "boltFlash 4s linear infinite", animationDelay: "2s", transform: "scaleX(-1)" }}>
-            <polyline points="60,0 42,45 55,43 28,95 44,92 14,150 34,146 0,200"
-              fill="none" stroke="url(#ltn-outer)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
-            <polyline points="60,0 42,45 55,43 28,95 44,92 14,150 34,146 0,200"
-              fill="none" stroke="url(#ltn-core)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
-            <polyline points="60,0 42,45 55,43 28,95 44,92 14,150 34,146 0,200"
-              fill="none" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.85" />
-            <polyline points="42,45 18,68 30,66 6,90" fill="none" stroke="url(#ltn-branch)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            <polyline points="42,45 18,68 30,66 6,90" fill="none" stroke="white" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
-            <polyline points="28,95 50,118 42,116 60,135" fill="none" stroke="url(#ltn-branch)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.75" />
-            <polyline points="14,150 0,165" fill="none" stroke="url(#ltn-branch)" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+          {/* === PRIMARY BOLT RIGHT === */}
+          <svg className="absolute pointer-events-none" viewBox="0 0 80 210" preserveAspectRatio="xMidYMid meet"
+            style={{ right: "-62px", top: "-6%", width: "80px", height: "210px", overflow: "visible", animation: "boltFlash 4.2s linear infinite", animationDelay: "2.1s", transform: "scaleX(-1)" }}>
+            <path d="M52,2 L44,32 L36,50 L42,48 L30,84 L22,104 L28,100 L18,138 L12,160 L18,156 L6,198 L2,210"
+              fill="none" stroke="#22d3ee" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" opacity="0.25" />
+            <path d="M52,2 L44,32 L36,50 L42,48 L30,84 L22,104 L28,100 L18,138 L12,160 L18,156 L6,198 L2,210"
+              fill="none" stroke="url(#bl-main)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M52,2 L44,32 L36,50 L42,48 L30,84 L22,104 L28,100 L18,138 L12,160 L18,156 L6,198 L2,210"
+              fill="none" stroke="url(#bl-hot)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+            <path d="M36,50 L22,66 L28,64 L14,82" fill="none" stroke="url(#bl-fork)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
+            <path d="M36,50 L22,66 L28,64 L14,82" fill="none" stroke="white" strokeWidth="0.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+            <path d="M22,104 L38,120 L34,118 L48,136" fill="none" stroke="url(#bl-fork)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.65" />
+            <path d="M12,160 L2,172" fill="none" stroke="url(#bl-fork)" strokeWidth="1.2" strokeLinecap="round" opacity="0.45" />
           </svg>
 
-          {/* ===== SECONDARY BOLT LEFT ===== */}
-          <svg className="absolute pointer-events-none" viewBox="0 0 70 140" preserveAspectRatio="xMidYMid meet"
-            style={{ left: "-44px", top: "40%", width: "70px", height: "140px", overflow: "visible", animation: "boltFlash 3.5s linear infinite", animationDelay: "0.9s" }}>
-            <polyline points="45,0 30,38 42,36 16,80 30,77 2,140"
-              fill="none" stroke="url(#ltn-outer)" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-            <polyline points="45,0 30,38 42,36 16,80 30,77 2,140"
-              fill="none" stroke="url(#ltn-core)" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
-            <polyline points="45,0 30,38 42,36 16,80 30,77 2,140"
-              fill="none" stroke="white" strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
-            <polyline points="30,38 10,56 20,54 2,68" fill="none" stroke="url(#ltn-branch)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+          {/* === SECONDARY BOLT LEFT === */}
+          <svg className="absolute pointer-events-none" viewBox="0 0 60 140" preserveAspectRatio="xMidYMid meet"
+            style={{ left: "-38px", top: "42%", width: "60px", height: "140px", overflow: "visible", animation: "boltFlash 3.8s linear infinite", animationDelay: "0.8s" }}>
+            <path d="M40,2 L34,24 L28,42 L34,40 L22,72 L16,92 L22,88 L8,124 L4,140"
+              fill="none" stroke="#22d3ee" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity="0.2" />
+            <path d="M40,2 L34,24 L28,42 L34,40 L22,72 L16,92 L22,88 L8,124 L4,140"
+              fill="none" stroke="url(#bl-main)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M40,2 L34,24 L28,42 L34,40 L22,72 L16,92 L22,88 L8,124 L4,140"
+              fill="none" stroke="url(#bl-hot)" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.85" />
+            <path d="M28,42 L16,56 L22,54 L10,68" fill="none" stroke="url(#bl-fork)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" opacity="0.65" />
           </svg>
 
-          {/* ===== SECONDARY BOLT RIGHT ===== */}
-          <svg className="absolute pointer-events-none" viewBox="0 0 70 140" preserveAspectRatio="xMidYMid meet"
-            style={{ right: "-44px", top: "36%", width: "70px", height: "140px", overflow: "visible", animation: "boltFlash 3.5s linear infinite", animationDelay: "2.4s", transform: "scaleX(-1)" }}>
-            <polyline points="45,0 30,38 42,36 16,80 30,77 2,140"
-              fill="none" stroke="url(#ltn-outer)" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-            <polyline points="45,0 30,38 42,36 16,80 30,77 2,140"
-              fill="none" stroke="url(#ltn-core)" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
-            <polyline points="45,0 30,38 42,36 16,80 30,77 2,140"
-              fill="none" stroke="white" strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
-            <polyline points="30,38 10,56 20,54 2,68" fill="none" stroke="url(#ltn-branch)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+          {/* === SECONDARY BOLT RIGHT === */}
+          <svg className="absolute pointer-events-none" viewBox="0 0 60 140" preserveAspectRatio="xMidYMid meet"
+            style={{ right: "-38px", top: "38%", width: "60px", height: "140px", overflow: "visible", animation: "boltFlash 3.8s linear infinite", animationDelay: "2.8s", transform: "scaleX(-1)" }}>
+            <path d="M40,2 L34,24 L28,42 L34,40 L22,72 L16,92 L22,88 L8,124 L4,140"
+              fill="none" stroke="#22d3ee" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity="0.2" />
+            <path d="M40,2 L34,24 L28,42 L34,40 L22,72 L16,92 L22,88 L8,124 L4,140"
+              fill="none" stroke="url(#bl-main)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M40,2 L34,24 L28,42 L34,40 L22,72 L16,92 L22,88 L8,124 L4,140"
+              fill="none" stroke="url(#bl-hot)" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.85" />
+            <path d="M28,42 L16,56 L22,54 L10,68" fill="none" stroke="url(#bl-fork)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" opacity="0.65" />
           </svg>
 
-          {/* ===== ACCENT BOLTS (small) ===== */}
-          <svg className="absolute pointer-events-none" viewBox="0 0 40 70" preserveAspectRatio="xMidYMid meet"
-            style={{ left: "-18px", bottom: "-4%", width: "40px", height: "70px", overflow: "visible", animation: "boltFlashQuick 3s linear infinite", animationDelay: "0.4s" }}>
-            <polyline points="26,0 18,26 24,24 8,70" fill="none" stroke="url(#ltn-outer)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-            <polyline points="26,0 18,26 24,24 8,70" fill="none" stroke="url(#ltn-core)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-            <polyline points="26,0 18,26 24,24 8,70" fill="none" stroke="white" strokeWidth="0.7" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+          {/* === ACCENT BOLTS (compact) === */}
+          <svg className="absolute pointer-events-none" viewBox="0 0 36 72" preserveAspectRatio="xMidYMid meet"
+            style={{ left: "-14px", bottom: "-6%", width: "36px", height: "72px", overflow: "visible", animation: "boltFlashQuick 3.2s linear infinite", animationDelay: "0.3s" }}>
+            <path d="M24,2 L18,22 L22,20 L12,48 L16,46 L6,72" fill="none" stroke="#22d3ee" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.2" />
+            <path d="M24,2 L18,22 L22,20 L12,48 L16,46 L6,72" fill="none" stroke="url(#bl-main)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M24,2 L18,22 L22,20 L12,48 L16,46 L6,72" fill="none" stroke="url(#bl-hot)" strokeWidth="0.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
           </svg>
-          <svg className="absolute pointer-events-none" viewBox="0 0 40 70" preserveAspectRatio="xMidYMid meet"
-            style={{ right: "-18px", bottom: "-1%", width: "40px", height: "70px", overflow: "visible", animation: "boltFlashQuick 3s linear infinite", animationDelay: "1.8s", transform: "scaleX(-1)" }}>
-            <polyline points="26,0 18,26 24,24 8,70" fill="none" stroke="url(#ltn-outer)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-            <polyline points="26,0 18,26 24,24 8,70" fill="none" stroke="url(#ltn-core)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-            <polyline points="26,0 18,26 24,24 8,70" fill="none" stroke="white" strokeWidth="0.7" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+          <svg className="absolute pointer-events-none" viewBox="0 0 36 72" preserveAspectRatio="xMidYMid meet"
+            style={{ right: "-14px", bottom: "-3%", width: "36px", height: "72px", overflow: "visible", animation: "boltFlashQuick 3.2s linear infinite", animationDelay: "1.6s", transform: "scaleX(-1)" }}>
+            <path d="M24,2 L18,22 L22,20 L12,48 L16,46 L6,72" fill="none" stroke="#22d3ee" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.2" />
+            <path d="M24,2 L18,22 L22,20 L12,48 L16,46 L6,72" fill="none" stroke="url(#bl-main)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M24,2 L18,22 L22,20 L12,48 L16,46 L6,72" fill="none" stroke="url(#bl-hot)" strokeWidth="0.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
           </svg>
 
-          {/* ===== SPARKS - clean 4-point stars ===== */}
+          {/* === ELECTRIC TENDRILS (SVG zigzag lines, not CSS divs) === */}
           {[
-            { side: "left" as const, x: -28, y: "14%", s: 18, d: 0.2, dur: 3.2 },
-            { side: "left" as const, x: -14, y: "50%", s: 12, d: 1.4, dur: 3.5 },
-            { side: "left" as const, x: -22, y: "82%", s: 10, d: 2.7, dur: 3 },
-            { side: "right" as const, x: -26, y: "18%", s: 16, d: 0.7, dur: 3.2 },
-            { side: "right" as const, x: -12, y: "56%", s: 12, d: 2, dur: 3.5 },
-            { side: "right" as const, x: -20, y: "78%", s: 10, d: 0.3, dur: 3 },
-          ].map((sp, i) => (
-            <svg key={`sp${i}`} className="absolute pointer-events-none" viewBox="0 0 24 24"
-              style={{ [sp.side]: `${sp.x}px`, top: sp.y, width: `${sp.s}px`, height: `${sp.s}px`, overflow: "visible", animation: `sparkGlow ${sp.dur}s ease-in-out infinite`, animationDelay: `${sp.d}s` }}>
-              <line x1="12" y1="0" x2="12" y2="24" stroke="#67e8f9" strokeWidth="1.5" strokeLinecap="round" />
-              <line x1="0" y1="12" x2="24" y2="12" stroke="#67e8f9" strokeWidth="1.5" strokeLinecap="round" />
-              <line x1="12" y1="4" x2="12" y2="20" stroke="#ecfeff" strokeWidth="0.8" strokeLinecap="round" />
-              <line x1="4" y1="12" x2="20" y2="12" stroke="#ecfeff" strokeWidth="0.8" strokeLinecap="round" />
+            { side: "left" as const, y: "20%", d: "M44,6 L32,4 L24,8 L12,5 L4,8 L0,6", rot: -4, delay: "0s", dur: 2.8 },
+            { side: "left" as const, y: "40%", d: "M52,6 L38,3 L28,8 L16,4 L8,7 L0,5", rot: -9, delay: "1.2s", dur: 3.1 },
+            { side: "left" as const, y: "60%", d: "M36,5 L26,3 L18,7 L10,4 L0,6", rot: 3, delay: "2.3s", dur: 2.6 },
+            { side: "left" as const, y: "78%", d: "M30,4 L22,7 L14,3 L6,6 L0,5", rot: 8, delay: "0.5s", dur: 3 },
+            { side: "right" as const, y: "16%", d: "M0,6 L12,4 L20,8 L32,5 L40,7 L44,5", rot: 5, delay: "0.4s", dur: 2.8 },
+            { side: "right" as const, y: "36%", d: "M0,5 L14,3 L24,7 L36,4 L46,6 L52,4", rot: 9, delay: "1.7s", dur: 3.1 },
+            { side: "right" as const, y: "56%", d: "M0,6 L10,4 L18,7 L26,3 L36,5", rot: -4, delay: "0.1s", dur: 2.6 },
+            { side: "right" as const, y: "74%", d: "M0,5 L8,7 L16,3 L24,6 L30,4", rot: -7, delay: "2s", dur: 3 },
+          ].map((t, i) => (
+            <svg key={`tn${i}`} className="absolute pointer-events-none" viewBox={t.side === "left" ? "0 0 52 12" : "0 0 52 12"} preserveAspectRatio="none"
+              style={{
+                [t.side]: t.side === "left" ? "-52px" : "-52px",
+                top: t.y,
+                width: `${t.d.includes("52") || t.d.includes("46") ? 52 : t.d.includes("36") ? 36 : t.d.includes("44") || t.d.includes("40") ? 44 : 30}px`,
+                height: "12px",
+                overflow: "visible",
+                transform: `rotate(${t.rot}deg)`,
+                transformOrigin: t.side === "left" ? "right center" : "left center",
+                animation: `tendrilFlicker ${t.dur}s linear infinite`,
+                animationDelay: t.delay,
+              }}>
+              <path d={t.d} fill="none" stroke="#22d3ee" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.2" />
+              <path d={t.d} fill="none" stroke="url(#bl-fork)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+              <path d={t.d} fill="none" stroke="white" strokeWidth="0.4" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
             </svg>
           ))}
 
-          {/* ===== ELECTRIC TENDRILS (short arc lines) ===== */}
+          {/* === SPARKS (tiny dots that flash at bolt junction points) === */}
           {[
-            { side: "left" as const, y: "20%", w: 44, rot: -5, d: "0s" },
-            { side: "left" as const, y: "38%", w: 52, rot: -11, d: "1.1s" },
-            { side: "left" as const, y: "58%", w: 36, rot: 4, d: "2.2s" },
-            { side: "left" as const, y: "76%", w: 30, rot: 9, d: "0.5s" },
-            { side: "right" as const, y: "16%", w: 44, rot: 5, d: "0.4s" },
-            { side: "right" as const, y: "34%", w: 56, rot: 10, d: "1.6s" },
-            { side: "right" as const, y: "52%", w: 36, rot: -4, d: "0.1s" },
-            { side: "right" as const, y: "72%", w: 30, rot: -8, d: "1.9s" },
-          ].map((a, i) => {
-            const isLeft = a.side === "left"
-            return (
-              <div key={`td${i}`} className={`absolute pointer-events-none ${isLeft ? "origin-right" : "origin-left"}`}
-                style={{
-                  top: a.y,
-                  [a.side]: `-${a.w}px`,
-                  width: `${a.w}px`,
-                  height: "2px",
-                  transform: `rotate(${a.rot}deg)`,
-                  background: isLeft
-                    ? "linear-gradient(90deg, transparent 0%, #0891b2 25%, #22d3ee 55%, #ecfeff 100%)"
-                    : "linear-gradient(270deg, transparent 0%, #0891b2 25%, #22d3ee 55%, #ecfeff 100%)",
-                  animation: `tendrilFlicker ${2.4 + (i % 4) * 0.3}s linear infinite`,
-                  animationDelay: a.d,
-                }} />
-            )
-          })}
+            { side: "left" as const, x: -48, y: "12%", s: 6, d: 0.1, dur: 4.2 },
+            { side: "left" as const, x: -24, y: "48%", s: 5, d: 0.9, dur: 3.8 },
+            { side: "left" as const, x: -34, y: "72%", s: 4, d: 2.5, dur: 3.5 },
+            { side: "right" as const, x: -46, y: "16%", s: 6, d: 2.2, dur: 4.2 },
+            { side: "right" as const, x: -22, y: "52%", s: 5, d: 2.9, dur: 3.8 },
+            { side: "right" as const, x: -32, y: "68%", s: 4, d: 0.4, dur: 3.5 },
+          ].map((sp, i) => (
+            <span key={`sk${i}`} className="absolute pointer-events-none rounded-full"
+              style={{
+                [sp.side]: `${sp.x}px`,
+                top: sp.y,
+                width: `${sp.s}px`,
+                height: `${sp.s}px`,
+                background: "radial-gradient(circle, #ecfeff 0%, #22d3ee 60%, transparent 100%)",
+                animation: `sparkGlow ${sp.dur}s ease-in-out infinite`,
+                animationDelay: `${sp.d}s`,
+              }} />
+          ))}
 
-          {/* === LOGO IMAGE - clean, no overlays === */}
+          {/* === LOGO IMAGE === */}
           <Image
             src="/images/gp-cg-logo.png"
             alt="Gear Perks Card Game"
             width={600}
             height={600}
             className="relative w-80 h-auto sm:w-96 md:w-[28rem] lg:w-[32rem]"
-            style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.6))" }}
+            style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.55))" }}
             priority
           />
         </div>
