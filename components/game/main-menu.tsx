@@ -132,7 +132,9 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-[1]">
         {fallingCards.map((card) => {
           const color = CARD_COLORS[card.colorIndex]
-          const swayDuration = 3.5 + (card.id % 5) * 0.6
+          const swayDuration = 4 + (card.id % 5) * 0.5
+          const flipDuration = 7 + (card.id % 6) * 1.2
+          const shimmerDuration = 3 + (card.id % 4) * 0.8
           return (
             <div
               key={card.id}
@@ -143,40 +145,81 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
                 animationDelay: `${card.delay}s`,
               }}
             >
-              {/* Sway wrapper */}
+              {/* Sway wrapper - horizontal drift */}
               <div
                 style={{
                   animation: `cardSway ${swayDuration}s ease-in-out infinite`,
-                  animationDelay: `${card.delay * 0.5}s`,
+                  animationDelay: `${card.delay * 0.4}s`,
                 }}
               >
-                {/* Card element */}
+                {/* Flip/Rotate wrapper - 3D rotation */}
                 <div
                   style={{
-                    width: `${card.width}px`,
-                    height: `${card.height}px`,
-                    background: color.gradient,
-                    border: `1.5px solid ${color.border}`,
-                    boxShadow: color.glow,
-                    borderRadius: "6px",
-                    transform: `rotate(${card.initialRotate}deg)`,
-                    animation: `cardRotate ${5 + (card.id % 4)}s ease-in-out infinite`,
-                    animationDelay: `${card.delay * 0.3}s`,
-                    opacity: 0.45,
+                    animation: `cardFlipSpin ${flipDuration}s ease-in-out infinite`,
+                    animationDelay: `${card.delay * 0.7}s`,
+                    transformStyle: "preserve-3d",
                   }}
                 >
-                  {/* Card face details */}
-                  <div style={{ padding: "4px", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                    <div style={{
-                      width: "100%",
-                      height: "52%",
-                      borderRadius: "3px",
-                      background: "rgba(255,255,255,0.15)",
-                    }} />
-                    <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-                      <div style={{ width: "75%", height: "3px", borderRadius: "2px", background: "rgba(255,255,255,0.2)" }} />
-                      <div style={{ width: "55%", height: "3px", borderRadius: "2px", background: "rgba(255,255,255,0.13)" }} />
-                      <div style={{ width: "40%", height: "3px", borderRadius: "2px", background: "rgba(255,255,255,0.08)" }} />
+                  {/* Card element */}
+                  <div
+                    style={{
+                      width: `${card.width}px`,
+                      height: `${card.height}px`,
+                      background: color.gradient,
+                      border: `1.5px solid ${color.border}`,
+                      boxShadow: `${color.glow}, inset 0 1px 0 rgba(255,255,255,0.15)`,
+                      borderRadius: "7px",
+                      animation: `cardShimmer ${shimmerDuration}s ease-in-out infinite`,
+                      animationDelay: `${card.delay * 0.2}s`,
+                      backfaceVisibility: "hidden",
+                    }}
+                  >
+                    {/* Card face details */}
+                    <div style={{ padding: "4px", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden", borderRadius: "6px" }}>
+                      {/* Card art area */}
+                      <div style={{
+                        width: "100%",
+                        height: "52%",
+                        borderRadius: "4px",
+                        background: "rgba(255,255,255,0.13)",
+                        boxShadow: "inset 0 1px 2px rgba(0,0,0,0.2)",
+                      }} />
+                      {/* Card text lines */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "3px", marginTop: "auto" }}>
+                        <div style={{ width: "80%", height: "3px", borderRadius: "2px", background: "rgba(255,255,255,0.18)" }} />
+                        <div style={{ width: "60%", height: "3px", borderRadius: "2px", background: "rgba(255,255,255,0.12)" }} />
+                        <div style={{ width: "45%", height: "3px", borderRadius: "2px", background: "rgba(255,255,255,0.07)" }} />
+                      </div>
+                    </div>
+                  </div>
+                  {/* Card back (when flipped) */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: `${card.width}px`,
+                      height: `${card.height}px`,
+                      background: `linear-gradient(135deg, #1e293b, #334155)`,
+                      border: `1.5px solid ${color.border}`,
+                      boxShadow: color.glow,
+                      borderRadius: "7px",
+                      backfaceVisibility: "hidden",
+                      transform: "rotateY(180deg)",
+                    }}
+                  >
+                    <div style={{ 
+                      width: "100%", height: "100%", 
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      borderRadius: "6px",
+                      background: `repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,0.03) 4px, rgba(255,255,255,0.03) 8px)`,
+                    }}>
+                      <div style={{
+                        width: "60%", height: "60%",
+                        borderRadius: "4px",
+                        border: `1px solid rgba(255,255,255,0.1)`,
+                        background: "rgba(255,255,255,0.04)",
+                      }} />
                     </div>
                   </div>
                 </div>
@@ -188,9 +231,9 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
 
       {/* Ambient light orbs for depth */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-[0]">
-        <div className="absolute top-[10%] left-[15%] w-72 h-72 bg-blue-500/[0.06] rounded-full blur-[80px] animate-pulse" style={{ animationDuration: "8s" }} />
-        <div className="absolute top-[55%] right-[10%] w-56 h-56 bg-purple-500/[0.07] rounded-full blur-[60px] animate-pulse" style={{ animationDuration: "11s" }} />
-        <div className="absolute bottom-[15%] left-[25%] w-64 h-64 bg-cyan-500/[0.06] rounded-full blur-[70px] animate-pulse" style={{ animationDuration: "9s" }} />
+        <div className="absolute top-[10%] left-[15%] w-72 h-72 bg-blue-500/[0.07] rounded-full blur-[80px] animate-pulse" style={{ animationDuration: "8s" }} />
+        <div className="absolute top-[55%] right-[10%] w-56 h-56 bg-purple-500/[0.08] rounded-full blur-[60px] animate-pulse" style={{ animationDuration: "11s" }} />
+        <div className="absolute bottom-[15%] left-[25%] w-64 h-64 bg-cyan-500/[0.07] rounded-full blur-[70px] animate-pulse" style={{ animationDuration: "9s" }} />
       </div>
 
       {/* Top bar */}
@@ -235,18 +278,77 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
       {/* Logo */}
       <div className="mb-10 relative z-10 text-center flex flex-col items-center">
         {/* Version number above logo */}
-        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-4">v1.1.4</div>
+        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-4">v1.1.5</div>
         
         <div className="relative inline-block">
-          {/* Glow effect behind logo */}
-          <div className="absolute inset-0 blur-[60px] bg-gradient-to-r from-cyan-500/50 via-blue-400/40 to-cyan-500/50 opacity-60 animate-pulse scale-125" />
+          {/* Main pulsating glow */}
+          <div 
+            className="absolute inset-0 scale-150"
+            style={{ animation: "logoGlowPulse 4s ease-in-out infinite" }}
+          >
+            <div className="w-full h-full bg-gradient-to-r from-cyan-500 via-blue-400 to-cyan-500 rounded-full" />
+          </div>
+          
+          {/* Electric ray - top left */}
+          <div 
+            className="absolute -top-8 -left-12 w-40 h-24 pointer-events-none"
+            style={{ animation: "logoRayPulse 3.5s ease-in-out infinite", animationDelay: "0s" }}
+          >
+            <div className="w-full h-full bg-gradient-to-br from-cyan-400/80 via-blue-500/40 to-transparent blur-[8px] rounded-full" />
+          </div>
+          
+          {/* Electric ray - top right */}
+          <div 
+            className="absolute -top-6 -right-10 w-36 h-20 pointer-events-none"
+            style={{ animation: "logoRayPulse 3.5s ease-in-out infinite", animationDelay: "1.2s" }}
+          >
+            <div className="w-full h-full bg-gradient-to-bl from-blue-400/80 via-cyan-500/40 to-transparent blur-[8px] rounded-full" />
+          </div>
+          
+          {/* Electric ray - bottom center */}
+          <div 
+            className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-48 h-16 pointer-events-none"
+            style={{ animation: "logoRayPulse 3.5s ease-in-out infinite", animationDelay: "0.6s" }}
+          >
+            <div className="w-full h-full bg-gradient-to-t from-cyan-400/70 via-blue-400/30 to-transparent blur-[10px] rounded-full" />
+          </div>
+          
+          {/* Electric flicker - left side */}
+          <div 
+            className="absolute top-1/2 -left-6 w-20 h-1.5 -translate-y-1/2 pointer-events-none"
+            style={{ animation: "logoElectricFlicker 4s ease-in-out infinite", animationDelay: "0.3s" }}
+          >
+            <div className="w-full h-full bg-gradient-to-r from-transparent via-cyan-300 to-transparent blur-[2px] rounded-full" />
+          </div>
+          
+          {/* Electric flicker - right side */}
+          <div 
+            className="absolute top-1/3 -right-5 w-16 h-1.5 pointer-events-none"
+            style={{ animation: "logoElectricFlicker 4s ease-in-out infinite", animationDelay: "2s" }}
+          >
+            <div className="w-full h-full bg-gradient-to-r from-transparent via-blue-300 to-transparent blur-[2px] rounded-full" />
+          </div>
+
+          {/* Bright outline glow */}
+          <div className="absolute inset-0 scale-105">
+            <div 
+              className="w-full h-full rounded-3xl"
+              style={{
+                boxShadow: "0 0 40px rgba(56,189,248,0.3), 0 0 80px rgba(59,130,246,0.15), 0 0 120px rgba(56,189,248,0.08)",
+                animation: "logoGlowPulse 3s ease-in-out infinite",
+              }}
+            />
+          </div>
 
           <Image
             src="/images/gp-cg-logo.png"
             alt="Gear Perks Card Game"
             width={600}
             height={600}
-            className="relative w-80 h-auto sm:w-96 md:w-[28rem] lg:w-[32rem] drop-shadow-[0_0_35px_rgba(56,189,248,0.5)]"
+            className="relative w-80 h-auto sm:w-96 md:w-[28rem] lg:w-[32rem]"
+            style={{
+              filter: "drop-shadow(0 0 20px rgba(56,189,248,0.5)) drop-shadow(0 0 50px rgba(59,130,246,0.25))",
+            }}
             priority
           />
         </div>

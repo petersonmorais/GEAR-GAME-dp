@@ -93,23 +93,23 @@
 
   /* Falling cards background animation */
   .falling-card-wrapper {
-    top: -100px;
+    top: -120px;
     will-change: transform, opacity;
   }
 
   @keyframes fallingCard {
     0% {
-      transform: translateY(-100px);
+      transform: translateY(-120px);
       opacity: 0;
     }
-    2% {
+    1.5% {
       opacity: 1;
     }
-    92% {
+    93% {
       opacity: 1;
     }
     100% {
-      transform: translateY(calc(100vh + 120px));
+      transform: translateY(calc(100vh + 140px));
       opacity: 0;
     }
   }
@@ -118,30 +118,105 @@
     0%, 100% {
       transform: translateX(0);
     }
-    25% {
-      transform: translateX(22px);
+    30% {
+      transform: translateX(18px);
     }
-    75% {
-      transform: translateX(-22px);
+    70% {
+      transform: translateX(-18px);
     }
   }
   
-  @keyframes cardRotate {
+  @keyframes cardFlipSpin {
     0% {
-      transform: perspective(400px) rotateY(0deg) rotateZ(-6deg);
+      transform: perspective(600px) rotateY(0deg) rotateX(0deg) rotateZ(-5deg);
     }
-    25% {
-      transform: perspective(400px) rotateY(20deg) rotateZ(3deg);
+    15% {
+      transform: perspective(600px) rotateY(35deg) rotateX(2deg) rotateZ(-2deg);
     }
-    50% {
-      transform: perspective(400px) rotateY(0deg) rotateZ(6deg);
+    30% {
+      transform: perspective(600px) rotateY(60deg) rotateX(0deg) rotateZ(3deg);
+    }
+    45% {
+      transform: perspective(600px) rotateY(30deg) rotateX(-2deg) rotateZ(5deg);
+    }
+    60% {
+      transform: perspective(600px) rotateY(-15deg) rotateX(0deg) rotateZ(2deg);
     }
     75% {
-      transform: perspective(400px) rotateY(-20deg) rotateZ(-3deg);
+      transform: perspective(600px) rotateY(-45deg) rotateX(2deg) rotateZ(-3deg);
+    }
+    90% {
+      transform: perspective(600px) rotateY(-20deg) rotateX(-1deg) rotateZ(-5deg);
     }
     100% {
-      transform: perspective(400px) rotateY(0deg) rotateZ(-6deg);
+      transform: perspective(600px) rotateY(0deg) rotateX(0deg) rotateZ(-5deg);
     }
+  }
+  
+  @keyframes cardShimmer {
+    0%, 100% {
+      opacity: 0.35;
+    }
+    50% {
+      opacity: 0.55;
+    }
+  }
+  
+  /* Logo lightning effects */
+  @keyframes logoRayPulse {
+    0%, 100% {
+      opacity: 0;
+      transform: scaleX(0.5) scaleY(0.8);
+    }
+    15% {
+      opacity: 0.9;
+      transform: scaleX(1.1) scaleY(1.05);
+    }
+    30% {
+      opacity: 0.3;
+      transform: scaleX(0.9) scaleY(0.95);
+    }
+    45% {
+      opacity: 0.8;
+      transform: scaleX(1) scaleY(1);
+    }
+    60% {
+      opacity: 0;
+      transform: scaleX(0.6) scaleY(0.85);
+    }
+  }
+  
+  @keyframes logoGlowPulse {
+    0%, 100% {
+      opacity: 0.4;
+      filter: blur(50px);
+    }
+    25% {
+      opacity: 0.7;
+      filter: blur(55px);
+    }
+    50% {
+      opacity: 0.5;
+      filter: blur(45px);
+    }
+    75% {
+      opacity: 0.8;
+      filter: blur(60px);
+    }
+  }
+  
+  @keyframes logoElectricFlicker {
+    0%, 100% { opacity: 0; }
+    5% { opacity: 0.8; }
+    10% { opacity: 0.1; }
+    12% { opacity: 0.7; }
+    15% { opacity: 0; }
+    50% { opacity: 0; }
+    52% { opacity: 0.6; }
+    54% { opacity: 0; }
+    56% { opacity: 0.9; }
+    58% { opacity: 0.2; }
+    60% { opacity: 0; }
   }
 
   /* Custom animations */
