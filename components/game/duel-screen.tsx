@@ -1256,6 +1256,69 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
   const [graveyardView, setGraveyardView] = useState<"player" | "enemy" | null>(null)
   const [effectFeedback, setEffectFeedback] = useState<{ active: boolean; message: string; type: "success" | "error" } | null>(null)
 
+  // Ultimate Gear effect tracking
+  const [playerUgAbilityUsed, setPlayerUgAbilityUsed] = useState(false) // One-time ability used (ODEN SWORD, TWILIGH AVALON)
+  const [enemyUgAbilityUsed, setEnemyUgAbilityUsed] = useState(false)
+  const [ugTargetMode, setUgTargetMode] = useState<{
+    active: boolean
+    ugCard: GameCard | null
+    type: "oden_sword" | "twiligh_avalon" | null
+  }>({ active: false, ugCard: null, type: null })
+  const [fornbrennaFireCount, setFornbrennaFireCount] = useState(0) // Snapshot of fire units used when Fornbrenna is placed
+
+  // Track last known unit zone state to detect when a matching unit is placed after UG
+  const prevUnitZoneRef = useRef<(string | null)[]>([])
+  useEffect(() => {
+    if (!playerField.ultimateZone || !playerField.ultimateZone.requiresUnit) {
+      prevUnitZoneRef.current = playerField.unitZone.map((u) => u?.name || null)
+      return
+    }
+
+    const ug = playerField.ultimateZone
+    const requiredUnit = ug.requiresUnit!
+    const ability = ug.ability
+    const prevNames = prevUnitZoneRef.current
+    const currentNames = playerField.unitZone.map((u) => u?.name || null)
+
+    // Check if the required unit just appeared (wasn't there before)
+    const wasPresent = prevNames.some((n) => n === requiredUnit)
+    const isNowPresent = currentNames.some((n) => n === requiredUnit)
+
+    if (!wasPresent && isNowPresent) {
+      // Unit just appeared - apply passive DP bonus
+      const unitIdx = playerField.unitZone.findIndex((u) => u && u.name === requiredUnit)
+      if (unitIdx !== -1) {
+        setPlayerField((prev) => {
+          const newUnits = [...prev.unitZone]
+          const unit = newUnits[unitIdx]
+          if (!unit) return prev
+
+          let bonus = 0
+          let msg = ""
+          if (ability === "ODEN SWORD") { bonus = 4; msg = `${requiredUnit} +4 DP (Oden Sword)!` }
+          else if (ability === "PROTONIX SWORD") { bonus = 2; msg = `${requiredUnit} +2 DP (Protonix Sword)!` }
+          else if (ability === "TWILIGH AVALON") { bonus = 2; msg = `${requiredUnit} +2 DP (Twiligh Avalon)!` }
+          else if (ability === "ULLRBOGI") { msg = `${requiredUnit} recebera +3 DP nas fases de batalha (Ullrbogi)!` }
+          else if (ability === "FORNBRENNA") {
+            const fireCount = countFireUnitsUsed(prev)
+            bonus = fireCount * 2
+            setFornbrennaFireCount(fireCount)
+            msg = `${requiredUnit} +${bonus} DP (Fornbrenna, ${fireCount} fogo)!`
+          }
+
+          if (bonus > 0) {
+            newUnits[unitIdx] = { ...unit, currentDp: unit.currentDp + bonus }
+          }
+          if (msg) showEffectFeedback(msg, "success")
+          return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
+        })
+      }
+    }
+
+    prevUnitZoneRef.current = currentNames
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerField.unitZone, playerField.ultimateZone])
+
   const cardPressTimer = useRef<NodeJS.Timeout | null>(null)
   const draggedCardRef = useRef<HTMLDivElement>(null)
   const dragPosRef = useRef({ x: 0, y: 0, rotation: 0, lastCheck: 0 })
@@ -2853,6 +2916,21 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
     setDraggedHandCard(null)
   }
 
+  // Helper: find index of a unit by name in a unit zone
+  const findUnitByName = (unitZone: (FieldCard | null)[], unitName: string): number => {
+    return unitZone.findIndex((u) => u && u.name === unitName)
+  }
+
+  // Helper: count fire element units in graveyard + field (already used)
+  const countFireUnitsUsed = (field: FieldState): number => {
+    let count = 0
+    // Graveyard fire units
+    count += field.graveyard.filter((c) => c.element === "Pyrus" && (c.type === "unit" || c.type === "ultimateGear" || c.type === "ultimateGuardian" || c.type === "ultimateElemental")).length
+    // Field fire units currently in play
+    field.unitZone.forEach((u) => { if (u && u.element === "Pyrus") count++ })
+    return count
+  }
+
   const placeUltimateCard = (forcedCardIndex?: number) => {
     if (!isPlayerTurn) return
     if (phase !== "main") return
@@ -2872,14 +2950,175 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
       canAttackTurn: turn,
     }
 
-    setPlayerField((prev) => ({
-      ...prev,
-      ultimateZone: fieldCard,
-      hand: prev.hand.filter((_, i) => i !== cardIndex),
-    }))
+    setPlayerField((prev) => {
+      const newHand = prev.hand.filter((_, i) => i !== cardIndex)
+      const requiredUnit = cardToPlace.requiresUnit
+      const unitIdx = requiredUnit ? findUnitByName(prev.unitZone, requiredUnit) : -1
+      const unitFound = unitIdx !== -1
 
+      // Apply passive DP bonus to the matching unit if found
+      let newUnitZone = [...prev.unitZone]
+      let bonusMsg = ""
+
+      if (unitFound && requiredUnit) {
+        const unit = newUnitZone[unitIdx]!
+        const ability = cardToPlace.ability
+
+        if (ability === "ODEN SWORD") {
+          // +4 DP to Fehnon
+          newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + 4 }
+          bonusMsg = `${requiredUnit} +4 DP!`
+        } else if (ability === "PROTONIX SWORD") {
+          // +2 DP to Fehnon
+          newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + 2 }
+          bonusMsg = `${requiredUnit} +2 DP!`
+        } else if (ability === "TWILIGH AVALON") {
+          // +2 DP to Morgana
+          newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + 2 }
+          bonusMsg = `${requiredUnit} +2 DP!`
+        } else if (ability === "ULLRBOGI") {
+          // +3 DP only during battle phase - applied separately, no immediate bonus
+          bonusMsg = `${requiredUnit} recebera +3 DP nas fases de batalha!`
+        } else if (ability === "FORNBRENNA") {
+          // Count fire units used so far
+          const fireCount = countFireUnitsUsed(prev)
+          const bonus = fireCount * 2
+          if (bonus > 0) {
+            newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + bonus }
+          }
+          setFornbrennaFireCount(fireCount)
+          bonusMsg = `${requiredUnit} +${bonus} DP! (${fireCount} unidades de fogo usadas)`
+        }
+      }
+
+      if (bonusMsg) {
+        setTimeout(() => showEffectFeedback(bonusMsg, "success"), 300)
+      } else if (requiredUnit && !unitFound) {
+        setTimeout(() => showEffectFeedback(`${cardToPlace.name} equipada! Coloque ${requiredUnit} no campo para ativar.`, "success"), 300)
+      }
+
+      return {
+        ...prev,
+        ultimateZone: fieldCard,
+        unitZone: newUnitZone as (FieldCard | null)[],
+        hand: newHand,
+      }
+    })
+
+    // Reset one-time ability flag for a new UG
+    setPlayerUgAbilityUsed(false)
     setSelectedHandCard(null)
     setDraggedHandCard(null)
+  }
+
+  // Activate Ultimate Gear one-time ability
+  const activateUgAbility = () => {
+    if (!isPlayerTurn || phase !== "main") return
+    if (playerUgAbilityUsed) return
+    if (!playerField.ultimateZone) return
+
+    const ug = playerField.ultimateZone
+    const requiredUnit = ug.requiresUnit
+    if (!requiredUnit) return
+
+    // Check if the required unit is on the field
+    const unitIdx = findUnitByName(playerField.unitZone, requiredUnit)
+    if (unitIdx === -1) {
+      showEffectFeedback(`${requiredUnit} precisa estar no campo!`, "error")
+      return
+    }
+
+    if (ug.ability === "ODEN SWORD") {
+      // Check if opponent has function cards
+      const hasEnemyFunctions = enemyField.functionZone.some((f) => f !== null)
+      if (!hasEnemyFunctions) {
+        showEffectFeedback("Oponente nao tem cartas de Function no campo!", "error")
+        return
+      }
+      setUgTargetMode({ active: true, ugCard: ug, type: "oden_sword" })
+      showEffectFeedback("Selecione uma Function inimiga para destruir!", "success")
+    } else if (ug.ability === "TWILIGH AVALON") {
+      // Check if opponent has any cards on field (units or functions)
+      const hasEnemyCards = enemyField.unitZone.some((u) => u !== null) || enemyField.functionZone.some((f) => f !== null)
+      if (!hasEnemyCards) {
+        showEffectFeedback("Oponente nao tem cartas no campo!", "error")
+        return
+      }
+      setUgTargetMode({ active: true, ugCard: ug, type: "twiligh_avalon" })
+      showEffectFeedback("Selecione uma carta inimiga para devolver a mao!", "success")
+    }
+  }
+
+  // Handle UG target selection for enemy function cards (ODEN SWORD)
+  const handleUgTargetEnemyFunction = (funcIndex: number) => {
+    if (!ugTargetMode.active || ugTargetMode.type !== "oden_sword") return
+    const funcCard = enemyField.functionZone[funcIndex]
+    if (!funcCard) return
+
+    setEnemyField((prev) => {
+      const newFuncs = [...prev.functionZone]
+      const destroyed = newFuncs[funcIndex]
+      newFuncs[funcIndex] = null
+      return {
+        ...prev,
+        functionZone: newFuncs,
+        graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard,
+      }
+    })
+
+    showEffectFeedback(`ODEN SWORD: ${funcCard.name} destruida!`, "success")
+    setPlayerUgAbilityUsed(true)
+    setUgTargetMode({ active: false, ugCard: null, type: null })
+  }
+
+  // Handle UG target selection for any enemy card (TWILIGH AVALON)
+  const handleUgTargetEnemyCard = (type: "unit" | "function", index: number) => {
+    if (!ugTargetMode.active || ugTargetMode.type !== "twiligh_avalon") return
+
+    if (type === "unit") {
+      const unit = enemyField.unitZone[index]
+      if (!unit) return
+
+      setEnemyField((prev) => {
+        const newUnits = [...prev.unitZone]
+        const returned = newUnits[index]
+        newUnits[index] = null
+        return {
+          ...prev,
+          unitZone: newUnits as (FieldCard | null)[],
+          hand: returned ? [...prev.hand, returned] : prev.hand,
+        }
+      })
+      // If returned card is a unit, deal 3 DP to opponent
+      setEnemyField((prev) => ({
+        ...prev,
+        life: Math.max(0, prev.life - 3),
+      }))
+      showEffectFeedback(`TWILIGH AVALON: ${unit.name} devolvida! -3 LP no oponente!`, "success")
+    } else {
+      const func = enemyField.functionZone[index]
+      if (!func) return
+
+      setEnemyField((prev) => {
+        const newFuncs = [...prev.functionZone]
+        const returned = newFuncs[index]
+        newFuncs[index] = null
+        return {
+          ...prev,
+          functionZone: newFuncs,
+          hand: returned ? [...prev.hand, returned] : prev.hand,
+        }
+      })
+      showEffectFeedback(`TWILIGH AVALON: ${func.name} devolvida a mao!`, "success")
+    }
+
+    setPlayerUgAbilityUsed(true)
+    setUgTargetMode({ active: false, ugCard: null, type: null })
+  }
+
+  // Cancel UG target mode
+  const cancelUgTargetMode = () => {
+    setUgTargetMode({ active: false, ugCard: null, type: null })
   }
 
   const advancePhase = () => {
@@ -2897,8 +3136,37 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
   }
   setPhase("main")
   } else if (phase === "main") {
+  // ULLRBOGI: +3 DP to Ullr when entering battle phase
+  if (playerField.ultimateZone && playerField.ultimateZone.ability === "ULLRBOGI" && playerField.ultimateZone.requiresUnit) {
+    const ullrIdx = findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit)
+    if (ullrIdx !== -1) {
+      setPlayerField((prev) => {
+        const newUnits = [...prev.unitZone]
+        const unit = newUnits[ullrIdx]
+        if (unit) {
+          newUnits[ullrIdx] = { ...unit, currentDp: unit.currentDp + 3 }
+          showEffectFeedback(`ULLRBOGI: ${unit.name} +3 DP na fase de batalha!`, "success")
+        }
+        return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
+      })
+    }
+  }
   setPhase("battle")
   } else if (phase === "battle") {
+  // ULLRBOGI: remove +3 DP from Ullr when leaving battle phase
+  if (playerField.ultimateZone && playerField.ultimateZone.ability === "ULLRBOGI" && playerField.ultimateZone.requiresUnit) {
+    const ullrIdx = findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit)
+    if (ullrIdx !== -1) {
+      setPlayerField((prev) => {
+        const newUnits = [...prev.unitZone]
+        const unit = newUnits[ullrIdx]
+        if (unit) {
+          newUnits[ullrIdx] = { ...unit, currentDp: Math.max(0, unit.currentDp - 3) }
+        }
+        return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
+      })
+    }
+  }
   endTurn()
   }
   }
@@ -3276,6 +3544,26 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
               hasAttacked: false,
               canAttackTurn: turn,
             }
+            // Apply passive DP bonus to matching unit if present
+            if (card.requiresUnit) {
+              const matchIdx = newUnitZone.findIndex((u) => u && u.name === card.requiresUnit)
+              if (matchIdx !== -1 && newUnitZone[matchIdx]) {
+                const unit = newUnitZone[matchIdx]!
+                let bonus = 0
+                if (card.ability === "ODEN SWORD") bonus = 4
+                else if (card.ability === "PROTONIX SWORD") bonus = 2
+                else if (card.ability === "TWILIGH AVALON") bonus = 2
+                else if (card.ability === "FORNBRENNA") {
+                  // Count fire units in enemy graveyard
+                  const fireCount = prev.graveyard.filter((c) => c.element === "Pyrus" && (c.type === "unit")).length
+                  bonus = fireCount * 2
+                }
+                // ULLRBOGI: no immediate bonus, only during battle
+                if (bonus > 0) {
+                  newUnitZone[matchIdx] = { ...unit, currentDp: unit.currentDp + bonus }
+                }
+              }
+            }
             newHand.splice(i, 1)
             break // Only one ultimate at a time
           }
@@ -3323,6 +3611,64 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
 
       setTimeout(() => {
         const botCanAttack = playerWentFirst ? turn >= 2 : turn >= 3 // Simplified bot attack condition
+
+        // Bot ULLRBOGI: +3 DP to Ullr during battle phase
+        setEnemyField((prevEnemy) => {
+          if (prevEnemy.ultimateZone && prevEnemy.ultimateZone.ability === "ULLRBOGI" && prevEnemy.ultimateZone.requiresUnit) {
+            const ullrIdx = prevEnemy.unitZone.findIndex((u) => u && u.name === prevEnemy.ultimateZone!.requiresUnit)
+            if (ullrIdx !== -1 && prevEnemy.unitZone[ullrIdx]) {
+              const newUnits = [...prevEnemy.unitZone]
+              newUnits[ullrIdx] = { ...newUnits[ullrIdx]!, currentDp: newUnits[ullrIdx]!.currentDp + 3 }
+              return { ...prevEnemy, unitZone: newUnits as (FieldCard | null)[] }
+            }
+          }
+          return prevEnemy
+        })
+
+        // Bot also uses one-time UG abilities (ODEN SWORD and TWILIGH AVALON)
+        setEnemyField((prevEnemy) => {
+          if (!prevEnemy.ultimateZone || enemyUgAbilityUsed) return prevEnemy
+          const ug = prevEnemy.ultimateZone
+          const requiredUnit = ug.requiresUnit
+          if (!requiredUnit) return prevEnemy
+          const hasUnit = prevEnemy.unitZone.some((u) => u && u.name === requiredUnit)
+          if (!hasUnit) return prevEnemy
+
+          if (ug.ability === "ODEN SWORD") {
+            // Destroy a player function card
+            const funcIdx = playerField.functionZone.findIndex((f) => f !== null)
+            if (funcIdx !== -1) {
+              setPlayerField((prev) => {
+                const newFuncs = [...prev.functionZone]
+                const destroyed = newFuncs[funcIdx]
+                newFuncs[funcIdx] = null
+                return { ...prev, functionZone: newFuncs, graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard }
+              })
+              setEnemyUgAbilityUsed(true)
+              showEffectFeedback(`Bot ODEN SWORD: Function destruida!`, "error")
+            }
+          } else if (ug.ability === "TWILIGH AVALON") {
+            // Return a player unit to hand and deal 3 damage
+            const unitIdx = playerField.unitZone.findIndex((u) => u !== null)
+            if (unitIdx !== -1) {
+              const unit = playerField.unitZone[unitIdx]
+              setPlayerField((prev) => {
+                const newUnits = [...prev.unitZone]
+                const returned = newUnits[unitIdx]
+                newUnits[unitIdx] = null
+                return {
+                  ...prev,
+                  unitZone: newUnits as (FieldCard | null)[],
+                  hand: returned ? [...prev.hand, returned] : prev.hand,
+                  life: Math.max(0, prev.life - 3),
+                }
+              })
+              setEnemyUgAbilityUsed(true)
+              showEffectFeedback(`Bot TWILIGH AVALON: ${unit?.name} devolvida! -3 LP!`, "error")
+            }
+          }
+          return prevEnemy
+        })
 
         if (botCanAttack) {
           setEnemyField((prevEnemy) => {
@@ -3994,21 +4340,37 @@ const handleAllyUnitSelect = (index: number) => {
               <div className="flex flex-col gap-1.5">
                 {/* Enemy Function Zone */}
                 <div className="flex justify-center items-center gap-1.5">
-                  {enemyField.functionZone.map((card, i) => (
-                  <div
-                    key={i}
-                    className="w-14 h-20 bg-purple-900/40 border border-purple-600/40 rounded flex items-center justify-center relative overflow-hidden"
-                  >
-                    {card && (
-                      <Image
-                        src={card.image || "/placeholder.svg"}
-                        alt={card.name}
-                        fill
-                        className="object-cover rounded"
-                      />
-                    )}
-                  </div>
-                ))}
+                  {enemyField.functionZone.map((card, i) => {
+                    const isUgTarget = ugTargetMode.active && card && (
+                      ugTargetMode.type === "oden_sword" || ugTargetMode.type === "twiligh_avalon"
+                    )
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => {
+                          if (ugTargetMode.active && ugTargetMode.type === "oden_sword" && card) {
+                            handleUgTargetEnemyFunction(i)
+                          } else if (ugTargetMode.active && ugTargetMode.type === "twiligh_avalon" && card) {
+                            handleUgTargetEnemyCard("function", i)
+                          }
+                        }}
+                        className={`w-14 h-20 bg-purple-900/40 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all ${
+                          isUgTarget
+                            ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
+                            : "border-purple-600/40"
+                        }`}
+                      >
+                        {card && (
+                          <Image
+                            src={card.image || "/placeholder.svg"}
+                            alt={card.name}
+                            fill
+                            className="object-cover rounded"
+                          />
+                        )}
+                      </div>
+                    )
+                  })}
               </div>
 
               {/* Enemy Unit Zone */}
@@ -4017,15 +4379,21 @@ const handleAllyUnitSelect = (index: number) => {
                   <div
                     key={i}
                     data-enemy-unit={i}
-                    onClick={() =>
-                      itemSelectionMode.active && itemSelectionMode.step === "selectEnemy" && handleEnemyUnitSelect(i)
-                    }
+                    onClick={() => {
+                      if (ugTargetMode.active && ugTargetMode.type === "twiligh_avalon" && card) {
+                        handleUgTargetEnemyCard("unit", i)
+                      } else if (itemSelectionMode.active && itemSelectionMode.step === "selectEnemy") {
+                        handleEnemyUnitSelect(i)
+                      }
+                    }}
                     className={`w-14 h-20 bg-red-900/30 border-2 rounded relative overflow-hidden transition-all ${
-                      attackTarget?.type === "unit" && attackTarget.index === i
-                        ? "border-red-500 ring-2 ring-red-400 scale-105"
-                        : itemSelectionMode.active && itemSelectionMode.step === "selectEnemy" && card
-                          ? "border-yellow-500 cursor-pointer hover:bg-yellow-900/30"
-                          : "border-red-700/40"
+                      ugTargetMode.active && ugTargetMode.type === "twiligh_avalon" && card
+                        ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
+                        : attackTarget?.type === "unit" && attackTarget.index === i
+                          ? "border-red-500 ring-2 ring-red-400 scale-105"
+                          : itemSelectionMode.active && itemSelectionMode.step === "selectEnemy" && card
+                            ? "border-yellow-500 cursor-pointer hover:bg-yellow-900/30"
+                            : "border-red-700/40"
                     }`}
                   >
                     {card && (
@@ -4276,6 +4644,18 @@ const handleAllyUnitSelect = (index: number) => {
                         <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-center text-xs text-white font-bold py-0.5">
                           {playerField.ultimateZone.currentDp} DP
                         </div>
+                        {/* Activate button for one-time abilities (ODEN SWORD, TWILIGH AVALON) */}
+                        {isPlayerTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active &&
+                          (playerField.ultimateZone.ability === "ODEN SWORD" || playerField.ultimateZone.ability === "TWILIGH AVALON") &&
+                          playerField.ultimateZone.requiresUnit &&
+                          findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit) !== -1 && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); activateUgAbility() }}
+                            className="absolute -top-5 left-1/2 -translate-x-1/2 bg-yellow-500 hover:bg-yellow-400 text-black text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-yellow-500/50 animate-pulse whitespace-nowrap z-10"
+                          >
+                            ATIVAR
+                          </button>
+                        )}
                       </>
                     ) : null}
                     {!playerField.ultimateZone && dropTarget?.type === "ultimate" && (
@@ -4818,7 +5198,28 @@ const handleAllyUnitSelect = (index: number) => {
   </div>
   )}
   
-  {itemSelectionMode.active && itemSelectionMode.itemCard && (
+        {/* UG Target Selection Mode overlay */}
+        {ugTargetMode.active && (
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-black/90 border border-yellow-500/50 rounded-xl px-4 py-3 text-center">
+            <h3 className="text-yellow-400 font-bold text-sm mb-1">
+              {ugTargetMode.type === "oden_sword" ? "ODEN SWORD" : "TWILIGH AVALON"}
+            </h3>
+            <p className="text-yellow-200/80 text-xs mb-2">
+              {ugTargetMode.type === "oden_sword"
+                ? "Selecione uma Function inimiga para destruir"
+                : "Selecione uma carta inimiga para devolver a mao"
+              }
+            </p>
+            <button
+              onClick={cancelUgTargetMode}
+              className="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1 rounded font-bold"
+            >
+              CANCELAR
+            </button>
+          </div>
+        )}
+
+        {itemSelectionMode.active && itemSelectionMode.itemCard && (
         <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-40 pointer-events-none">
           <div className="bg-gradient-to-b from-slate-800 to-slate-900 p-5 rounded-xl border-2 border-yellow-500/50 text-center shadow-2xl pointer-events-auto">
             <h3 className="text-yellow-400 font-bold text-lg mb-3">{itemSelectionMode.itemCard.name}</h3>
