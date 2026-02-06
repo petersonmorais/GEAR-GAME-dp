@@ -274,160 +274,155 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
 
       {/* Logo */}
       <div className="mb-10 relative z-10 text-center flex flex-col items-center">
-        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-4">v1.2.3</div>
+        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-4">v1.2.4</div>
         
+        {/* Logo container - no clipping, no invisible box */}
         <div className="relative" style={{ overflow: "visible" }}>
 
-          {/* Shared SVG definitions */}
+          {/* Shared SVG defs - no blur filters */}
           <svg className="absolute w-0 h-0" aria-hidden="true">
             <defs>
-              {/* Core bolt fill: white center fading to cyan */}
-              <linearGradient id="boltCore" x1="0%" y1="0%" x2="0%" y2="100%">
+              <linearGradient id="ltn-core" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stopColor="#ffffff" />
-                <stop offset="20%" stopColor="#ecfeff" />
-                <stop offset="50%" stopColor="#67e8f9" />
-                <stop offset="80%" stopColor="#22d3ee" />
+                <stop offset="15%" stopColor="#e0f2fe" />
+                <stop offset="40%" stopColor="#67e8f9" />
+                <stop offset="70%" stopColor="#22d3ee" />
                 <stop offset="100%" stopColor="#06b6d4" />
               </linearGradient>
-              {/* Outer glow: cyan to teal */}
-              <linearGradient id="boltGlow" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#a5f3fc" />
-                <stop offset="50%" stopColor="#22d3ee" />
-                <stop offset="100%" stopColor="#0891b2" />
+              <linearGradient id="ltn-outer" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#a5f3fc" stopOpacity="0.7" />
+                <stop offset="50%" stopColor="#22d3ee" stopOpacity="0.5" />
+                <stop offset="100%" stopColor="#0891b2" stopOpacity="0.3" />
               </linearGradient>
-              {/* Branch fill */}
-              <linearGradient id="boltBranch" x1="0%" y1="0%" x2="0%" y2="100%">
+              <linearGradient id="ltn-branch" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="#ecfeff" />
                 <stop offset="100%" stopColor="#0e7490" />
               </linearGradient>
-              {/* Soft glow filter */}
-              <filter id="boltSoftGlow">
-                <feGaussianBlur stdDeviation="3" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
             </defs>
           </svg>
 
-          {/* ===== PRIMARY BOLT - LEFT ===== */}
-          <svg className="absolute pointer-events-none" viewBox="0 0 120 220" 
-            style={{ left: "-80px", top: "0%", width: "120px", height: "220px", overflow: "visible", animation: "boltFlash 4s linear infinite" }}>
-            {/* Outer glow layer (thicker, colored) */}
-            <path d="M65 0 L48 50 L60 48 L32 105 L48 102 L16 165 L36 160 L2 220 L48 168 L30 172 L54 112 L38 116 L62 56 L50 58 Z" 
-              fill="url(#boltGlow)" opacity="0.5" filter="url(#boltSoftGlow)" />
-            {/* Core bolt (white-to-cyan, sharp) */}
-            <path d="M65 0 L48 50 L60 48 L32 105 L48 102 L16 165 L36 160 L2 220 L48 168 L30 172 L54 112 L38 116 L62 56 L50 58 Z" 
-              fill="url(#boltCore)" />
-            {/* White hot center line */}
-            <path d="M65 0 L48 50 L60 48 L32 105 L48 102 L16 165 L36 160 L2 220 L48 168 L30 172 L54 112 L38 116 L62 56 L50 58 Z" 
-              fill="none" stroke="white" strokeWidth="1" opacity="0.6" />
-            {/* Branch 1: upper-left fork */}
-            <path d="M48 50 L22 74 L34 72 L10 96" fill="none" stroke="url(#boltBranch)" strokeWidth="2.5" strokeLinecap="round" />
-            {/* Branch 2: mid-right fork */}
-            <path d="M32 105 L56 128 L48 126 L66 148" fill="none" stroke="url(#boltBranch)" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
-            {/* Branch 3: lower-left small */}
-            <path d="M16 165 L0 180" fill="none" stroke="url(#boltBranch)" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+          {/* ===== MAIN BOLT LEFT - stroke-based, no fill distortion ===== */}
+          <svg className="absolute pointer-events-none" viewBox="0 0 100 200" preserveAspectRatio="xMidYMid meet"
+            style={{ left: "-72px", top: "-2%", width: "100px", height: "200px", overflow: "visible", animation: "boltFlash 4s linear infinite" }}>
+            {/* Outer glow stroke - wider, semi-transparent */}
+            <polyline points="60,0 42,45 55,43 28,95 44,92 14,150 34,146 0,200"
+              fill="none" stroke="url(#ltn-outer)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+            {/* Mid stroke */}
+            <polyline points="60,0 42,45 55,43 28,95 44,92 14,150 34,146 0,200"
+              fill="none" stroke="url(#ltn-core)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+            {/* Hot white center */}
+            <polyline points="60,0 42,45 55,43 28,95 44,92 14,150 34,146 0,200"
+              fill="none" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.85" />
+            {/* Branch 1 - upper fork */}
+            <polyline points="42,45 18,68 30,66 6,90" fill="none" stroke="url(#ltn-branch)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points="42,45 18,68 30,66 6,90" fill="none" stroke="white" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
+            {/* Branch 2 - mid fork */}
+            <polyline points="28,95 50,118 42,116 60,135" fill="none" stroke="url(#ltn-branch)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.75" />
+            {/* Branch 3 - small lower */}
+            <polyline points="14,150 0,165" fill="none" stroke="url(#ltn-branch)" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
           </svg>
 
-          {/* ===== PRIMARY BOLT - RIGHT ===== */}
-          <svg className="absolute pointer-events-none" viewBox="0 0 120 220" 
-            style={{ right: "-80px", top: "-3%", width: "120px", height: "220px", overflow: "visible", animation: "boltFlash 4s linear infinite", animationDelay: "2s", transform: "scaleX(-1)" }}>
-            <path d="M65 0 L48 50 L60 48 L32 105 L48 102 L16 165 L36 160 L2 220 L48 168 L30 172 L54 112 L38 116 L62 56 L50 58 Z" 
-              fill="url(#boltGlow)" opacity="0.5" filter="url(#boltSoftGlow)" />
-            <path d="M65 0 L48 50 L60 48 L32 105 L48 102 L16 165 L36 160 L2 220 L48 168 L30 172 L54 112 L38 116 L62 56 L50 58 Z" 
-              fill="url(#boltCore)" />
-            <path d="M65 0 L48 50 L60 48 L32 105 L48 102 L16 165 L36 160 L2 220 L48 168 L30 172 L54 112 L38 116 L62 56 L50 58 Z" 
-              fill="none" stroke="white" strokeWidth="1" opacity="0.6" />
-            <path d="M48 50 L22 74 L34 72 L10 96" fill="none" stroke="url(#boltBranch)" strokeWidth="2.5" strokeLinecap="round" />
-            <path d="M32 105 L56 128 L48 126 L66 148" fill="none" stroke="url(#boltBranch)" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
-            <path d="M16 165 L0 180" fill="none" stroke="url(#boltBranch)" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+          {/* ===== MAIN BOLT RIGHT ===== */}
+          <svg className="absolute pointer-events-none" viewBox="0 0 100 200" preserveAspectRatio="xMidYMid meet"
+            style={{ right: "-72px", top: "-5%", width: "100px", height: "200px", overflow: "visible", animation: "boltFlash 4s linear infinite", animationDelay: "2s", transform: "scaleX(-1)" }}>
+            <polyline points="60,0 42,45 55,43 28,95 44,92 14,150 34,146 0,200"
+              fill="none" stroke="url(#ltn-outer)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points="60,0 42,45 55,43 28,95 44,92 14,150 34,146 0,200"
+              fill="none" stroke="url(#ltn-core)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points="60,0 42,45 55,43 28,95 44,92 14,150 34,146 0,200"
+              fill="none" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.85" />
+            <polyline points="42,45 18,68 30,66 6,90" fill="none" stroke="url(#ltn-branch)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points="42,45 18,68 30,66 6,90" fill="none" stroke="white" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
+            <polyline points="28,95 50,118 42,116 60,135" fill="none" stroke="url(#ltn-branch)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.75" />
+            <polyline points="14,150 0,165" fill="none" stroke="url(#ltn-branch)" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
           </svg>
 
-          {/* ===== SECONDARY BOLT - LEFT ===== */}
-          <svg className="absolute pointer-events-none" viewBox="0 0 80 150" 
-            style={{ left: "-50px", top: "38%", width: "80px", height: "150px", overflow: "visible", animation: "boltFlash 3.5s linear infinite", animationDelay: "1s" }}>
-            <path d="M48 0 L34 40 L44 38 L18 85 L32 82 L4 150 L38 88 L24 92 L46 46 L36 48 Z" 
-              fill="url(#boltGlow)" opacity="0.4" filter="url(#boltSoftGlow)" />
-            <path d="M48 0 L34 40 L44 38 L18 85 L32 82 L4 150 L38 88 L24 92 L46 46 L36 48 Z" 
-              fill="url(#boltCore)" />
-            <path d="M34 40 L14 58 L24 56 L6 74" fill="none" stroke="url(#boltBranch)" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
+          {/* ===== SECONDARY BOLT LEFT ===== */}
+          <svg className="absolute pointer-events-none" viewBox="0 0 70 140" preserveAspectRatio="xMidYMid meet"
+            style={{ left: "-44px", top: "40%", width: "70px", height: "140px", overflow: "visible", animation: "boltFlash 3.5s linear infinite", animationDelay: "0.9s" }}>
+            <polyline points="45,0 30,38 42,36 16,80 30,77 2,140"
+              fill="none" stroke="url(#ltn-outer)" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points="45,0 30,38 42,36 16,80 30,77 2,140"
+              fill="none" stroke="url(#ltn-core)" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points="45,0 30,38 42,36 16,80 30,77 2,140"
+              fill="none" stroke="white" strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
+            <polyline points="30,38 10,56 20,54 2,68" fill="none" stroke="url(#ltn-branch)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
           </svg>
 
-          {/* ===== SECONDARY BOLT - RIGHT ===== */}
-          <svg className="absolute pointer-events-none" viewBox="0 0 80 150" 
-            style={{ right: "-50px", top: "35%", width: "80px", height: "150px", overflow: "visible", animation: "boltFlash 3.5s linear infinite", animationDelay: "2.5s", transform: "scaleX(-1)" }}>
-            <path d="M48 0 L34 40 L44 38 L18 85 L32 82 L4 150 L38 88 L24 92 L46 46 L36 48 Z" 
-              fill="url(#boltGlow)" opacity="0.4" filter="url(#boltSoftGlow)" />
-            <path d="M48 0 L34 40 L44 38 L18 85 L32 82 L4 150 L38 88 L24 92 L46 46 L36 48 Z" 
-              fill="url(#boltCore)" />
-            <path d="M34 40 L14 58 L24 56 L6 74" fill="none" stroke="url(#boltBranch)" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
+          {/* ===== SECONDARY BOLT RIGHT ===== */}
+          <svg className="absolute pointer-events-none" viewBox="0 0 70 140" preserveAspectRatio="xMidYMid meet"
+            style={{ right: "-44px", top: "36%", width: "70px", height: "140px", overflow: "visible", animation: "boltFlash 3.5s linear infinite", animationDelay: "2.4s", transform: "scaleX(-1)" }}>
+            <polyline points="45,0 30,38 42,36 16,80 30,77 2,140"
+              fill="none" stroke="url(#ltn-outer)" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points="45,0 30,38 42,36 16,80 30,77 2,140"
+              fill="none" stroke="url(#ltn-core)" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points="45,0 30,38 42,36 16,80 30,77 2,140"
+              fill="none" stroke="white" strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
+            <polyline points="30,38 10,56 20,54 2,68" fill="none" stroke="url(#ltn-branch)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
           </svg>
 
-          {/* ===== ACCENT BOLTS - SMALL ===== */}
-          <svg className="absolute pointer-events-none" viewBox="0 0 50 80" 
-            style={{ left: "-22px", bottom: "-3%", width: "50px", height: "80px", overflow: "visible", animation: "boltFlashQuick 3s linear infinite", animationDelay: "0.5s" }}>
-            <path d="M30 0 L20 30 L28 28 L10 80 L34 34 L24 36 Z" fill="url(#boltCore)" />
-            <path d="M20 30 L8 44" fill="none" stroke="url(#boltBranch)" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
+          {/* ===== ACCENT BOLTS (small) ===== */}
+          <svg className="absolute pointer-events-none" viewBox="0 0 40 70" preserveAspectRatio="xMidYMid meet"
+            style={{ left: "-18px", bottom: "-4%", width: "40px", height: "70px", overflow: "visible", animation: "boltFlashQuick 3s linear infinite", animationDelay: "0.4s" }}>
+            <polyline points="26,0 18,26 24,24 8,70" fill="none" stroke="url(#ltn-outer)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points="26,0 18,26 24,24 8,70" fill="none" stroke="url(#ltn-core)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points="26,0 18,26 24,24 8,70" fill="none" stroke="white" strokeWidth="0.7" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
           </svg>
-          <svg className="absolute pointer-events-none" viewBox="0 0 50 80" 
-            style={{ right: "-22px", bottom: "0%", width: "50px", height: "80px", overflow: "visible", animation: "boltFlashQuick 3s linear infinite", animationDelay: "2s", transform: "scaleX(-1)" }}>
-            <path d="M30 0 L20 30 L28 28 L10 80 L34 34 L24 36 Z" fill="url(#boltCore)" />
-            <path d="M20 30 L8 44" fill="none" stroke="url(#boltBranch)" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
+          <svg className="absolute pointer-events-none" viewBox="0 0 40 70" preserveAspectRatio="xMidYMid meet"
+            style={{ right: "-18px", bottom: "-1%", width: "40px", height: "70px", overflow: "visible", animation: "boltFlashQuick 3s linear infinite", animationDelay: "1.8s", transform: "scaleX(-1)" }}>
+            <polyline points="26,0 18,26 24,24 8,70" fill="none" stroke="url(#ltn-outer)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points="26,0 18,26 24,24 8,70" fill="none" stroke="url(#ltn-core)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points="26,0 18,26 24,24 8,70" fill="none" stroke="white" strokeWidth="0.7" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
           </svg>
 
-          {/* ===== ELECTRIC SPARKS (4-point stars, no rotation) ===== */}
+          {/* ===== SPARKS - clean 4-point stars ===== */}
           {[
-            { side: "left", x: -32, y: "16%", s: 20, d: 0.2, dur: 3 },
-            { side: "left", x: -16, y: "52%", s: 14, d: 1.5, dur: 3.2 },
-            { side: "left", x: -26, y: "80%", s: 12, d: 2.8, dur: 2.8 },
-            { side: "right", x: -30, y: "20%", s: 18, d: 0.8, dur: 3 },
-            { side: "right", x: -14, y: "58%", s: 14, d: 2.1, dur: 3.2 },
-            { side: "right", x: -24, y: "76%", s: 12, d: 0.4, dur: 2.8 },
+            { side: "left" as const, x: -28, y: "14%", s: 18, d: 0.2, dur: 3.2 },
+            { side: "left" as const, x: -14, y: "50%", s: 12, d: 1.4, dur: 3.5 },
+            { side: "left" as const, x: -22, y: "82%", s: 10, d: 2.7, dur: 3 },
+            { side: "right" as const, x: -26, y: "18%", s: 16, d: 0.7, dur: 3.2 },
+            { side: "right" as const, x: -12, y: "56%", s: 12, d: 2, dur: 3.5 },
+            { side: "right" as const, x: -20, y: "78%", s: 10, d: 0.3, dur: 3 },
           ].map((sp, i) => (
-            <svg key={`spark${i}`} className="absolute pointer-events-none" viewBox="0 0 24 24"
+            <svg key={`sp${i}`} className="absolute pointer-events-none" viewBox="0 0 24 24"
               style={{ [sp.side]: `${sp.x}px`, top: sp.y, width: `${sp.s}px`, height: `${sp.s}px`, overflow: "visible", animation: `sparkGlow ${sp.dur}s ease-in-out infinite`, animationDelay: `${sp.d}s` }}>
-              <path d="M12 0 L10 9 L1 12 L10 15 L12 24 L14 15 L23 12 L14 9 Z" fill="#67e8f9" />
-              <path d="M12 4 L11 10 L5 12 L11 14 L12 20 L13 14 L19 12 L13 10 Z" fill="#ecfeff" />
+              <line x1="12" y1="0" x2="12" y2="24" stroke="#67e8f9" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="0" y1="12" x2="24" y2="12" stroke="#67e8f9" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="12" y1="4" x2="12" y2="20" stroke="#ecfeff" strokeWidth="0.8" strokeLinecap="round" />
+              <line x1="4" y1="12" x2="20" y2="12" stroke="#ecfeff" strokeWidth="0.8" strokeLinecap="round" />
             </svg>
           ))}
 
-          {/* ===== ELECTRIC ARC TENDRILS ===== */}
-          {/* Left side */}
+          {/* ===== ELECTRIC TENDRILS (short arc lines) ===== */}
           {[
-            { y: "22%", w: 50, rot: -6, d: 0 },
-            { y: "40%", w: 58, rot: -12, d: 1.2 },
-            { y: "60%", w: 42, rot: 4, d: 2.3 },
-            { y: "76%", w: 36, rot: 10, d: 0.6 },
-          ].map((a, i) => (
-            <div key={`tL${i}`} className="absolute pointer-events-none origin-right"
-              style={{
-                top: a.y, left: `-${a.w}px`, width: `${a.w}px`, height: "2px",
-                transform: `rotate(${a.rot}deg)`,
-                background: "linear-gradient(90deg, transparent 0%, #0891b2 20%, #22d3ee 50%, #ecfeff 100%)",
-                animation: `tendrilFlicker ${2.5 + i * 0.3}s linear infinite`,
-                animationDelay: `${a.d}s`,
-              }} />
-          ))}
-          {/* Right side */}
-          {[
-            { y: "18%", w: 50, rot: 5, d: 0.5 },
-            { y: "36%", w: 62, rot: 10, d: 1.7 },
-            { y: "54%", w: 42, rot: -5, d: 0.2 },
-            { y: "72%", w: 36, rot: -9, d: 2 },
-          ].map((a, i) => (
-            <div key={`tR${i}`} className="absolute pointer-events-none origin-left"
-              style={{
-                top: a.y, right: `-${a.w}px`, width: `${a.w}px`, height: "2px",
-                transform: `rotate(${a.rot}deg)`,
-                background: "linear-gradient(270deg, transparent 0%, #0891b2 20%, #22d3ee 50%, #ecfeff 100%)",
-                animation: `tendrilFlicker ${2.5 + i * 0.3}s linear infinite`,
-                animationDelay: `${a.d}s`,
-              }} />
-          ))}
+            { side: "left" as const, y: "20%", w: 44, rot: -5, d: "0s" },
+            { side: "left" as const, y: "38%", w: 52, rot: -11, d: "1.1s" },
+            { side: "left" as const, y: "58%", w: 36, rot: 4, d: "2.2s" },
+            { side: "left" as const, y: "76%", w: 30, rot: 9, d: "0.5s" },
+            { side: "right" as const, y: "16%", w: 44, rot: 5, d: "0.4s" },
+            { side: "right" as const, y: "34%", w: 56, rot: 10, d: "1.6s" },
+            { side: "right" as const, y: "52%", w: 36, rot: -4, d: "0.1s" },
+            { side: "right" as const, y: "72%", w: 30, rot: -8, d: "1.9s" },
+          ].map((a, i) => {
+            const isLeft = a.side === "left"
+            return (
+              <div key={`td${i}`} className={`absolute pointer-events-none ${isLeft ? "origin-right" : "origin-left"}`}
+                style={{
+                  top: a.y,
+                  [a.side]: `-${a.w}px`,
+                  width: `${a.w}px`,
+                  height: "2px",
+                  transform: `rotate(${a.rot}deg)`,
+                  background: isLeft
+                    ? "linear-gradient(90deg, transparent 0%, #0891b2 25%, #22d3ee 55%, #ecfeff 100%)"
+                    : "linear-gradient(270deg, transparent 0%, #0891b2 25%, #22d3ee 55%, #ecfeff 100%)",
+                  animation: `tendrilFlicker ${2.4 + (i % 4) * 0.3}s linear infinite`,
+                  animationDelay: a.d,
+                }} />
+            )
+          })}
 
-          {/* === LOGO IMAGE === */}
+          {/* === LOGO IMAGE - clean, no overlays === */}
           <Image
             src="/images/gp-cg-logo.png"
             alt="Gear Perks Card Game"
