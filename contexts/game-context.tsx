@@ -2164,13 +2164,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }
       })
       
-      // Add to collection
+      // Add to collection and persist immediately
       setCollection(allCardsWithCopies)
+      setLS("collection", JSON.stringify(allCardsWithCopies))
       
-      // Mark code as redeemed
+      // Mark code as redeemed and persist immediately
       const newRedeemedCodes = [...redeemedCodes, normalizedCode]
       setRedeemedCodes(newRedeemedCodes)
-      localStorage.setItem("gearperks-redeemed-codes", JSON.stringify(newRedeemedCodes))
+      setLS("redeemed-codes", JSON.stringify(newRedeemedCodes))
       
       return { success: true, message: `Todas as ${ALL_CARDS.length} cartas foram desbloqueadas com 4 copias cada!` }
     }

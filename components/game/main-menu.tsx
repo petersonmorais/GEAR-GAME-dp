@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useLanguage } from "@/contexts/language-context"
 import { useGame } from "@/contexts/game-context"
 import type { GameScreen } from "@/components/game/game-wrapper"
@@ -54,30 +54,25 @@ export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: 
     { bg: "linear-gradient(145deg, #1e293b, #334155, #475569)", border: "#e2e8f0", glow: "rgba(226,232,240,0.25)", accent: "#f1f5f9", inner: "#334155" },
   ]
 
-  const [fallingCards, setFallingCards] = useState<Array<{
-    id: number
-    x: number
-    delay: number
-    duration: number
-    width: number
-    height: number
-    themeIndex: number
-    shimmerAngle: number
-  }>>([])
+  // Deterministic pseudo-random to avoid hydration mismatch (no Math.random)
+  const seededRand = (seed: number) => {
+    const x = Math.sin(seed * 9301 + 49297) * 233280
+    return x - Math.floor(x)
+  }
 
-  useEffect(() => {
-    const cards = Array.from({ length: 20 }, (_, i) => ({
+  const fallingCards = useMemo(() =>
+    Array.from({ length: 20 }, (_, i) => ({
       id: i,
-      x: (i * 5.1) % 94 + 3 + (Math.random() * 3 - 1.5),
-      delay: (i * 0.85) % 16 + Math.random() * 2,
-      duration: 18 + Math.random() * 12,
-      width: 48 + Math.random() * 16,
-      height: 68 + Math.random() * 20,
+      x: (i * 5.1) % 94 + 3 + (seededRand(i + 1) * 3 - 1.5),
+      delay: (i * 0.85) % 16 + seededRand(i + 20) * 2,
+      duration: 18 + seededRand(i + 40) * 12,
+      width: 48 + seededRand(i + 60) * 16,
+      height: 68 + seededRand(i + 80) * 20,
       themeIndex: i % CARD_THEMES.length,
-      shimmerAngle: 110 + Math.random() * 40,
-    }))
-    setFallingCards(cards)
-  }, [])
+      shimmerAngle: 110 + seededRand(i + 100) * 40,
+    })),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [])
 
   const handleOpenGift = (giftId: string) => {
     setIsOpening(true)
