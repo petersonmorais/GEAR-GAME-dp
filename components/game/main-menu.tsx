@@ -34,16 +34,43 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
   const [isOpening, setIsOpening] = useState(false)
   const [isClaimingAll, setIsClaimingAll] = useState(false)
   const [claimAllResults, setClaimAllResults] = useState<{ cards: any[]; coins: number } | null>(null)
-  const [particles, setParticles] = useState<Array<{ id: number; x: number; delay: number }>>([])
+  // Falling card colors for background animation
+  const CARD_COLORS = [
+    { bg: "from-blue-500/25 to-blue-700/20", glow: "shadow-blue-500/20", border: "border-blue-400/30" },
+    { bg: "from-red-500/25 to-red-700/20", glow: "shadow-red-500/20", border: "border-red-400/30" },
+    { bg: "from-amber-400/25 to-yellow-600/20", glow: "shadow-amber-400/20", border: "border-amber-400/30" },
+    { bg: "from-purple-500/25 to-purple-700/20", glow: "shadow-purple-500/20", border: "border-purple-400/30" },
+    { bg: "from-emerald-500/25 to-emerald-700/20", glow: "shadow-emerald-500/20", border: "border-emerald-400/30" },
+    { bg: "from-slate-300/25 to-slate-500/20", glow: "shadow-slate-300/20", border: "border-slate-300/30" },
+  ]
+
+  const [fallingCards, setFallingCards] = useState<Array<{
+    id: number
+    x: number
+    delay: number
+    duration: number
+    size: number
+    colorIndex: number
+    rotateStart: number
+    rotateEnd: number
+    opacity: number
+    swayAmount: number
+  }>>([])
 
   useEffect(() => {
-    // Generate floating particles
-    const newParticles = Array.from({ length: 20 }, (_, i) => ({
+    const cards = Array.from({ length: 18 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
-      delay: Math.random() * 8,
+      delay: Math.random() * 14,
+      duration: 12 + Math.random() * 10,
+      size: 28 + Math.random() * 24,
+      colorIndex: Math.floor(Math.random() * CARD_COLORS.length),
+      rotateStart: -30 + Math.random() * 60,
+      rotateEnd: -30 + Math.random() * 60,
+      opacity: 0.15 + Math.random() * 0.25,
+      swayAmount: 20 + Math.random() * 40,
     }))
-    setParticles(newParticles)
+    setFallingCards(cards)
   }, [])
 
   const handleOpenGift = (giftId: string) => {
@@ -90,71 +117,62 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
         {/* Animated gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-purple-900/20 via-transparent to-cyan-900/20 animate-gradient" />
 
-        {/* Grid pattern */}
+        {/* Subtle grid pattern */}
         <div
-          className="absolute inset-0 opacity-10"
+          className="absolute inset-0 opacity-[0.06]"
           style={{
             backgroundImage: `linear-gradient(rgba(59,130,246,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.3) 1px, transparent 1px)`,
-            backgroundSize: "50px 50px",
+            backgroundSize: "60px 60px",
           }}
         />
+        
+        {/* Subtle radial vignette */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.5)_100%)]" />
       </div>
 
-      {/* Floating particles */}
-      <div className="particles">
-        {particles.map((p) => (
-          <div
-            key={p.id}
-            className="particle"
-            style={{
-              left: `${p.x}%`,
-              animationDelay: `${p.delay}s`,
-              width: `${Math.random() * 4 + 2}px`,
-              height: `${Math.random() * 4 + 2}px`,
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Decorative gears */}
-      <div className="absolute -top-32 -left-32 w-80 h-80 opacity-20 pointer-events-none">
-        <div
-          className="w-full h-full border-[12px] border-cyan-400 rounded-full animate-spin-slow"
-          style={{ animationDuration: "25s" }}
-        >
-          {[...Array(16)].map((_, i) => (
+      {/* Falling glowing cards */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-[1]">
+        {fallingCards.map((card) => {
+          const color = CARD_COLORS[card.colorIndex]
+          return (
             <div
-              key={i}
-              className="absolute w-6 h-14 bg-cyan-400 rounded-md"
+              key={card.id}
+              className="absolute"
               style={{
-                left: "50%",
-                top: "-14px",
-                transform: `translateX(-50%) rotate(${i * 22.5}deg)`,
-                transformOrigin: "50% 170px",
+                left: `${card.x}%`,
+                top: "-60px",
+                animation: `fallingCard ${card.duration}s ${card.delay}s linear infinite`,
+                opacity: 0,
               }}
-            />
-          ))}
-        </div>
+            >
+              <div
+                className={`rounded-lg border bg-gradient-to-br ${color.bg} ${color.border} shadow-lg ${color.glow} backdrop-blur-[1px]`}
+                style={{
+                  width: `${card.size * 0.65}px`,
+                  height: `${card.size}px`,
+                  animation: `cardSway ${4 + Math.random() * 3}s ease-in-out infinite, cardRotate ${6 + Math.random() * 4}s ease-in-out infinite`,
+                  animationDelay: `${card.delay}s`,
+                }}
+              >
+                {/* Card inner detail - small lines to look like a card */}
+                <div className="w-full h-full p-[3px] flex flex-col justify-between overflow-hidden rounded-md">
+                  <div className={`w-full h-[55%] rounded-sm bg-gradient-to-br ${color.bg} opacity-60`} />
+                  <div className="flex flex-col gap-[2px] mt-auto">
+                    <div className={`w-[70%] h-[2px] rounded-full bg-gradient-to-r ${color.bg} opacity-40`} />
+                    <div className={`w-[50%] h-[2px] rounded-full bg-gradient-to-r ${color.bg} opacity-30`} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
       </div>
 
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 opacity-20 pointer-events-none">
-        <div
-          className="w-full h-full border-[12px] border-purple-400 rounded-full animate-spin-slow"
-          style={{ animationDuration: "35s", animationDirection: "reverse" }}
-        >
-          {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-8 h-16 bg-purple-400 rounded-md"
-              style={{
-                left: "50%",
-                top: "-16px",
-                transform: `translateX(-50%) rotate(${i * 18}deg)`,
-                transformOrigin: "50% 210px",
-              }}
-            />
-          ))}
-        </div>
+      {/* Ambient light orbs for depth */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-[0]">
+        <div className="absolute top-[10%] left-[15%] w-64 h-64 bg-blue-500/[0.04] rounded-full blur-[80px] animate-pulse" style={{ animationDuration: "8s" }} />
+        <div className="absolute top-[60%] right-[10%] w-48 h-48 bg-purple-500/[0.05] rounded-full blur-[60px] animate-pulse" style={{ animationDuration: "11s" }} />
+        <div className="absolute bottom-[15%] left-[30%] w-56 h-56 bg-cyan-500/[0.04] rounded-full blur-[70px] animate-pulse" style={{ animationDuration: "9s" }} />
       </div>
 
       {/* Top bar */}
@@ -199,7 +217,7 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
       {/* Logo */}
       <div className="mb-10 relative z-10 text-center flex flex-col items-center">
         {/* Version number above logo */}
-        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-4">v1.1.2</div>
+        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-4">v1.1.3</div>
         
         <div className="relative inline-block">
           {/* Glow effect behind logo */}

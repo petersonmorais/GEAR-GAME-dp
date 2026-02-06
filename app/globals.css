@@ -91,8 +91,56 @@
   }
 }
 
-/* Custom animations */
-@keyframes spin-slow {
+  /* Falling cards background animation */
+  @keyframes fallingCard {
+    0% {
+      transform: translateY(-80px);
+      opacity: 0;
+    }
+    3% {
+      opacity: var(--card-opacity, 0.25);
+    }
+    90% {
+      opacity: var(--card-opacity, 0.25);
+    }
+    100% {
+      transform: translateY(110vh);
+      opacity: 0;
+    }
+  }
+  
+  @keyframes cardSway {
+    0%, 100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(15px);
+    }
+    75% {
+      transform: translateX(-15px);
+    }
+  }
+  
+  @keyframes cardRotate {
+    0% {
+      transform: rotateY(0deg) rotateZ(-8deg);
+    }
+    25% {
+      transform: rotateY(25deg) rotateZ(4deg);
+    }
+    50% {
+      transform: rotateY(0deg) rotateZ(8deg);
+    }
+    75% {
+      transform: rotateY(-25deg) rotateZ(-4deg);
+    }
+    100% {
+      transform: rotateY(0deg) rotateZ(-8deg);
+    }
+  }
+
+  /* Custom animations */
+  @keyframes spin-slow {
   from {
     transform: rotate(0deg);
   }
