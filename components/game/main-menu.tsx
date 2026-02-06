@@ -197,31 +197,25 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
       </div>
 
       {/* Logo */}
-      <div className="mb-10 relative z-10 text-center">
+      <div className="mb-10 relative z-10 text-center flex flex-col items-center">
         {/* Version number above logo */}
-        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-2">v1.1.0</div>
+        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-3">v1.1.1</div>
         
         <div className="relative inline-block">
           {/* Glow effect behind logo */}
-          <div className="absolute inset-0 blur-3xl bg-gradient-to-r from-cyan-500 via-purple-500 to-amber-500 opacity-30 animate-pulse" />
+          <div className="absolute inset-0 blur-3xl bg-gradient-to-r from-cyan-500/40 via-blue-500/30 to-cyan-500/40 opacity-50 animate-pulse scale-110" />
 
-          <h1 className="relative text-7xl md:text-8xl font-black tracking-tighter">
-            <span className="bg-gradient-to-r from-cyan-300 via-white to-cyan-300 bg-clip-text text-transparent drop-shadow-2xl">
-              GEAR
-            </span>
-            <span className="bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 bg-clip-text text-transparent drop-shadow-2xl ml-2">
-              PERKS
-            </span>
-          </h1>
-
-          <div className="flex items-center justify-center gap-2 mt-2">
-            <div className="h-px w-16 bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
-            <p className="text-cyan-300 text-xl tracking-[0.3em] font-light">CARD GAME</p>
-            <div className="h-px w-16 bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
-          </div>
+          <Image
+            src="/images/gp-cg-logo.png"
+            alt="Gear Perks Card Game"
+            width={400}
+            height={400}
+            className="relative w-64 h-auto sm:w-72 md:w-80 lg:w-96 drop-shadow-[0_0_25px_rgba(56,189,248,0.4)]"
+            priority
+          />
         </div>
 
-        <p className="text-slate-500 text-sm mt-4 tracking-wider">2025 Gear Perks Oficial Card Game, Made in BRAZIL</p>
+        <p className="text-slate-500 text-sm mt-2 tracking-wider">2025 Gear Perks Oficial Card Game, Made in BRAZIL</p>
       </div>
 
       {/* Menu buttons */}
