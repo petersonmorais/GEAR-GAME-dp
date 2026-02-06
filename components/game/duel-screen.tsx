@@ -3278,25 +3278,35 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
   setEnemyField((prev) => {
   const newUnitZone = [...prev.unitZone]
   const newGraveyard = [...prev.graveyard]
+
+  // PROTONIX SWORD protection: unit equipped with it cannot be destroyed in battle (stays at 1 DP)
+  const isProtectedByProtonix = prev.ultimateZone &&
+    prev.ultimateZone.ability === "PROTONIX SWORD" &&
+    prev.ultimateZone.requiresUnit === defender.name
+
   if (newDefenderDp <= 0) {
-  if (targetRect) {
-  // Show destruction animation first
-  showDestructionAnimation(
-    defender,
-    targetRect.left + targetRect.width / 2,
-    targetRect.top + targetRect.height / 2
-  )
-  // Then trigger explosion particles
-  setTimeout(() => {
-    triggerExplosion(
-    targetRect.left + targetRect.width / 2,
-    targetRect.top + targetRect.height / 2,
-    attacker.element || "neutral",
+  if (isProtectedByProtonix) {
+    // Protected: stays at 1 DP instead of being destroyed
+    newUnitZone[targetIndex] = { ...defender, currentDp: 1 }
+    showEffectFeedback(`PROTONIX SWORD: ${defender.name} protegida! Resta 1 DP`, "error")
+  } else {
+    if (targetRect) {
+    showDestructionAnimation(
+      defender,
+      targetRect.left + targetRect.width / 2,
+      targetRect.top + targetRect.height / 2
     )
-  }, 400)
+    setTimeout(() => {
+      triggerExplosion(
+      targetRect.left + targetRect.width / 2,
+      targetRect.top + targetRect.height / 2,
+      attacker.element || "neutral",
+      )
+    }, 400)
+    }
+    newGraveyard.push(defender)
+    newUnitZone[targetIndex] = null
   }
-  newGraveyard.push(defender)
-  newUnitZone[targetIndex] = null
   } else {
   newUnitZone[targetIndex] = { ...defender, currentDp: newDefenderDp }
   }
@@ -3565,6 +3575,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
               }
             }
             newHand.splice(i, 1)
+            setEnemyUgAbilityUsed(false)
             break // Only one ultimate at a time
           }
         }
@@ -3691,9 +3702,20 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
                     const newPlayerUnitZone = [...prevPlayer.unitZone]
                     const newPlayerGraveyard = [...prevPlayer.graveyard]
 
+                    // PROTONIX SWORD protection: player's unit cannot be destroyed in battle
+                    const isProtectedByProtonix = prevPlayer.ultimateZone &&
+                      prevPlayer.ultimateZone.ability === "PROTONIX SWORD" &&
+                      prevPlayer.ultimateZone.requiresUnit === defender.name
+
                     if (newDefenderDp <= 0) {
-                      newPlayerGraveyard.push(defender)
-                      newPlayerUnitZone[playerUnitIndex] = null
+                      if (isProtectedByProtonix) {
+                        // Protected: stays at 1 DP
+                        newPlayerUnitZone[playerUnitIndex] = { ...defender, currentDp: 1 }
+                        showEffectFeedback(`PROTONIX SWORD: ${defender.name} protegida! Resta 1 DP`, "success")
+                      } else {
+                        newPlayerGraveyard.push(defender)
+                        newPlayerUnitZone[playerUnitIndex] = null
+                      }
                     } else {
                       newPlayerUnitZone[playerUnitIndex] = { ...defender, currentDp: newDefenderDp }
                     }
@@ -3728,6 +3750,19 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
             }
           })
         }
+
+        // Bot ULLRBOGI: remove +3 DP when leaving battle phase
+        setEnemyField((prevEnemy) => {
+          if (prevEnemy.ultimateZone && prevEnemy.ultimateZone.ability === "ULLRBOGI" && prevEnemy.ultimateZone.requiresUnit) {
+            const ullrIdx = prevEnemy.unitZone.findIndex((u) => u && u.name === prevEnemy.ultimateZone!.requiresUnit)
+            if (ullrIdx !== -1 && prevEnemy.unitZone[ullrIdx]) {
+              const newUnits = [...prevEnemy.unitZone]
+              newUnits[ullrIdx] = { ...newUnits[ullrIdx]!, currentDp: Math.max(0, newUnits[ullrIdx]!.currentDp - 3) }
+              return { ...prevEnemy, unitZone: newUnits as (FieldCard | null)[] }
+            }
+          }
+          return prevEnemy
+        })
 
         setTimeout(() => {
           setTurn((prev) => prev + 1)
@@ -3792,6 +3827,19 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
       unitZone: prev.unitZone.map((unit) => (unit ? { ...unit, hasAttacked: false } : null)),
     }))
 
+    // Bot ULLRBOGI: remove +3 DP from Ullr when ending turn (leaving battle phase)
+    setEnemyField((prevEnemy) => {
+      if (prevEnemy.ultimateZone && prevEnemy.ultimateZone.ability === "ULLRBOGI" && prevEnemy.ultimateZone.requiresUnit) {
+        const ullrIdx = prevEnemy.unitZone.findIndex((u) => u && u.name === prevEnemy.ultimateZone!.requiresUnit)
+        if (ullrIdx !== -1 && prevEnemy.unitZone[ullrIdx]) {
+          const newUnits = [...prevEnemy.unitZone]
+          newUnits[ullrIdx] = { ...newUnits[ullrIdx]!, currentDp: Math.max(0, newUnits[ullrIdx]!.currentDp - 3) }
+          return { ...prevEnemy, unitZone: newUnits as (FieldCard | null)[] }
+        }
+      }
+      return prevEnemy
+    })
+
     setTimeout(() => {
       const nextTurn = turn + 1
       setTurn(nextTurn)
@@ -3803,6 +3851,9 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
         unitZone: prev.unitZone.map((unit) =>
           unit ? { ...unit, hasAttacked: false, canAttack: nextTurn > unit.canAttackTurn } : null,
         ),
+        ultimateZone: prev.ultimateZone
+          ? { ...prev.ultimateZone, hasAttacked: false, canAttack: nextTurn > prev.ultimateZone.canAttackTurn }
+          : null,
       }))
     }, 500)
   }
