@@ -46,6 +46,7 @@ interface FieldState {
   functionZone: (GameCard | null)[]
   equipZone: GameCard | null
   scenarioZone: GameCard | null
+  ultimateZone: FieldCard | null
   hand: GameCard[]
   deck: GameCard[]
   graveyard: GameCard[]
@@ -59,7 +60,7 @@ interface AttackState {
 }
 
 interface DropTarget {
-  type: "unit" | "function" | "scenario"
+  type: "unit" | "function" | "scenario" | "ultimate"
   index: number
 }
 
@@ -1173,6 +1174,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     functionZone: [null, null, null, null],
     equipZone: null,
     scenarioZone: null,
+    ultimateZone: null,
     hand: [],
     deck: [],
     graveyard: [],
@@ -1183,6 +1185,7 @@ export function DuelScreen({ mode, onBack }: DuelScreenProps) {
     functionZone: [null, null, null, null],
     equipZone: null,
     scenarioZone: null,
+    ultimateZone: null,
     hand: [],
     deck: [],
     graveyard: [],
@@ -2405,6 +2408,13 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
     }
   }
 
+  const isUltimateCard = (card: GameCard) => {
+    return (
+      card.type === "ultimateGear" ||
+      card.type === "ultimateGuardian"
+    )
+  }
+
   const isUnitCard = (card: GameCard) => {
     return (
       card.type === "unit" ||
@@ -2448,6 +2458,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
       scenarioZone: null,
+    ultimateZone: null,
       graveyard: [],
     }))
 
@@ -2463,6 +2474,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
       unitZone: [null, null, null, null],
       functionZone: [null, null, null, null],
       scenarioZone: null,
+    ultimateZone: null,
       graveyard: [],
     }))
 
@@ -2500,6 +2512,9 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
 
     // Scenario cards can ONLY be played in the Scenario zone
     if (cardToPlace.type === "scenario") return
+
+    // Ultimate cards (ultimateGear, ultimateGuardian) can ONLY be played in the Ultimate zone
+    if (isUltimateCard(cardToPlace)) return
 
     const isUnit = isUnitCard(cardToPlace)
     if (zone === "unit" && isUnit) {
@@ -2838,6 +2853,35 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
     setDraggedHandCard(null)
   }
 
+  const placeUltimateCard = (forcedCardIndex?: number) => {
+    if (!isPlayerTurn) return
+    if (phase !== "main") return
+
+    const cardIndex = forcedCardIndex ?? (draggedHandCard?.index ?? selectedHandCard)
+    if (cardIndex === null || cardIndex === undefined) return
+
+    const cardToPlace = playerField.hand[cardIndex]
+    if (!cardToPlace || !isUltimateCard(cardToPlace)) return
+    if (playerField.ultimateZone !== null) return
+
+    const fieldCard: FieldCard = {
+      ...cardToPlace,
+      currentDp: cardToPlace.dp,
+      canAttack: false,
+      hasAttacked: false,
+      canAttackTurn: turn,
+    }
+
+    setPlayerField((prev) => ({
+      ...prev,
+      ultimateZone: fieldCard,
+      hand: prev.hand.filter((_, i) => i !== cardIndex),
+    }))
+
+    setSelectedHandCard(null)
+    setDraggedHandCard(null)
+  }
+
   const advancePhase = () => {
   if (!isPlayerTurn) return
   if (phase === "draw") {
@@ -3083,14 +3127,20 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
       dragPosRef.current.lastCheck = now
       
       const elements = document.elementsFromPoint(clientX, clientY)
-      let foundTarget: { type: "unit" | "function" | "scenario"; index: number } | null = null
+      let foundTarget: { type: "unit" | "function" | "scenario" | "ultimate"; index: number } | null = null
 
       for (const el of elements) {
         const unitSlot = el.closest("[data-player-unit-slot]")
         const funcSlot = el.closest("[data-player-func-slot]")
         const scenarioSlot = el.closest("[data-player-scenario-slot]")
+        const ultimateSlot = el.closest("[data-player-ultimate-slot]")
         
-        if (unitSlot && isUnitCard(draggedHandCard.card)) {
+        if (ultimateSlot && isUltimateCard(draggedHandCard.card)) {
+          if (!playerField.ultimateZone) {
+            foundTarget = { type: "ultimate", index: 0 }
+            break
+          }
+        } else if (unitSlot && isUnitCard(draggedHandCard.card) && !isUltimateCard(draggedHandCard.card)) {
           const slotIndex = Number.parseInt(unitSlot.getAttribute("data-player-unit-slot") || "0")
           if (!playerField.unitZone[slotIndex]) {
             foundTarget = { type: "unit", index: slotIndex }
@@ -3128,7 +3178,9 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
         ? `[data-player-unit-slot="${dropTarget.index}"]`
         : dropTarget.type === "function"
           ? `[data-player-func-slot="${dropTarget.index}"]`
-          : `[data-player-scenario-slot]`
+          : dropTarget.type === "ultimate"
+            ? `[data-player-ultimate-slot]`
+            : `[data-player-scenario-slot]`
       const targetElement = document.querySelector(targetSelector)
       const targetRect = targetElement?.getBoundingClientRect()
       
@@ -3138,7 +3190,9 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
       const cardToPlay = draggedHandCard.card
       
       // Remove card from hand IMMEDIATELY by passing index directly
-      if (targetType === "scenario") {
+      if (targetType === "ultimate") {
+        placeUltimateCard(cardIndex)
+      } else if (targetType === "scenario") {
         placeScenarioCard(cardIndex)
       } else {
         placeCard(targetType, targetIndex, cardIndex)
@@ -3199,6 +3253,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
         const newUnitZone = [...prev.unitZone]
         const newFunctionZone = [...prev.functionZone]
         let newScenarioZone = prev.scenarioZone
+        let newUltimateZone = prev.ultimateZone
 
         // Bot plays Scenario cards ONLY in Scenario zone
         for (let i = newHand.length - 1; i >= 0; i--) {
@@ -3210,9 +3265,26 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
           }
         }
 
+        // Bot plays Ultimate cards (ultimateGear, ultimateGuardian) ONLY in Ultimate zone
         for (let i = newHand.length - 1; i >= 0; i--) {
           const card = newHand[i]
-          if (card && isUnitCard(card)) {
+          if (card && isUltimateCard(card) && !newUltimateZone) {
+            newUltimateZone = {
+              ...card,
+              currentDp: card.dp,
+              canAttack: false,
+              hasAttacked: false,
+              canAttackTurn: turn,
+            }
+            newHand.splice(i, 1)
+            break // Only one ultimate at a time
+          }
+        }
+
+        for (let i = newHand.length - 1; i >= 0; i--) {
+          const card = newHand[i]
+          // Skip ultimate cards - they can only go in ultimate zone
+          if (card && isUnitCard(card) && !isUltimateCard(card)) {
             const emptySlot = newUnitZone.findIndex((s) => s === null)
             if (emptySlot !== -1) {
               newUnitZone[emptySlot] = {
@@ -3229,7 +3301,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
 
         for (let i = newHand.length - 1; i >= 0; i--) {
           const card = newHand[i]
-          // Skip scenario cards - they can only go in scenario zone
+          // Skip scenario and ultimate cards
           if (card && !isUnitCard(card) && card.type !== "scenario") {
             const emptySlot = newFunctionZone.findIndex((s) => s === null)
             if (emptySlot !== -1) {
@@ -3245,6 +3317,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
           unitZone: newUnitZone as (FieldCard | null)[],
           functionZone: newFunctionZone,
           scenarioZone: newScenarioZone,
+          ultimateZone: newUltimateZone,
         }
       })
 
@@ -3321,11 +3394,17 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
             unitZone: prev.unitZone.map((unit) =>
               unit ? { ...unit, hasAttacked: false, canAttack: turn > unit.canAttackTurn } : null,
             ),
+            ultimateZone: prev.ultimateZone
+              ? { ...prev.ultimateZone, hasAttacked: false, canAttack: turn > prev.ultimateZone.canAttackTurn }
+              : null,
           }))
           setEnemyField((prev) => ({
             // Also reset enemy units for the next turn if it becomes their turn
             ...prev,
             unitZone: prev.unitZone.map((unit) => (unit ? { ...unit, hasAttacked: false, canAttack: true } : null)),
+            ultimateZone: prev.ultimateZone
+              ? { ...prev.ultimateZone, hasAttacked: false, canAttack: true }
+              : null,
           }))
         }, 500)
       }, 800)
@@ -3855,8 +3934,8 @@ const handleAllyUnitSelect = (index: number) => {
           <div className="relative h-full flex flex-col justify-between p-1.5 pb-3 z-10">
             {/* Enemy Field */}
             <div className="flex justify-center items-center gap-3">
-              {/* Enemy Deck, Graveyard and Scenario */}
-              <div className="flex items-center gap-1">
+              {/* Enemy Deck, Graveyard, Scenario and Ultimate */}
+              <div className="flex items-start gap-1">
                 <div className="flex flex-col gap-1">
                   <div 
                     className="w-14 h-20 bg-purple-900/80 rounded text-sm text-purple-300 flex items-center justify-center border border-purple-500/50 cursor-pointer hover:bg-purple-800/80 transition-colors"
@@ -3868,23 +3947,46 @@ const handleAllyUnitSelect = (index: number) => {
                     {enemyField.deck.length}
                   </div>
                 </div>
-                {/* Enemy Scenario Zone - Horizontal slot */}
-                <div className="h-14 w-20 bg-amber-900/40 border border-amber-600/40 rounded flex items-center justify-center relative overflow-hidden">
-                  {enemyField.scenarioZone ? (
-                    <Image
-                      src={enemyField.scenarioZone.image || "/placeholder.svg"}
-                      alt={enemyField.scenarioZone.name}
-                      fill
-                      className="object-cover rounded"
-                      onMouseDown={() => handleCardPressStart(enemyField.scenarioZone!)}
-                      onMouseUp={handleCardPressEnd}
-                      onMouseLeave={handleCardPressEnd}
-                      onTouchStart={() => handleCardPressStart(enemyField.scenarioZone!)}
-                      onTouchEnd={handleCardPressEnd}
-                    />
-                  ) : (
-                    <span className="text-amber-500/50 text-[8px] text-center">SCENARIO</span>
-                  )}
+                <div className="flex flex-col gap-1">
+                  {/* Enemy Scenario Zone - Horizontal slot, aligned with unit zone */}
+                  <div className="h-14 w-20 bg-amber-900/40 border border-amber-600/40 rounded flex items-center justify-center relative overflow-hidden">
+                    {enemyField.scenarioZone ? (
+                      <Image
+                        src={enemyField.scenarioZone.image || "/placeholder.svg"}
+                        alt={enemyField.scenarioZone.name}
+                        fill
+                        className="object-cover rounded"
+                        onMouseDown={() => handleCardPressStart(enemyField.scenarioZone!)}
+                        onMouseUp={handleCardPressEnd}
+                        onMouseLeave={handleCardPressEnd}
+                        onTouchStart={() => handleCardPressStart(enemyField.scenarioZone!)}
+                        onTouchEnd={handleCardPressEnd}
+                      />
+                    ) : (
+                      <span className="text-amber-500/50 text-[8px] text-center">SCENARIO</span>
+                    )}
+                  </div>
+                  {/* Enemy Ultimate Zone - single slot, green */}
+                  <div className="w-14 h-20 bg-emerald-900/40 border border-emerald-600/40 rounded flex items-center justify-center relative overflow-hidden mx-auto">
+                    {enemyField.ultimateZone ? (
+                      <Image
+                        src={enemyField.ultimateZone.image || "/placeholder.svg"}
+                        alt={enemyField.ultimateZone.name}
+                        fill
+                        className="object-cover rounded"
+                        onMouseDown={() => handleCardPressStart(enemyField.ultimateZone!)}
+                        onMouseUp={handleCardPressEnd}
+                        onMouseLeave={handleCardPressEnd}
+                        onTouchStart={() => handleCardPressStart(enemyField.ultimateZone!)}
+                        onTouchEnd={handleCardPressEnd}
+                      />
+                    ) : null}
+                    {enemyField.ultimateZone && (
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-center text-xs text-white font-bold py-0.5">
+                        {enemyField.ultimateZone.currentDp} DP
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -4111,37 +4213,75 @@ const handleAllyUnitSelect = (index: number) => {
                 </div>
               </div>
 
-              {/* Player Scenario Zone and Deck/Graveyard */}
-              <div className="flex items-center gap-1">
-                {/* Player Scenario Zone - Horizontal slot */}
-                <div 
-                  data-player-scenario-slot
-                  onClick={() => selectedHandCard !== null && playerField.hand[selectedHandCard]?.type === "scenario" && placeScenarioCard()}
-                  className={`h-14 w-20 bg-amber-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-200 ${
-                    dropTarget?.type === "scenario" && !playerField.scenarioZone
-                      ? "border-green-400 bg-green-500/60 scale-110 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
-                      : selectedHandCard !== null && playerField.hand[selectedHandCard]?.type === "scenario"
-                        ? "border-green-500 bg-green-900/40 cursor-pointer"
-                        : draggedHandCard && draggedHandCard.card.type === "scenario"
-                          ? "border-amber-400/50 bg-amber-500/20"
-                          : "border-amber-600/40"
-                  }`}
-                >
-                  {playerField.scenarioZone ? (
-                    <Image
-                      src={playerField.scenarioZone.image || "/placeholder.svg"}
-                      alt={playerField.scenarioZone.name}
-                      fill
-                      className="object-cover rounded"
-                      onMouseDown={() => handleCardPressStart(playerField.scenarioZone!)}
-                      onMouseUp={handleCardPressEnd}
-                      onMouseLeave={handleCardPressEnd}
-                      onTouchStart={() => handleCardPressStart(playerField.scenarioZone!)}
-                      onTouchEnd={handleCardPressEnd}
-                    />
-                  ) : (
-                    <span className="text-amber-500/50 text-[8px] text-center">SCENARIO</span>
-                  )}
+              {/* Player Scenario, Ultimate Zone and Deck/Graveyard */}
+              <div className="flex items-start gap-1">
+                <div className="flex flex-col gap-1">
+                  {/* Player Scenario Zone - Horizontal slot, aligned with unit zone */}
+                  <div 
+                    data-player-scenario-slot
+                    onClick={() => selectedHandCard !== null && playerField.hand[selectedHandCard]?.type === "scenario" && placeScenarioCard()}
+                    className={`h-14 w-20 bg-amber-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-200 ${
+                      dropTarget?.type === "scenario" && !playerField.scenarioZone
+                        ? "border-green-400 bg-green-500/60 scale-110 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
+                        : selectedHandCard !== null && playerField.hand[selectedHandCard]?.type === "scenario"
+                          ? "border-green-500 bg-green-900/40 cursor-pointer"
+                          : draggedHandCard && draggedHandCard.card.type === "scenario"
+                            ? "border-amber-400/50 bg-amber-500/20"
+                            : "border-amber-600/40"
+                    }`}
+                  >
+                    {playerField.scenarioZone ? (
+                      <Image
+                        src={playerField.scenarioZone.image || "/placeholder.svg"}
+                        alt={playerField.scenarioZone.name}
+                        fill
+                        className="object-cover rounded"
+                        onMouseDown={() => handleCardPressStart(playerField.scenarioZone!)}
+                        onMouseUp={handleCardPressEnd}
+                        onMouseLeave={handleCardPressEnd}
+                        onTouchStart={() => handleCardPressStart(playerField.scenarioZone!)}
+                        onTouchEnd={handleCardPressEnd}
+                      />
+                    ) : (
+                      <span className="text-amber-500/50 text-[8px] text-center">SCENARIO</span>
+                    )}
+                  </div>
+                  {/* Player Ultimate Zone - single green slot below scenario */}
+                  <div 
+                    data-player-ultimate-slot
+                    onClick={() => selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard]) && placeUltimateCard()}
+                    className={`w-14 h-20 bg-emerald-900/30 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all duration-200 mx-auto ${
+                      dropTarget?.type === "ultimate" && !playerField.ultimateZone
+                        ? "border-green-400 bg-green-500/60 scale-110 shadow-lg shadow-green-500/50 ring-2 ring-green-400/50 animate-pulse"
+                        : selectedHandCard !== null && playerField.hand[selectedHandCard] && isUltimateCard(playerField.hand[selectedHandCard])
+                          ? "border-emerald-400 bg-emerald-900/40 cursor-pointer"
+                          : draggedHandCard && isUltimateCard(draggedHandCard.card)
+                            ? "border-emerald-400/50 bg-emerald-500/20"
+                            : "border-emerald-600/40"
+                    }`}
+                  >
+                    {playerField.ultimateZone ? (
+                      <>
+                        <Image
+                          src={playerField.ultimateZone.image || "/placeholder.svg"}
+                          alt={playerField.ultimateZone.name}
+                          fill
+                          className="object-cover rounded"
+                          onMouseDown={() => handleCardPressStart(playerField.ultimateZone!)}
+                          onMouseUp={handleCardPressEnd}
+                          onMouseLeave={handleCardPressEnd}
+                          onTouchStart={() => handleCardPressStart(playerField.ultimateZone!)}
+                          onTouchEnd={handleCardPressEnd}
+                        />
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-center text-xs text-white font-bold py-0.5">
+                          {playerField.ultimateZone.currentDp} DP
+                        </div>
+                      </>
+                    ) : null}
+                    {!playerField.ultimateZone && dropTarget?.type === "ultimate" && (
+                      <span className="text-green-400 text-[10px] font-bold animate-pulse">SOLTAR</span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="w-14 h-20 bg-blue-700/80 rounded text-sm text-white flex items-center justify-center font-bold border border-blue-500/50">
@@ -4217,9 +4357,13 @@ const handleAllyUnitSelect = (index: number) => {
               const isDragging = draggedHandCard?.index === i
               
               // Check if card can be played: must be player turn, main phase, and have space in appropriate zone
-              const hasSpaceInZone = isUnitCard(card)
-                ? playerField.unitZone.some(slot => slot === null)
-                : playerField.functionZone.some(slot => slot === null)
+              const hasSpaceInZone = isUltimateCard(card)
+                ? playerField.ultimateZone === null
+                : card.type === "scenario"
+                  ? playerField.scenarioZone === null
+                  : isUnitCard(card)
+                    ? playerField.unitZone.some(slot => slot === null)
+                    : playerField.functionZone.some(slot => slot === null)
               const canPlay = isPlayerTurn && phase === "main" && hasSpaceInZone
 
               return (

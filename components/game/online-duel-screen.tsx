@@ -44,6 +44,7 @@ interface FieldState {
   functionZone: (GameCard | null)[]
   equipZone: GameCard | null
   scenarioZone: GameCard | null
+  ultimateZone: FieldCard | null
   hand: GameCard[]
   deck: GameCard[]
   graveyard: GameCard[]
@@ -51,7 +52,7 @@ interface FieldState {
 }
 
 interface DuelAction {
-  type: "draw" | "place_card" | "attack" | "end_turn" | "phase_change" | "damage" | "destroy_card" | "place_scenario" | "surrender"
+  type: "draw" | "place_card" | "attack" | "end_turn" | "phase_change" | "damage" | "destroy_card" | "place_scenario" | "place_ultimate" | "surrender"
   playerId: string
   data: any
   timestamp: number
@@ -78,6 +79,11 @@ const shuffleArray = <T,>(array: T[]): T[] => {
     ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
   }
   return shuffled
+}
+
+const isUltimateCard = (card: GameCard | null): boolean => {
+  if (!card) return false
+  return card.type === "ultimateGear" || card.type === "ultimateGuardian"
 }
 
 const isUnitCard = (card: GameCard | null): boolean => {
@@ -138,6 +144,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     functionZone: [null, null, null, null],
     equipZone: null,
     scenarioZone: null,
+    ultimateZone: null,
     hand: [],
     deck: [],
     graveyard: [],
@@ -149,6 +156,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     functionZone: [null, null, null, null],
     equipZone: null,
     scenarioZone: null,
+    ultimateZone: null,
     hand: [],
     deck: [],
     graveyard: [],
@@ -431,6 +439,23 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         }))
         break
 
+      case "place_ultimate":
+        setOpponentField((prev) => {
+          const cardData = action.data.card
+          return {
+            ...prev,
+            ultimateZone: {
+              ...cardData,
+              currentDp: cardData.dp,
+              canAttack: false,
+              hasAttacked: false,
+              canAttackTurn: turn,
+            },
+            hand: prev.hand.slice(0, -1),
+          }
+        })
+        break
+
       case "attack":
         const { attackerIndex, targetType, targetIndex, damage } = action.data
 
@@ -508,6 +533,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           unitZone: prev.unitZone.map((unit) =>
             unit && turn >= unit.canAttackTurn ? { ...unit, canAttack: true, hasAttacked: false } : unit
           ),
+          ultimateZone: prev.ultimateZone && turn >= prev.ultimateZone.canAttackTurn
+            ? { ...prev.ultimateZone, canAttack: true, hasAttacked: false }
+            : prev.ultimateZone,
         }))
         break
 
@@ -637,15 +665,21 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         dragPosRef.current.lastCheck = now
 
         const elements = document.elementsFromPoint(clientX, clientY)
-        let foundTarget: { type: "unit" | "function" | "scenario"; index: number } | null = null
+        let foundTarget: { type: "unit" | "function" | "scenario" | "ultimate"; index: number } | null = null
         const currentField = myFieldRef.current
 
         for (const el of elements) {
           const unitSlot = el.closest("[data-player-unit-slot]")
           const funcSlot = el.closest("[data-player-func-slot]")
           const scenarioSlot = el.closest("[data-player-scenario-slot]")
+          const ultimateSlot = el.closest("[data-player-ultimate-slot]")
 
-          if (unitSlot && isUnitCard(dragged.card)) {
+          if (ultimateSlot && isUltimateCard(dragged.card)) {
+            if (!currentField.ultimateZone) {
+              foundTarget = { type: "ultimate", index: 0 }
+              break
+            }
+          } else if (unitSlot && isUnitCard(dragged.card) && !isUltimateCard(dragged.card)) {
             const slotIndex = Number.parseInt(unitSlot.getAttribute("data-player-unit-slot") || "0")
             if (!currentField.unitZone[slotIndex]) {
               foundTarget = { type: "unit", index: slotIndex }
@@ -692,7 +726,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             ? `[data-player-unit-slot="${target.index}"]`
             : target.type === "function"
               ? `[data-player-func-slot="${target.index}"]`
-              : `[data-player-scenario-slot]`
+              : target.type === "ultimate"
+                ? `[data-player-ultimate-slot]`
+                : `[data-player-scenario-slot]`
         const targetElement = document.querySelector(targetSelector)
         const targetRect = targetElement?.getBoundingClientRect()
 
@@ -702,7 +738,28 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
         const cardToPlay = dragged.card
 
         // Directly update the field state instead of calling functions with stale closures
-        if (targetType === "scenario" && cardToPlay.type === "scenario" && !currentField.scenarioZone) {
+        if (targetType === "ultimate" && isUltimateCard(cardToPlay) && !currentField.ultimateZone) {
+          setMyField((prev) => {
+            const newHand = prev.hand.filter((_, i) => i !== cardIndex)
+            return {
+              ...prev,
+              ultimateZone: {
+                ...cardToPlay,
+                currentDp: cardToPlay.dp,
+                canAttack: false,
+                hasAttacked: false,
+                canAttackTurn: currentTurn,
+              },
+              hand: newHand,
+            }
+          })
+          currentSendAction({
+            type: "place_ultimate",
+            playerId: currentPlayerId,
+            data: { card: cardToPlay },
+            timestamp: Date.now(),
+          })
+        } else if (targetType === "scenario" && cardToPlay.type === "scenario" && !currentField.scenarioZone) {
           setMyField((prev) => {
             const newHand = prev.hand.filter((_, i) => i !== cardIndex)
             return { ...prev, scenarioZone: cardToPlay, hand: newHand }
@@ -713,7 +770,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
             data: { zone: "scenario", index: 0, card: cardToPlay },
             timestamp: Date.now(),
           })
-        } else if (targetType === "unit" && isUnitCard(cardToPlay)) {
+        } else if (targetType === "unit" && isUnitCard(cardToPlay) && !isUltimateCard(cardToPlay)) {
           if (!currentField.unitZone[targetIndex]) {
             setMyField((prev) => {
               const newHand = prev.hand.filter((_, i) => i !== cardIndex)
@@ -848,6 +905,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       setMyField((prev) => ({
         ...prev,
         unitZone: prev.unitZone.map((unit) => (unit && turn > unit.canAttackTurn ? { ...unit, canAttack: true } : unit)),
+        ultimateZone: prev.ultimateZone && turn > prev.ultimateZone.canAttackTurn
+          ? { ...prev.ultimateZone, canAttack: true }
+          : prev.ultimateZone,
       }))
       sendAction({
         type: "phase_change",
@@ -870,6 +930,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     if (zone === "unit" && !isUnitCard(card)) return
     if (zone === "function" && isUnitCard(card)) return
     if (card.type === "scenario") return // Scenario cards go to scenario zone only
+    if (isUltimateCard(card)) return // Ultimate cards go to ultimate zone only
 
     setMyField((prev) => {
       const newHand = prev.hand.filter((_, i) => i !== cardIndex)
@@ -898,6 +959,40 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       type: "place_card",
       playerId,
       data: { zone, index, card },
+      timestamp: Date.now(),
+    })
+
+    setSelectedHandCard(null)
+  }
+
+  // Place ultimate card (ultimateGear, ultimateGuardian)
+  const placeUltimateCard = (forcedCardIndex?: number) => {
+    const cardIndex = forcedCardIndex ?? (draggedHandCard?.index ?? selectedHandCard)
+    if (!isMyTurn || phase !== "main" || cardIndex === null) return
+
+    const card = myField.hand[cardIndex]
+    if (!card || !isUltimateCard(card)) return
+    if (myField.ultimateZone !== null) return
+
+    setMyField((prev) => {
+      const newHand = prev.hand.filter((_, i) => i !== cardIndex)
+      return {
+        ...prev,
+        ultimateZone: {
+          ...card,
+          currentDp: card.dp,
+          canAttack: false,
+          hasAttacked: false,
+          canAttackTurn: turn,
+        },
+        hand: newHand,
+      }
+    })
+
+    sendAction({
+      type: "place_ultimate",
+      playerId,
+      data: { card },
       timestamp: Date.now(),
     })
 
@@ -975,14 +1070,20 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       dragPosRef.current.lastCheck = now
 
       const elements = document.elementsFromPoint(clientX, clientY)
-      let foundTarget: { type: "unit" | "function" | "scenario"; index: number } | null = null
+      let foundTarget: { type: "unit" | "function" | "scenario" | "ultimate"; index: number } | null = null
 
       for (const el of elements) {
         const unitSlot = el.closest("[data-player-unit-slot]")
         const funcSlot = el.closest("[data-player-func-slot]")
         const scenarioSlot = el.closest("[data-player-scenario-slot]")
+        const ultimateSlot = el.closest("[data-player-ultimate-slot]")
 
-        if (unitSlot && isUnitCard(draggedHandCard.card)) {
+        if (ultimateSlot && isUltimateCard(draggedHandCard.card)) {
+          if (!myField.ultimateZone) {
+            foundTarget = { type: "ultimate", index: 0 }
+            break
+          }
+        } else if (unitSlot && isUnitCard(draggedHandCard.card) && !isUltimateCard(draggedHandCard.card)) {
           const slotIndex = Number.parseInt(unitSlot.getAttribute("data-player-unit-slot") || "0")
           if (!myField.unitZone[slotIndex]) {
             foundTarget = { type: "unit", index: slotIndex }
@@ -1020,7 +1121,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           ? `[data-player-unit-slot="${dropTarget.index}"]`
           : dropTarget.type === "function"
             ? `[data-player-func-slot="${dropTarget.index}"]`
-            : `[data-player-scenario-slot]`
+            : dropTarget.type === "ultimate"
+              ? `[data-player-ultimate-slot]`
+              : `[data-player-scenario-slot]`
       const targetElement = document.querySelector(targetSelector)
       const targetRect = targetElement?.getBoundingClientRect()
 
@@ -1030,7 +1133,9 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
       const cardToPlay = draggedHandCard.card
 
       // Place the card
-      if (targetType === "scenario") {
+      if (targetType === "ultimate") {
+        placeUltimateCard(cardIndex)
+      } else if (targetType === "scenario") {
         placeScenarioCard(cardIndex)
       } else {
         placeCard(targetType, targetIndex, cardIndex)
@@ -1244,12 +1349,14 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
     setMyField((prev) => ({
       ...prev,
       unitZone: prev.unitZone.map((unit) => (unit ? { ...unit, canAttack: false, hasAttacked: false } : null)),
+      ultimateZone: prev.ultimateZone ? { ...prev.ultimateZone, canAttack: false, hasAttacked: false } : null,
     }))
 
     // Enable opponent's units
     setOpponentField((prev) => ({
       ...prev,
       unitZone: prev.unitZone.map((unit) => (unit ? { ...unit, canAttack: true, hasAttacked: false } : null)),
+      ultimateZone: prev.ultimateZone ? { ...prev.ultimateZone, canAttack: true, hasAttacked: false } : null,
     }))
 
     console.log("[v0] Sending end_turn action to opponent, turn:", turn)
