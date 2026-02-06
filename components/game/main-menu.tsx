@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useLanguage } from "@/contexts/language-context"
 import { useGame } from "@/contexts/game-context"
 import type { GameScreen } from "@/components/game/game-wrapper"
@@ -22,11 +22,13 @@ import Image from "next/image"
 
 interface MainMenuProps {
   onNavigate: (screen: GameScreen) => void
+  statusMessage?: string | null
+  onClearMessage?: () => void
 }
 
-export default function MainMenu({ onNavigate }: MainMenuProps) {
+export default function MainMenu({ onNavigate, statusMessage, onClearMessage }: MainMenuProps) {
   const { t } = useLanguage()
-  const { coins, giftBoxes, claimGift, hasUnclaimedGifts, playerProfile } = useGame()
+  const { coins, giftBoxes, claimGift, hasUnclaimedGifts, playerProfile, mobileMode } = useGame()
   const [showPlayMenu, setShowPlayMenu] = useState(false)
   const [showGiftBox, setShowGiftBox] = useState(false)
   const [claimedCard, setClaimedCard] = useState<ReturnType<typeof claimGift>>(null)
@@ -34,17 +36,43 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
   const [isOpening, setIsOpening] = useState(false)
   const [isClaimingAll, setIsClaimingAll] = useState(false)
   const [claimAllResults, setClaimAllResults] = useState<{ cards: any[]; coins: number } | null>(null)
-  const [particles, setParticles] = useState<Array<{ id: number; x: number; delay: number }>>([])
-
+  
+  // Auto-clear status message after 4 seconds
   useEffect(() => {
-    // Generate floating particles
-    const newParticles = Array.from({ length: 20 }, (_, i) => ({
+    if (statusMessage && onClearMessage) {
+      const timer = setTimeout(() => onClearMessage(), 4000)
+      return () => clearTimeout(timer)
+    }
+  }, [statusMessage, onClearMessage])
+  // Card rarity themes - rich metallic/jewel tones
+  const CARD_THEMES = [
+    { bg: "linear-gradient(145deg, #1e3a5f, #0c4a6e, #164e63)", border: "#38bdf8", glow: "rgba(56,189,248,0.35)", accent: "#7dd3fc", inner: "#0c4a6e" },
+    { bg: "linear-gradient(145deg, #5b1a1a, #7f1d1d, #991b1b)", border: "#fca5a5", glow: "rgba(252,165,165,0.3)", accent: "#fecaca", inner: "#7f1d1d" },
+    { bg: "linear-gradient(145deg, #713f12, #92400e, #78350f)", border: "#fcd34d", glow: "rgba(252,211,77,0.35)", accent: "#fde68a", inner: "#92400e" },
+    { bg: "linear-gradient(145deg, #3b0764, #581c87, #6b21a8)", border: "#d8b4fe", glow: "rgba(216,180,254,0.3)", accent: "#e9d5ff", inner: "#581c87" },
+    { bg: "linear-gradient(145deg, #064e3b, #065f46, #047857)", border: "#6ee7b7", glow: "rgba(110,231,183,0.3)", accent: "#a7f3d0", inner: "#065f46" },
+    { bg: "linear-gradient(145deg, #1e293b, #334155, #475569)", border: "#e2e8f0", glow: "rgba(226,232,240,0.25)", accent: "#f1f5f9", inner: "#334155" },
+  ]
+
+  // Deterministic pseudo-random to avoid hydration mismatch (no Math.random)
+  const seededRand = (seed: number) => {
+    const x = Math.sin(seed * 9301 + 49297) * 233280
+    return x - Math.floor(x)
+  }
+
+  const fallingCards = useMemo(() =>
+    Array.from({ length: 20 }, (_, i) => ({
       id: i,
-      x: Math.random() * 100,
-      delay: Math.random() * 8,
-    }))
-    setParticles(newParticles)
-  }, [])
+      x: (i * 5.1) % 94 + 3 + (seededRand(i + 1) * 3 - 1.5),
+      delay: (i * 0.85) % 16 + seededRand(i + 20) * 2,
+      duration: 18 + seededRand(i + 40) * 12,
+      width: 48 + seededRand(i + 60) * 16,
+      height: 68 + seededRand(i + 80) * 20,
+      themeIndex: i % CARD_THEMES.length,
+      shimmerAngle: 110 + seededRand(i + 100) * 40,
+    })),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [])
 
   const handleOpenGift = (giftId: string) => {
     setIsOpening(true)
@@ -90,75 +118,175 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
         {/* Animated gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-purple-900/20 via-transparent to-cyan-900/20 animate-gradient" />
 
-        {/* Grid pattern */}
+        {/* Subtle grid pattern */}
         <div
-          className="absolute inset-0 opacity-10"
+          className="absolute inset-0 opacity-[0.06]"
           style={{
             backgroundImage: `linear-gradient(rgba(59,130,246,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.3) 1px, transparent 1px)`,
-            backgroundSize: "50px 50px",
+            backgroundSize: "60px 60px",
           }}
         />
+        
+        {/* Subtle radial vignette */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.5)_100%)]" />
       </div>
 
-      {/* Floating particles */}
-      <div className="particles">
-        {particles.map((p) => (
-          <div
-            key={p.id}
-            className="particle"
-            style={{
-              left: `${p.x}%`,
-              animationDelay: `${p.delay}s`,
-              width: `${Math.random() * 4 + 2}px`,
-              height: `${Math.random() * 4 + 2}px`,
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Decorative gears */}
-      <div className="absolute -top-32 -left-32 w-80 h-80 opacity-20 pointer-events-none">
-        <div
-          className="w-full h-full border-[12px] border-cyan-400 rounded-full animate-spin-slow"
-          style={{ animationDuration: "25s" }}
-        >
-          {[...Array(16)].map((_, i) => (
+      {/* Falling cards background */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-[1]">
+        {fallingCards.map((card) => {
+          const theme = CARD_THEMES[card.themeIndex]
+          const swayDur = 5 + (card.id % 4) * 0.8
+          const flipDur = 9 + (card.id % 5) * 1.5
+          return (
             <div
-              key={i}
-              className="absolute w-6 h-14 bg-cyan-400 rounded-md"
+              key={card.id}
+              className="absolute falling-card-wrapper"
               style={{
-                left: "50%",
-                top: "-14px",
-                transform: `translateX(-50%) rotate(${i * 22.5}deg)`,
-                transformOrigin: "50% 170px",
+                left: `${card.x}%`,
+                animation: `fallingCard ${card.duration}s linear infinite`,
+                animationDelay: `${card.delay}s`,
               }}
-            />
-          ))}
-        </div>
+            >
+              {/* Sway */}
+              <div style={{ animation: `cardSway ${swayDur}s ease-in-out infinite`, animationDelay: `${card.delay * 0.4}s` }}>
+                {/* 3D flip */}
+                <div style={{ animation: `cardFlipSpin ${flipDur}s ease-in-out infinite`, animationDelay: `${card.delay * 0.7}s`, transformStyle: "preserve-3d" }}>
+                  {/* ---- CARD FRONT ---- */}
+                  <div
+                    className="falling-card-face"
+                    style={{
+                      width: `${card.width}px`,
+                      height: `${card.height}px`,
+                      background: theme.bg,
+                      border: `1.5px solid ${theme.border}`,
+                      borderRadius: "8px",
+                      boxShadow: `0 0 16px ${theme.glow}, 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15)`,
+                      backfaceVisibility: "hidden",
+                      overflow: "hidden",
+                      position: "relative",
+                    }}
+                  >
+                    {/* Holographic shine overlay */}
+                    <div className="falling-card-holo" style={{
+                      position: "absolute", inset: 0, borderRadius: "7px",
+                      background: `linear-gradient(${card.shimmerAngle}deg, transparent 30%, rgba(255,255,255,0.12) 45%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.12) 55%, transparent 70%)`,
+                      animation: `cardHoloShift ${3 + (card.id % 3) * 0.8}s ease-in-out infinite`,
+                      animationDelay: `${card.delay * 0.3}s`,
+                    }} />
+                    {/* Card inner structure */}
+                    <div style={{ position: "relative", padding: "5px", height: "100%", display: "flex", flexDirection: "column", gap: "4px" }}>
+                      {/* Art frame */}
+                      <div style={{
+                        flex: "1",
+                        borderRadius: "4px",
+                        background: `linear-gradient(180deg, ${theme.inner} 0%, rgba(0,0,0,0.3) 100%)`,
+                        border: `1px solid rgba(255,255,255,0.08)`,
+                        boxShadow: "inset 0 2px 6px rgba(0,0,0,0.4)",
+                        position: "relative",
+                        overflow: "hidden",
+                      }}>
+                        {/* Decorative diamond */}
+                        <div style={{
+                          position: "absolute", top: "50%", left: "50%",
+                          width: "40%", height: "40%",
+                          transform: "translate(-50%,-50%) rotate(45deg)",
+                          border: `1px solid ${theme.accent}`,
+                          opacity: 0.2,
+                          borderRadius: "2px",
+                        }} />
+                        <div style={{
+                          position: "absolute", top: "50%", left: "50%",
+                          width: "20%", height: "20%",
+                          transform: "translate(-50%,-50%) rotate(45deg)",
+                          background: theme.accent,
+                          opacity: 0.1,
+                          borderRadius: "1px",
+                        }} />
+                      </div>
+                      {/* Info strip */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "2px", padding: "0 1px" }}>
+                        <div style={{ width: "75%", height: "2.5px", borderRadius: "2px", background: `${theme.accent}`, opacity: 0.2 }} />
+                        <div style={{ width: "50%", height: "2px", borderRadius: "2px", background: `${theme.accent}`, opacity: 0.12 }} />
+                      </div>
+                    </div>
+                    {/* Border glow accent at top */}
+                    <div style={{
+                      position: "absolute", top: 0, left: "15%", right: "15%", height: "1px",
+                      background: `linear-gradient(90deg, transparent, ${theme.accent}, transparent)`,
+                      opacity: 0.4,
+                    }} />
+                  </div>
+
+                  {/* ---- CARD BACK ---- */}
+                  <div
+                    className="falling-card-face"
+                    style={{
+                      position: "absolute", top: 0, left: 0,
+                      width: `${card.width}px`,
+                      height: `${card.height}px`,
+                      background: "linear-gradient(145deg, #0f172a, #1e293b, #0f172a)",
+                      border: `1.5px solid ${theme.border}`,
+                      borderRadius: "8px",
+                      boxShadow: `0 0 14px ${theme.glow}, 0 2px 8px rgba(0,0,0,0.4)`,
+                      backfaceVisibility: "hidden",
+                      transform: "rotateY(180deg)",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {/* Pattern */}
+                    <div style={{
+                      width: "100%", height: "100%",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      background: `repeating-conic-gradient(rgba(255,255,255,0.02) 0% 25%, transparent 0% 50%) 0 0 / 10px 10px`,
+                    }}>
+                      {/* Center emblem */}
+                      <div style={{
+                        width: "50%", height: "50%",
+                        borderRadius: "6px",
+                        border: `1px solid rgba(255,255,255,0.06)`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <div style={{
+                          width: "50%", height: "50%",
+                          transform: "rotate(45deg)",
+                          border: `1px solid ${theme.border}`,
+                          opacity: 0.15,
+                          borderRadius: "3px",
+                        }} />
+                      </div>
+                    </div>
+                    {/* Top edge shine */}
+                    <div style={{
+                      position: "absolute", top: 0, left: "20%", right: "20%", height: "1px",
+                      background: `linear-gradient(90deg, transparent, ${theme.accent}, transparent)`,
+                      opacity: 0.25,
+                    }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
       </div>
 
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 opacity-20 pointer-events-none">
-        <div
-          className="w-full h-full border-[12px] border-purple-400 rounded-full animate-spin-slow"
-          style={{ animationDuration: "35s", animationDirection: "reverse" }}
-        >
-          {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-8 h-16 bg-purple-400 rounded-md"
-              style={{
-                left: "50%",
-                top: "-16px",
-                transform: `translateX(-50%) rotate(${i * 18}deg)`,
-                transformOrigin: "50% 210px",
-              }}
-            />
-          ))}
-        </div>
+      {/* Ambient light blobs */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-[0]">
+        <div className="absolute top-[8%] left-[12%] w-80 h-80 bg-blue-500/[0.04] rounded-full blur-[120px]" />
+        <div className="absolute top-[50%] right-[8%] w-64 h-64 bg-purple-500/[0.04] rounded-full blur-[100px]" />
+        <div className="absolute bottom-[12%] left-[20%] w-72 h-72 bg-cyan-500/[0.04] rounded-full blur-[110px]" />
       </div>
 
       {/* Top bar */}
-      <div className="fixed top-0 left-0 right-0 p-4 flex justify-end items-center z-40">
+      <div className="fixed top-0 left-0 right-0 p-4 flex justify-between items-start z-40">
+        {/* Mobile mode indicator */}
+        <div className="flex items-center">
+          {mobileMode && (
+            <div className="flex items-center gap-1.5 glass px-3 py-1.5 rounded-full">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-emerald-400 text-xs font-medium">Mobile</span>
+            </div>
+          )}
+        </div>
         {/* Coins and Player Profile display */}
         <div className="flex flex-col items-end gap-2">
           {/* Coins */}
@@ -196,32 +324,70 @@ export default function MainMenu({ onNavigate }: MainMenuProps) {
         </div>
       </div>
 
-      {/* Logo */}
-      <div className="mb-10 relative z-10 text-center">
-        {/* Version number above logo */}
-        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-2">v1.0.9</div>
-        
-        <div className="relative inline-block">
-          {/* Glow effect behind logo */}
-          <div className="absolute inset-0 blur-3xl bg-gradient-to-r from-cyan-500 via-purple-500 to-amber-500 opacity-30 animate-pulse" />
-
-          <h1 className="relative text-7xl md:text-8xl font-black tracking-tighter">
-            <span className="bg-gradient-to-r from-cyan-300 via-white to-cyan-300 bg-clip-text text-transparent drop-shadow-2xl">
-              GEAR
-            </span>
-            <span className="bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 bg-clip-text text-transparent drop-shadow-2xl ml-2">
-              PERKS
-            </span>
-          </h1>
-
-          <div className="flex items-center justify-center gap-2 mt-2">
-            <div className="h-px w-16 bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
-            <p className="text-cyan-300 text-xl tracking-[0.3em] font-light">CARD GAME</p>
-            <div className="h-px w-16 bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
+      {/* Status Message Banner */}
+      {statusMessage && (
+        <div className="relative z-50 w-full max-w-sm mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border backdrop-blur-sm text-sm font-medium shadow-lg ${
+            statusMessage.includes("ativado")
+              ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-emerald-500/10"
+              : "bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-amber-500/10"
+          }`}>
+            <span className={`w-2 h-2 rounded-full ${
+              statusMessage.includes("ativado") ? "bg-emerald-400 animate-pulse" : "bg-amber-400 animate-pulse"
+            }`} />
+            {statusMessage}
           </div>
         </div>
+      )}
 
-        <p className="text-slate-500 text-sm mt-4 tracking-wider">2025 Gear Perks Oficial Card Game, Made in BRAZIL</p>
+      {/* Logo */}
+      <div className="mb-10 relative z-10 text-center flex flex-col items-center">
+        <div className="text-cyan-400/70 text-sm font-mono tracking-wider mb-4">v1.5.0</div>
+        
+        {/* Logo container with aura glow */}
+        <div className="relative">
+
+          {/* Aura layer 1: wide soft outer glow (slowest pulse) */}
+          <div
+            className="absolute inset-0 -inset-x-8 -inset-y-6 pointer-events-none rounded-[50%]"
+            style={{
+              background: "radial-gradient(ellipse at center, rgba(34,211,238,0.12) 0%, rgba(8,145,178,0.06) 40%, transparent 70%)",
+              animation: "auraOuter 5s ease-in-out infinite",
+            }}
+          />
+
+          {/* Aura layer 2: mid glow ring (offset timing) */}
+          <div
+            className="absolute inset-0 -inset-x-5 -inset-y-4 pointer-events-none rounded-[50%]"
+            style={{
+              background: "radial-gradient(ellipse at center, rgba(103,232,249,0.14) 0%, rgba(34,211,238,0.07) 45%, transparent 72%)",
+              animation: "auraMid 4s ease-in-out infinite",
+              animationDelay: "1.2s",
+            }}
+          />
+
+          {/* Aura layer 3: tight inner glow (subtle, fast breathing) */}
+          <div
+            className="absolute inset-0 -inset-x-2 -inset-y-2 pointer-events-none rounded-[45%]"
+            style={{
+              background: "radial-gradient(ellipse at center, rgba(165,243,252,0.1) 0%, rgba(34,211,238,0.05) 50%, transparent 75%)",
+              animation: "auraInner 3s ease-in-out infinite",
+              animationDelay: "0.5s",
+            }}
+          />
+
+          {/* Logo image with subtle animated drop-shadow as the primary aura effect */}
+          <Image
+            src="/images/gp-cg-logo.png"
+            alt="Gear Perks Card Game"
+            width={600}
+            height={600}
+            className="relative w-80 h-auto sm:w-96 md:w-[28rem] lg:w-[32rem] aura-logo"
+            priority
+          />
+        </div>
+
+        <p className="text-slate-500 text-sm mt-3 tracking-wider">2025 Gear Perks Oficial Card Game, Made in BRAZIL</p>
       </div>
 
       {/* Menu buttons */}

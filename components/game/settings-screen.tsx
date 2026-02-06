@@ -27,13 +27,15 @@ import {
   Gift,
   Trash2,
   AlertTriangle,
+  Monitor,
+  Smartphone,
 } from "lucide-react"
 
 interface SettingsScreenProps {
-  onBack: () => void
+  onBack: (message?: string) => void
 }
 
-type TabType = "language" | "account" | "codes"
+type TabType = "language" | "account" | "codes" | "display"
 
 export default function SettingsScreen({ onBack }: SettingsScreenProps) {
   const { t, language, setLanguage } = useLanguage()
@@ -51,6 +53,8 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
     redeemCode,
     redeemedCodes,
     deleteAccountData,
+    mobileMode,
+    setMobileMode,
   } = useGame()
   const [activeTab, setActiveTab] = useState<TabType>("language")
   const [copied, setCopied] = useState(false)
@@ -80,6 +84,42 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
   // Delete account state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
+
+  // Mobile mode state
+  const [showMobileConfirm, setShowMobileConfirm] = useState(false)
+  const [detectedDevice, setDetectedDevice] = useState<"mobile" | "pc" | null>(null)
+
+  const detectDevice = () => {
+    if (typeof window === "undefined") return "pc"
+    const ua = navigator.userAgent || ""
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua) ||
+      (window.innerWidth <= 768)
+    return isMobile ? "mobile" : "pc"
+  }
+
+  const handleMobileModeToggle = () => {
+    if (mobileMode) {
+      // Disable mobile mode directly
+      setMobileMode(false)
+      onBack("Modo de Jogo Mobile desativado")
+      return
+    }
+    // Trying to enable: detect device first
+    const device = detectDevice()
+    setDetectedDevice(device)
+    if (device === "mobile") {
+      setShowMobileConfirm(true)
+    } else {
+      // PC detected - still show a message but allow enabling
+      setShowMobileConfirm(true)
+    }
+  }
+
+  const confirmMobileMode = () => {
+    setMobileMode(true)
+    setShowMobileConfirm(false)
+    onBack("Modo de Jogo Mobile ativado")
+  }
 
   const handleCopyId = () => {
     navigator.clipboard.writeText(playerId)
@@ -242,7 +282,7 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
 
       {/* Header */}
       <div className="relative z-10 flex items-center justify-between p-4 bg-gradient-to-r from-black/80 via-cyan-900/30 to-black/80 border-b border-cyan-500/30 backdrop-blur-sm">
-        <Button onClick={onBack} variant="ghost" className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10">
+        <Button onClick={() => onBack()} variant="ghost" className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10">
           <ArrowLeft className="mr-2 h-5 w-5" />
           {t("back")}
         </Button>
@@ -287,6 +327,17 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
         >
           <Gift className="w-4 h-4 inline mr-2" />
           Codigos
+        </button>
+        <button
+          onClick={() => setActiveTab("display")}
+          className={`flex-1 py-4 px-4 font-medium transition-all ${
+            activeTab === "display"
+              ? "text-sky-400 border-b-2 border-sky-400 bg-sky-400/10"
+              : "text-slate-400 hover:text-white hover:bg-white/5"
+          }`}
+        >
+          <Monitor className="w-4 h-4 inline mr-2" />
+          Display
         </button>
       </div>
 
@@ -957,6 +1008,131 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === "display" && (
+            <div className="space-y-4">
+              {/* Mobile Mode Card */}
+              <div className="bg-gradient-to-r from-slate-800/80 to-sky-900/30 rounded-2xl p-6 border border-sky-500/30 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-cyan-600 flex items-center justify-center shadow-lg">
+                    <Smartphone className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Modo Mobile</h2>
+                    <p className="text-slate-400 text-xs">Otimiza a resolucao para celulares</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-black/30 rounded-xl p-4 border border-sky-500/15">
+                    <p className="text-slate-300 text-sm leading-relaxed">
+                      Ao ativar o Modo Mobile, todos os elementos do jogo, incluindo botoes, cartas e areas de duelo, serao redimensionados e reorganizados para proporcionar a melhor experiencia possivel em dispositivos moveis.
+                    </p>
+                  </div>
+
+                  {/* Current status */}
+                  <div className="flex items-center justify-between bg-black/20 rounded-xl px-4 py-3 border border-slate-700/50">
+                    <div className="flex items-center gap-3">
+                      {mobileMode ? (
+                        <Smartphone className="w-5 h-5 text-emerald-400" />
+                      ) : (
+                        <Monitor className="w-5 h-5 text-slate-400" />
+                      )}
+                      <div>
+                        <p className="text-white text-sm font-medium">
+                          {mobileMode ? "Modo Mobile Ativo" : "Modo Desktop"}
+                        </p>
+                        <p className="text-slate-500 text-xs">
+                          {mobileMode ? "Resolucao otimizada para celulares" : "Resolucao padrao para PC"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className={`w-3 h-3 rounded-full ${mobileMode ? "bg-emerald-400 shadow-lg shadow-emerald-400/50" : "bg-slate-600"}`} />
+                  </div>
+
+                  {/* Toggle Button */}
+                  <Button
+                    onClick={handleMobileModeToggle}
+                    className={`w-full py-4 text-lg font-bold rounded-xl transition-all ${
+                      mobileMode
+                        ? "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 border border-red-400/50"
+                        : "bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-500 hover:to-cyan-500 border border-sky-400/50 shadow-lg shadow-sky-500/20"
+                    }`}
+                  >
+                    {mobileMode ? (
+                      <>
+                        <Monitor className="w-5 h-5 mr-2" />
+                        Desativar Modo Mobile
+                      </>
+                    ) : (
+                      <>
+                        <Smartphone className="w-5 h-5 mr-2" />
+                        Ativar Modo Mobile
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Mobile Mode Confirmation Dialog */}
+              {showMobileConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                  <div className="bg-gradient-to-b from-slate-800 to-slate-900 rounded-2xl p-6 border border-sky-500/40 max-w-sm w-full shadow-2xl shadow-sky-500/10">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-500 to-cyan-600 flex items-center justify-center shadow-lg">
+                        <Smartphone className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-white">Ativar Modo Mobile</h3>
+                        <p className="text-sky-400 text-xs font-medium">
+                          {detectedDevice === "mobile" ? "Dispositivo movel detectado" : "Dispositivo PC detectado"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 mb-6">
+                      {detectedDevice === "mobile" ? (
+                        <div className="bg-emerald-500/10 rounded-xl p-4 border border-emerald-500/30">
+                          <p className="text-emerald-300 text-sm leading-relaxed">
+                            Detectamos que voce esta usando um dispositivo movel. Deseja ativar o Modo Mobile para otimizar a resolucao e a experiencia de jogo?
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="bg-amber-500/10 rounded-xl p-4 border border-amber-500/30">
+                          <p className="text-amber-300 text-sm leading-relaxed">
+                            Detectamos que voce esta usando um PC. O Modo Mobile e projetado para celulares, mas pode ser ativado para testes ou preferencia pessoal. Deseja continuar?
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="bg-black/30 rounded-xl p-3 border border-slate-700/50">
+                        <p className="text-slate-400 text-xs leading-relaxed">
+                          O jogo sera ajustado com botoes maiores, fontes adaptadas e layout otimizado para telas menores. Voce pode desativar a qualquer momento nas configuracoes.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={() => setShowMobileConfirm(false)}
+                        variant="outline"
+                        className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700 bg-transparent"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        onClick={confirmMobileMode}
+                        className="flex-1 bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-500 hover:to-cyan-500 border border-sky-400/50 shadow-lg shadow-sky-500/20"
+                      >
+                        <Check className="w-4 h-4 mr-2" />
+                        Confirmar
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
