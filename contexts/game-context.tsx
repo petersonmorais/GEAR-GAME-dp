@@ -719,10 +719,10 @@ const ALL_CARDS: Card[] = [
     dp: 3,
     ability: "Singularidade Zero",
     abilityDescription:
-      "Ruptura: Enquanto este card estiver equipado com UG: Protonix Sword, ele pode realizar até dois ataques durante cada Fase de Batalha. Sempre que este personagem destruir uma unidade do oponente em batalha, ele recebe +2 DP até o final do turno.",
-    attack: "Ordem de Laceração",
+      "Sempre que este personagem estiver equipado com Ultimate Gear: Protonix Sword, ele pode realizar ate dois ataques durante a mesma Fase de Batalha. Sempre que este personagem destruir uma unidade do oponente em batalha, ele recebe +2 DP ate o final do turno atual. Esse bonus de DP e cumulativo dentro do mesmo turno.",
+    attack: "Ordem de Laceracao",
     attackDescription:
-      "Ao declarar um ataque: compre 1 card. Se for uma Unidade, este personagem pode atacar novamente e o oponente não pode ativar efeitos em resposta a este ataque.",
+      "Sempre que este personagem declara um ataque, o controlador compra 1 carta. Se a carta comprada for uma carta de Unidade, este personagem pode atacar novamente durante este turno. Durante este ataque, o oponente nao pode ativar cartas ou efeitos em resposta.",
     category: "Aquos Ultimate Gear user",
   },
   {
@@ -735,10 +735,10 @@ const ALL_CARDS: Card[] = [
     dp: 2,
     ability: "Fluxo de Ruptura",
     abilityDescription:
-      "Quando ele derrota em batalha uma unidade do oponente, cause 2DP como dano extra na vida do oponente por unidade derrotada, essa habilidade pode ser ativada toda vez que ele derrotar uma unidade do oponente.",
-    attack: "Laceração",
+      "Sempre que este personagem derrotar uma unidade do oponente em batalha, o oponente sofre 2 de dano direto na vida (LP) para cada unidade derrotada. Este efeito pode ser ativado todas as vezes que este personagem derrotar uma unidade, no mesmo turno ou em turnos diferentes.",
+    attack: "Laceracao",
     attackDescription:
-      "Quando ele ataca, tanto uma unidade do oponente, quanto diretamente, compre uma carta, se for uma carta de unidade, ele pode atacar novamente.",
+      "Sempre que este personagem atacar, seja atacando uma unidade do oponente ou atacando diretamente o jogador, o controlador compra 1 carta. Se a carta comprada for uma carta de Unidade, este personagem pode realizar um novo ataque neste mesmo turno.",
     category: "Aquos Ultimate Gear user",
   },
   {

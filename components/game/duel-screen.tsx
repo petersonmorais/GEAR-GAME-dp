@@ -1269,6 +1269,11 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
   // Isgrimm Fenrir: track which unit index has the permanent +2 DP from equip, and temporary battle boosts
   const [fenrirEquippedUnitIdx, setFenrirEquippedUnitIdx] = useState<number>(-1)
   const [fenrirBattleBoostIdx, setFenrirBattleBoostIdx] = useState<number>(-1) // Unit that got +2 DP temp boost during battle
+  
+  // Fehnon Hoskie effect tracking
+  const [fehnonUrTurnBoost, setFehnonUrTurnBoost] = useState(0) // cumulative +2 DP per kill this turn for UR
+  const [fehnonUrAttackCount, setFehnonUrAttackCount] = useState(0) // how many attacks UR has done this battle phase
+  const [fehnonExtraAttackGranted, setFehnonExtraAttackGranted] = useState(false) // drawn unit card -> extra attack
 
   // Track last known unit zone state to detect when a matching unit is placed after UG
   const prevUnitZoneRef = useRef<(string | null)[]>([])
@@ -3517,13 +3522,103 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
   return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
   })
 
+            // Determine if the enemy unit was destroyed
+            const enemyUnitDestroyed = newDefenderDp <= 0 && !(
+              enemyField.ultimateZone &&
+              enemyField.ultimateZone.ability === "PROTONIX SWORD" &&
+              enemyField.ultimateZone.requiresUnit === defender.name
+            )
+
             setPlayerField((prev) => {
               const newUnitZone = [...prev.unitZone]
-              newUnitZone[attackState.attackerIndex!] = { ...attacker, hasAttacked: true }
+              const atkIdx = attackState.attackerIndex!
+              const currentAttacker = newUnitZone[atkIdx]
+              if (!currentAttacker) return prev
+
+              let updatedAttacker = { ...currentAttacker, hasAttacked: true }
+              
+              // === FEHNON HOSKIE UR: Singularidade Zero ===
+              if (currentAttacker.id === "fehnon-ur") {
+                const hasProtonix = prev.ultimateZone && prev.ultimateZone.ability === "PROTONIX SWORD"
+                
+                // If enemy unit destroyed: +2 DP cumulative until end of turn
+                if (enemyUnitDestroyed) {
+                  updatedAttacker = { ...updatedAttacker, currentDp: updatedAttacker.currentDp + 2 }
+                  setFehnonUrTurnBoost((prev) => prev + 2)
+                  setTimeout(() => showEffectFeedback(`Singularidade Zero: Fehnon +2 DP!`, "success"), 300)
+                }
+                
+                // With Protonix Sword: can attack twice per battle phase
+                if (hasProtonix && fehnonUrAttackCount < 1) {
+                  updatedAttacker = { ...updatedAttacker, hasAttacked: false }
+                  setFehnonUrAttackCount((prev) => prev + 1)
+                  setTimeout(() => showEffectFeedback(`Protonix Sword: Fehnon pode atacar novamente!`, "success"), 600)
+                }
+              }
+
+              // === FEHNON HOSKIE SR: Fluxo de Ruptura ===
+              if (currentAttacker.id === "fehnon-sr" && enemyUnitDestroyed) {
+                // Deal 2 LP damage per unit defeated
+                setEnemyField((prevEnemy) => ({
+                  ...prevEnemy,
+                  life: Math.max(0, prevEnemy.life - 2),
+                }))
+                setTimeout(() => showEffectFeedback(`Fluxo de Ruptura: -2 LP no oponente!`, "success"), 300)
+              }
+
+              // === FEHNON UR + SR: Attack draw effect (Ordem de Laceracao / Laceracao) ===
+              if (currentAttacker.id === "fehnon-ur" || currentAttacker.id === "fehnon-sr") {
+                // Draw 1 card on attack
+                if (prev.deck.length > 0) {
+                  const drawnCard = prev.deck[0]
+                  const newDeck = prev.deck.slice(1)
+                  const newHand = [...prev.hand, drawnCard]
+                  setTimeout(() => {
+                    showDrawAnimation(drawnCard)
+                    // If drawn card is a unit, Fehnon can attack again
+                    if (drawnCard.type === "unit") {
+                      setFehnonExtraAttackGranted(true)
+                      setTimeout(() => {
+                        setPlayerField((p) => {
+                          const units = [...p.unitZone]
+                          const fIdx = units.findIndex((u) => u && (u.id === "fehnon-ur" || u.id === "fehnon-sr"))
+                          if (fIdx !== -1 && units[fIdx]) {
+                            units[fIdx] = { ...units[fIdx]!, hasAttacked: false }
+                          }
+                          return { ...p, unitZone: units as (FieldCard | null)[] }
+                        })
+                        showEffectFeedback(`${currentAttacker.id === "fehnon-ur" ? "Ordem de Laceracao" : "Laceracao"}: Comprou unidade! Ataque extra!`, "success")
+                      }, 400)
+                    } else {
+                      showEffectFeedback(`${currentAttacker.id === "fehnon-ur" ? "Ordem de Laceracao" : "Laceracao"}: Comprou ${drawnCard.name}`, "success")
+                    }
+                  }, 800)
+                  
+                  newUnitZone[atkIdx] = updatedAttacker
+                  // ISGRIMM FENRIR
+                  if (prev.ultimateZone && prev.ultimateZone.ability === "ISGRIMM FENRIR" && 
+                      atkIdx === fenrirEquippedUnitIdx) {
+                    const otherVentusIdx = newUnitZone.findIndex((u, i) => 
+                      u !== null && u.element === "Ventus" && i !== fenrirEquippedUnitIdx
+                    )
+                    if (otherVentusIdx !== -1 && newUnitZone[otherVentusIdx]) {
+                      newUnitZone[otherVentusIdx] = { 
+                        ...newUnitZone[otherVentusIdx]!, 
+                        currentDp: newUnitZone[otherVentusIdx]!.currentDp + 2 
+                      }
+                      setFenrirBattleBoostIdx(otherVentusIdx)
+                      setTimeout(() => showEffectFeedback(`ISGRIMM FENRIR: ${newUnitZone[otherVentusIdx]!.name} +2 DP!`, "success"), 500)
+                    }
+                  }
+                  return { ...prev, unitZone: newUnitZone as (FieldCard | null)[], hand: newHand, deck: newDeck }
+                }
+              }
+              
+              newUnitZone[atkIdx] = updatedAttacker
               
               // ISGRIMM FENRIR: when the equipped Ventus unit attacks, boost another Ventus unit +2 DP
               if (prev.ultimateZone && prev.ultimateZone.ability === "ISGRIMM FENRIR" && 
-                  attackState.attackerIndex === fenrirEquippedUnitIdx) {
+                  atkIdx === fenrirEquippedUnitIdx) {
                 const otherVentusIdx = newUnitZone.findIndex((u, i) => 
                   u !== null && u.element === "Ventus" && i !== fenrirEquippedUnitIdx
                 )
@@ -3537,7 +3632,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
                 }
               }
               
-              return { ...prev, unitZone: newUnitZone }
+              return { ...prev, unitZone: newUnitZone as (FieldCard | null)[] }
             })
           }
         } else if (attackState.targetInfo.type === "direct") {
@@ -3559,12 +3654,73 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
           }))
           setPlayerField((prev) => {
             const newUnitZone = [...prev.unitZone]
-            // Mark attacker as having attacked
-            newUnitZone[attackState.attackerIndex!] = { ...attacker, hasAttacked: true }
+            const atkIdx = attackState.attackerIndex!
+            const currentAttacker = newUnitZone[atkIdx]
+            if (!currentAttacker) return prev
+            
+            let updatedAttacker = { ...currentAttacker, hasAttacked: true }
+            
+            // === FEHNON UR: Protonix Sword double attack on direct too ===
+            if (currentAttacker.id === "fehnon-ur") {
+              const hasProtonix = prev.ultimateZone && prev.ultimateZone.ability === "PROTONIX SWORD"
+              if (hasProtonix && fehnonUrAttackCount < 1) {
+                updatedAttacker = { ...updatedAttacker, hasAttacked: false }
+                setFehnonUrAttackCount((prev) => prev + 1)
+                setTimeout(() => showEffectFeedback(`Protonix Sword: Fehnon pode atacar novamente!`, "success"), 600)
+              }
+            }
+            
+            // === FEHNON UR + SR: Attack draw effect (Ordem de Laceracao / Laceracao) on direct attack ===
+            if (currentAttacker.id === "fehnon-ur" || currentAttacker.id === "fehnon-sr") {
+              if (prev.deck.length > 0) {
+                const drawnCard = prev.deck[0]
+                const newDeck = prev.deck.slice(1)
+                const newHand = [...prev.hand, drawnCard]
+                setTimeout(() => {
+                  showDrawAnimation(drawnCard)
+                  if (drawnCard.type === "unit") {
+                    setFehnonExtraAttackGranted(true)
+                    setTimeout(() => {
+                      setPlayerField((p) => {
+                        const units = [...p.unitZone]
+                        const fIdx = units.findIndex((u) => u && (u.id === "fehnon-ur" || u.id === "fehnon-sr"))
+                        if (fIdx !== -1 && units[fIdx]) {
+                          units[fIdx] = { ...units[fIdx]!, hasAttacked: false }
+                        }
+                        return { ...p, unitZone: units as (FieldCard | null)[] }
+                      })
+                      showEffectFeedback(`${currentAttacker.id === "fehnon-ur" ? "Ordem de Laceracao" : "Laceracao"}: Comprou unidade! Ataque extra!`, "success")
+                    }, 400)
+                  } else {
+                    showEffectFeedback(`${currentAttacker.id === "fehnon-ur" ? "Ordem de Laceracao" : "Laceracao"}: Comprou ${drawnCard.name}`, "success")
+                  }
+                }, 800)
+                
+                newUnitZone[atkIdx] = updatedAttacker
+                // ISGRIMM FENRIR
+                if (prev.ultimateZone && prev.ultimateZone.ability === "ISGRIMM FENRIR" && 
+                    atkIdx === fenrirEquippedUnitIdx) {
+                  const otherVentusIdx = newUnitZone.findIndex((u, i) => 
+                    u !== null && u.element === "Ventus" && i !== fenrirEquippedUnitIdx
+                  )
+                  if (otherVentusIdx !== -1 && newUnitZone[otherVentusIdx]) {
+                    newUnitZone[otherVentusIdx] = { 
+                      ...newUnitZone[otherVentusIdx]!, 
+                      currentDp: newUnitZone[otherVentusIdx]!.currentDp + 2 
+                    }
+                    setFenrirBattleBoostIdx(otherVentusIdx)
+                    setTimeout(() => showEffectFeedback(`ISGRIMM FENRIR: ${newUnitZone[otherVentusIdx]!.name} +2 DP!`, "success"), 500)
+                  }
+                }
+                return { ...prev, unitZone: newUnitZone as (FieldCard | null)[], hand: newHand, deck: newDeck }
+              }
+            }
+            
+            newUnitZone[atkIdx] = updatedAttacker
             
             // ISGRIMM FENRIR: when the equipped Ventus unit attacks (direct), boost another Ventus unit +2 DP
             if (prev.ultimateZone && prev.ultimateZone.ability === "ISGRIMM FENRIR" && 
-                attackState.attackerIndex === fenrirEquippedUnitIdx) {
+                atkIdx === fenrirEquippedUnitIdx) {
               const otherVentusIdx = newUnitZone.findIndex((u, i) => 
                 u !== null && u.element === "Ventus" && i !== fenrirEquippedUnitIdx
               )
@@ -3578,7 +3734,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
               }
             }
             
-            return { ...prev, unitZone: newUnitZone }
+            return { ...prev, unitZone: newUnitZone as (FieldCard | null)[] }
           })
         }
       }
@@ -3586,7 +3742,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
 
     // Reset attack state regardless of whether an attack was successful
     setAttackState({ isAttacking: false, attackerIndex: null, targetInfo: null })
-  }, [attackState, playerField.unitZone, enemyField.unitZone, triggerExplosion, fenrirEquippedUnitIdx])
+  }, [attackState, playerField.unitZone, enemyField.unitZone, enemyField.ultimateZone, triggerExplosion, fenrirEquippedUnitIdx, fehnonUrAttackCount, fehnonUrTurnBoost])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -4105,6 +4261,21 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
 
   const endTurn = () => {
     setPhase("end")
+
+    // Remove Fehnon UR cumulative DP boost at end of turn
+    if (fehnonUrTurnBoost > 0) {
+      setPlayerField((prev) => {
+        const newUnits = [...prev.unitZone]
+        const fehnonIdx = newUnits.findIndex((u) => u && u.id === "fehnon-ur")
+        if (fehnonIdx !== -1 && newUnits[fehnonIdx]) {
+          newUnits[fehnonIdx] = { ...newUnits[fehnonIdx]!, currentDp: Math.max(1, newUnits[fehnonIdx]!.currentDp - fehnonUrTurnBoost) }
+        }
+        return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
+      })
+      setFehnonUrTurnBoost(0)
+    }
+    setFehnonUrAttackCount(0)
+    setFehnonExtraAttackGranted(false)
 
     setPlayerField((prev) => ({
       ...prev,
