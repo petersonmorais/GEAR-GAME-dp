@@ -1165,11 +1165,12 @@ const ALL_CARDS: Card[] = [
     type: "ultimateGuardian",
     element: "Darkus",
     dp: 0,
-    ability: "Quando está equipado em Arthur, ele concede os seguintes efeitos:",
+    ability: "MEFISTO FOLES",
     abilityDescription:
-      "Arthur ganha +2 DP. Você pode selecionar 1 Card no campo do seu oponente e destrua-o. Esta habilidade de controle pode ser ativada somente uma única vez por duelo.",
+      "Quando equipado em Rei Arthur: Arthur ganha +2 DP. Uma vez por duelo, destrua 1 carta no campo do oponente.",
     attack: "",
     category: "Darkness Ultimate Guardian",
+    requiresUnit: "Rei Arthur",
     requiresEquip: "Arthur",
   },
   {
@@ -1180,11 +1181,12 @@ const ALL_CARDS: Card[] = [
     type: "ultimateGuardian",
     element: "Pyrus",
     dp: 0,
-    ability: "Quando equipada em Jaden, IFRAID concede os seguintes efeitos:",
+    ability: "KENSEI IFRAID",
     abilityDescription:
-      "Jaden ganha +3 DP. Você pode selecionar e destruir 1 Card no campo do seu oponente. Se o Card destruído por este efeito for uma unidade, cause 4 DP de dano direto aos LP do oponente.",
+      "Quando equipada em Jaden Hainaegi: Jaden ganha +3 DP. Uma vez por duelo, destrua 1 carta no campo do oponente. Se for unidade, cause 4 DP de dano direto aos LP do oponente.",
     attack: "",
     category: "Fire Ultimate Guardian",
+    requiresUnit: "Jaden Hainaegi",
     requiresEquip: "Jaden",
   },
   {
@@ -1195,11 +1197,12 @@ const ALL_CARDS: Card[] = [
     type: "ultimateGuardian",
     element: "Darkus",
     dp: 0,
-    ability: "Quando está equipado em Lil-Laep, ele concede os seguintes efeitos:",
+    ability: "NIGHTMARE ARMAGEDDON",
     abilityDescription:
-      "Lil-Laep ganha +7 DP. Você pode selecionar 1 Card de unidade com 3 ou menos de DP no campo do seu oponente e destrua-o. Esta habilidade só pode ser ativada somente uma única vez.",
+      "Quando equipado em Lil-Laep: Lil-Laep ganha +7 DP. Uma vez por duelo, destrua 1 unidade do oponente com 3 DP ou menos.",
     attack: "",
     category: "Darkness Ultimate Guardian",
+    requiresUnit: "Lil-Laep",
     requiresEquip: "Lil-Laep",
   },
   {
@@ -1210,11 +1213,12 @@ const ALL_CARDS: Card[] = [
     type: "ultimateGuardian",
     element: "Ventus",
     dp: 0,
-    ability: "Quando está equipado em Unidade Ventus, ele concede os seguintes efeitos:",
+    ability: "ISGRIMM FENRIR",
     abilityDescription:
-      "Unidade Ventus ganha +2DP. Quando a Unidade Ventus ataca: Você pode selecionar uma Carta de Unidade Ventus do seu campo e ela ganha +2DP, esse efeito não pode ser aplicado na Unidade que esse Guardião está equipado.",
+      "Equipa em qualquer Unidade Ventus: +2 DP permanente. Quando a unidade equipada ataca, selecione outra Unidade Ventus aliada para ganhar +2 DP ate o fim da fase de batalha.",
     attack: "",
     category: "Ventus Ultimate Guardian",
+    requiresUnit: "VENTUS_ANY",
     requiresEquip: "Ventus",
   },
 ]
