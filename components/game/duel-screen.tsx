@@ -1257,14 +1257,23 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
   const [effectFeedback, setEffectFeedback] = useState<{ active: boolean; message: string; type: "success" | "error" } | null>(null)
 
   // Ultimate Gear effect tracking
-  const [playerUgAbilityUsed, setPlayerUgAbilityUsed] = useState(false) // One-time ability used (ODEN SWORD, TWILIGH AVALON)
+  const [playerUgAbilityUsed, setPlayerUgAbilityUsed] = useState(false) // One-time ability used (ODEN SWORD, TWILIGH AVALON, Guardians)
   const [enemyUgAbilityUsed, setEnemyUgAbilityUsed] = useState(false)
   const [ugTargetMode, setUgTargetMode] = useState<{
     active: boolean
     ugCard: GameCard | null
-    type: "oden_sword" | "twiligh_avalon" | null
+    type: "oden_sword" | "twiligh_avalon" | "mefisto_foles" | "kensei_ifraid" | "nightmare_armageddon" | "isgrimm_fenrir_select" | null
   }>({ active: false, ugCard: null, type: null })
   const [fornbrennaFireCount, setFornbrennaFireCount] = useState(0) // Snapshot of fire units used when Fornbrenna is placed
+  
+  // Isgrimm Fenrir: track which unit index has the permanent +2 DP from equip, and temporary battle boosts
+  const [fenrirEquippedUnitIdx, setFenrirEquippedUnitIdx] = useState<number>(-1)
+  const [fenrirBattleBoostIdx, setFenrirBattleBoostIdx] = useState<number>(-1) // Unit that got +2 DP temp boost during battle
+  
+  // Fehnon Hoskie effect tracking
+  const [fehnonUrTurnBoost, setFehnonUrTurnBoost] = useState(0) // cumulative +2 DP per kill this turn for UR
+  const [fehnonUrProtonixUsed, setFehnonUrProtonixUsed] = useState(false) // Protonix Sword double attack used this battle phase
+  const [fehnonNoResponseAttack, setFehnonNoResponseAttack] = useState(false) // Ordem de Laceracao: opponent can't respond to this attack
 
   // Track last known unit zone state to detect when a matching unit is placed after UG
   const prevUnitZoneRef = useRef<(string | null)[]>([])
@@ -1279,6 +1288,37 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
     const ability = ug.ability
     const prevNames = prevUnitZoneRef.current
     const currentNames = playerField.unitZone.map((u) => u?.name || null)
+    const prevElements = prevUnitZoneRef.current // Used for VENTUS_ANY
+
+    // ISGRIMM FENRIR: matches ANY Ventus unit
+    if (requiredUnit === "VENTUS_ANY") {
+      const prevHadVentus = playerField.unitZone.some((u, i) => u !== null && u.element === "Ventus" && !prevNames[i])
+      const ventusIdx = playerField.unitZone.findIndex((u) => u !== null && u.element === "Ventus")
+      const prevVentusIdx = prevNames.findIndex((n, i) => {
+        const unit = playerField.unitZone[i]
+        return unit !== null && unit.element === "Ventus"
+      })
+
+      // Check if a new Ventus unit appeared
+      const newVentusAppeared = playerField.unitZone.some((u, i) => {
+        if (!u || u.element !== "Ventus") return false
+        return !prevNames[i] || prevNames[i] !== u.name
+      })
+
+      if (newVentusAppeared && ventusIdx !== -1 && fenrirEquippedUnitIdx === -1) {
+        setPlayerField((prev) => {
+          const newUnits = [...prev.unitZone]
+          const unit = newUnits[ventusIdx]
+          if (!unit) return prev
+          newUnits[ventusIdx] = { ...unit, currentDp: unit.currentDp + 2 }
+          showEffectFeedback(`${unit.name} +2 DP (Isgrimm Fenrir)!`, "success")
+          return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
+        })
+        setFenrirEquippedUnitIdx(ventusIdx)
+      }
+      prevUnitZoneRef.current = currentNames
+      return
+    }
 
     // Check if the required unit just appeared (wasn't there before)
     const wasPresent = prevNames.some((n) => n === requiredUnit)
@@ -1305,6 +1345,10 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
             setFornbrennaFireCount(fireCount)
             msg = `${requiredUnit} +${bonus} DP (Fornbrenna, ${fireCount} fogo)!`
           }
+          // === GUARDIAN PASSIVES (when unit placed after Guardian) ===
+          else if (ability === "MEFISTO FOLES") { bonus = 2; msg = `${requiredUnit} +2 DP (Mefisto Foles)!` }
+          else if (ability === "KENSEI IFRAID") { bonus = 3; msg = `${requiredUnit} +3 DP (Kensei Ifraid)!` }
+          else if (ability === "NIGHTMARE ARMAGEDDON") { bonus = 7; msg = `${requiredUnit} +7 DP (Nightmare Armageddon)!` }
 
           if (bonus > 0) {
             newUnits[unitIdx] = { ...unit, currentDp: unit.currentDp + bonus }
@@ -2989,6 +3033,37 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
           setFornbrennaFireCount(fireCount)
           bonusMsg = `${requiredUnit} +${bonus} DP! (${fireCount} unidades de fogo usadas)`
         }
+        // === ULTIMATE GUARDIAN EFFECTS ===
+        else if (ability === "MEFISTO FOLES") {
+          // +2 DP to Rei Arthur
+          newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + 2 }
+          bonusMsg = `${requiredUnit} +2 DP (Mefisto Foles)!`
+        } else if (ability === "KENSEI IFRAID") {
+          // +3 DP to Jaden Hainaegi
+          newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + 3 }
+          bonusMsg = `${requiredUnit} +3 DP (Kensei Ifraid)!`
+        } else if (ability === "NIGHTMARE ARMAGEDDON") {
+          // +7 DP to Lil-Laep
+          newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + 7 }
+          bonusMsg = `${requiredUnit} +7 DP (Nightmare Armageddon)!`
+        } else if (ability === "ISGRIMM FENRIR") {
+          // +2 DP to the Ventus unit
+          newUnitZone[unitIdx] = { ...unit, currentDp: unit.currentDp + 2 }
+          setFenrirEquippedUnitIdx(unitIdx)
+          bonusMsg = `${requiredUnit} +2 DP (Isgrimm Fenrir)!`
+        }
+      }
+      
+      // ISGRIMM FENRIR: Special case - can equip on ANY Ventus unit
+      if (!unitFound && cardToPlace.ability === "ISGRIMM FENRIR" && requiredUnit === "VENTUS_ANY") {
+        // Find the first Ventus unit on the field
+        const ventusIdx = newUnitZone.findIndex((u) => u !== null && u.element === "Ventus")
+        if (ventusIdx !== -1) {
+          const ventusUnit = newUnitZone[ventusIdx]!
+          newUnitZone[ventusIdx] = { ...ventusUnit, currentDp: ventusUnit.currentDp + 2 }
+          setFenrirEquippedUnitIdx(ventusIdx)
+          bonusMsg = `${ventusUnit.name} +2 DP (Isgrimm Fenrir)!`
+        }
       }
 
       if (bonusMsg) {
@@ -3012,6 +3087,14 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
   }
 
   // Activate Ultimate Gear one-time ability
+  // Helper: check if a required unit is on the field (supports VENTUS_ANY)
+  const findRequiredUnitIdx = (unitZone: (FieldCard | null)[], requiredUnit: string): number => {
+    if (requiredUnit === "VENTUS_ANY") {
+      return unitZone.findIndex((u) => u !== null && u.element === "Ventus")
+    }
+    return findUnitByName(unitZone, requiredUnit)
+  }
+
   const activateUgAbility = () => {
     if (!isPlayerTurn || phase !== "main") return
     if (playerUgAbilityUsed) return
@@ -3022,9 +3105,10 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
     if (!requiredUnit) return
 
     // Check if the required unit is on the field
-    const unitIdx = findUnitByName(playerField.unitZone, requiredUnit)
+    const unitIdx = findRequiredUnitIdx(playerField.unitZone, requiredUnit)
     if (unitIdx === -1) {
-      showEffectFeedback(`${requiredUnit} precisa estar no campo!`, "error")
+      const displayName = requiredUnit === "VENTUS_ANY" ? "Uma unidade Ventus" : requiredUnit
+      showEffectFeedback(`${displayName} precisa estar no campo!`, "error")
       return
     }
 
@@ -3047,38 +3131,115 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
       setUgTargetMode({ active: true, ugCard: ug, type: "twiligh_avalon" })
       showEffectFeedback("Selecione uma carta inimiga para devolver a mao!", "success")
     }
+    // === ULTIMATE GUARDIAN ABILITIES ===
+    else if (ug.ability === "MEFISTO FOLES") {
+      // Destroy any 1 card on opponent's field (unit or function)
+      const hasEnemyCards = enemyField.unitZone.some((u) => u !== null) || enemyField.functionZone.some((f) => f !== null)
+      if (!hasEnemyCards) {
+        showEffectFeedback("Oponente nao tem cartas no campo!", "error")
+        return
+      }
+      setUgTargetMode({ active: true, ugCard: ug, type: "mefisto_foles" })
+      showEffectFeedback("MEFISTO FOLES: Selecione 1 carta inimiga para destruir!", "success")
+    } else if (ug.ability === "KENSEI IFRAID") {
+      // Destroy any 1 card on opponent's field. If unit, deal 4 damage to LP
+      const hasEnemyCards = enemyField.unitZone.some((u) => u !== null) || enemyField.functionZone.some((f) => f !== null)
+      if (!hasEnemyCards) {
+        showEffectFeedback("Oponente nao tem cartas no campo!", "error")
+        return
+      }
+      setUgTargetMode({ active: true, ugCard: ug, type: "kensei_ifraid" })
+      showEffectFeedback("KENSEI IFRAID: Selecione 1 carta inimiga para destruir!", "success")
+    } else if (ug.ability === "NIGHTMARE ARMAGEDDON") {
+      // Destroy 1 enemy unit with 3 DP or less
+      const hasWeakUnit = enemyField.unitZone.some((u) => u !== null && u.currentDp <= 3)
+      if (!hasWeakUnit) {
+        showEffectFeedback("Oponente nao tem unidades com 3 DP ou menos!", "error")
+        return
+      }
+      setUgTargetMode({ active: true, ugCard: ug, type: "nightmare_armageddon" })
+      showEffectFeedback("NIGHTMARE ARMAGEDDON: Selecione 1 unidade inimiga com 3 DP ou menos!", "success")
+    }
+    // Note: ISGRIMM FENRIR does not have a one-time activate - its effect triggers on attack
   }
 
   // Handle UG target selection for enemy function cards (ODEN SWORD)
   const handleUgTargetEnemyFunction = (funcIndex: number) => {
-    if (!ugTargetMode.active || ugTargetMode.type !== "oden_sword") return
+    if (!ugTargetMode.active) return
     const funcCard = enemyField.functionZone[funcIndex]
     if (!funcCard) return
 
-    setEnemyField((prev) => {
-      const newFuncs = [...prev.functionZone]
-      const destroyed = newFuncs[funcIndex]
-      newFuncs[funcIndex] = null
-      return {
-        ...prev,
-        functionZone: newFuncs,
-        graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard,
-      }
-    })
+    // ODEN SWORD: destroy function card
+    if (ugTargetMode.type === "oden_sword") {
+      setEnemyField((prev) => {
+        const newFuncs = [...prev.functionZone]
+        const destroyed = newFuncs[funcIndex]
+        newFuncs[funcIndex] = null
+        return {
+          ...prev,
+          functionZone: newFuncs,
+          graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard,
+        }
+      })
+      showEffectFeedback(`ODEN SWORD: ${funcCard.name} destruida!`, "success")
+      setPlayerUgAbilityUsed(true)
+      setUgTargetMode({ active: false, ugCard: null, type: null })
+      return
+    }
 
-    showEffectFeedback(`ODEN SWORD: ${funcCard.name} destruida!`, "success")
-    setPlayerUgAbilityUsed(true)
-    setUgTargetMode({ active: false, ugCard: null, type: null })
+    // MEFISTO FOLES / KENSEI IFRAID: can also target function cards
+    if (ugTargetMode.type === "mefisto_foles" || ugTargetMode.type === "kensei_ifraid") {
+      setEnemyField((prev) => {
+        const newFuncs = [...prev.functionZone]
+        const destroyed = newFuncs[funcIndex]
+        newFuncs[funcIndex] = null
+        return {
+          ...prev,
+          functionZone: newFuncs,
+          graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard,
+        }
+      })
+      const label = ugTargetMode.type === "mefisto_foles" ? "MEFISTO FOLES" : "KENSEI IFRAID"
+      showEffectFeedback(`${label}: ${funcCard.name} destruida!`, "success")
+      setPlayerUgAbilityUsed(true)
+      setUgTargetMode({ active: false, ugCard: null, type: null })
+      return
+    }
+
+    // TWILIGH AVALON: return function to hand
+    if (ugTargetMode.type === "twiligh_avalon") {
+      setEnemyField((prev) => {
+        const newFuncs = [...prev.functionZone]
+        const returned = newFuncs[funcIndex]
+        newFuncs[funcIndex] = null
+        return {
+          ...prev,
+          functionZone: newFuncs,
+          hand: returned ? [...prev.hand, returned] : prev.hand,
+        }
+      })
+      showEffectFeedback(`TWILIGH AVALON: ${funcCard.name} devolvida a mao!`, "success")
+      setPlayerUgAbilityUsed(true)
+      setUgTargetMode({ active: false, ugCard: null, type: null })
+      return
+    }
   }
 
-  // Handle UG target selection for any enemy card (TWILIGH AVALON)
+  // Handle UG target selection for any enemy card (TWILIGH AVALON + GUARDIANS)
   const handleUgTargetEnemyCard = (type: "unit" | "function", index: number) => {
-    if (!ugTargetMode.active || ugTargetMode.type !== "twiligh_avalon") return
+    if (!ugTargetMode.active) return
 
-    if (type === "unit") {
-      const unit = enemyField.unitZone[index]
-      if (!unit) return
+    // Redirect function targets to the function handler
+    if (type === "function") {
+      handleUgTargetEnemyFunction(index)
+      return
+    }
 
+    // --- UNIT TARGET ---
+    const unit = enemyField.unitZone[index]
+    if (!unit) return
+
+    if (ugTargetMode.type === "twiligh_avalon") {
       setEnemyField((prev) => {
         const newUnits = [...prev.unitZone]
         const returned = newUnits[index]
@@ -3089,31 +3250,67 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
           hand: returned ? [...prev.hand, returned] : prev.hand,
         }
       })
-      // If returned card is a unit, deal 3 DP to opponent
       setEnemyField((prev) => ({
         ...prev,
         life: Math.max(0, prev.life - 3),
       }))
       showEffectFeedback(`TWILIGH AVALON: ${unit.name} devolvida! -3 LP no oponente!`, "success")
-    } else {
-      const func = enemyField.functionZone[index]
-      if (!func) return
-
+      setPlayerUgAbilityUsed(true)
+      setUgTargetMode({ active: false, ugCard: null, type: null })
+    } else if (ugTargetMode.type === "mefisto_foles") {
+      // MEFISTO FOLES: Destroy any 1 card on opponent field
       setEnemyField((prev) => {
-        const newFuncs = [...prev.functionZone]
-        const returned = newFuncs[index]
-        newFuncs[index] = null
+        const newUnits = [...prev.unitZone]
+        const destroyed = newUnits[index]
+        newUnits[index] = null
         return {
           ...prev,
-          functionZone: newFuncs,
-          hand: returned ? [...prev.hand, returned] : prev.hand,
+          unitZone: newUnits as (FieldCard | null)[],
+          graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard,
         }
       })
-      showEffectFeedback(`TWILIGH AVALON: ${func.name} devolvida a mao!`, "success")
+      showEffectFeedback(`MEFISTO FOLES: ${unit.name} destruida!`, "success")
+      setPlayerUgAbilityUsed(true)
+      setUgTargetMode({ active: false, ugCard: null, type: null })
+    } else if (ugTargetMode.type === "kensei_ifraid") {
+      // KENSEI IFRAID: Destroy any 1 card. If unit, deal 4 damage to LP
+      const isUnit = unit.type === "unit" || unit.type === "troops"
+      setEnemyField((prev) => {
+        const newUnits = [...prev.unitZone]
+        const destroyed = newUnits[index]
+        newUnits[index] = null
+        return {
+          ...prev,
+          unitZone: newUnits as (FieldCard | null)[],
+          graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard,
+          // If destroyed card is a unit, deal 4 DP damage to LP
+          life: isUnit ? Math.max(0, prev.life - 4) : prev.life,
+        }
+      })
+      const dmgMsg = isUnit ? ` -4 LP no oponente!` : ""
+      showEffectFeedback(`KENSEI IFRAID: ${unit.name} destruida!${dmgMsg}`, "success")
+      setPlayerUgAbilityUsed(true)
+      setUgTargetMode({ active: false, ugCard: null, type: null })
+    } else if (ugTargetMode.type === "nightmare_armageddon") {
+      // NIGHTMARE ARMAGEDDON: Destroy 1 unit with 3 DP or less
+      if (unit.currentDp > 3) {
+        showEffectFeedback(`${unit.name} tem ${unit.currentDp} DP! Precisa ter 3 ou menos.`, "error")
+        return
+      }
+      setEnemyField((prev) => {
+        const newUnits = [...prev.unitZone]
+        const destroyed = newUnits[index]
+        newUnits[index] = null
+        return {
+          ...prev,
+          unitZone: newUnits as (FieldCard | null)[],
+          graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard,
+        }
+      })
+      showEffectFeedback(`NIGHTMARE ARMAGEDDON: ${unit.name} destruida!`, "success")
+      setPlayerUgAbilityUsed(true)
+      setUgTargetMode({ active: false, ugCard: null, type: null })
     }
-
-    setPlayerUgAbilityUsed(true)
-    setUgTargetMode({ active: false, ugCard: null, type: null })
   }
 
   // Cancel UG target mode
@@ -3166,6 +3363,18 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
         return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
       })
     }
+  }
+  // ISGRIMM FENRIR: remove +2 DP temp boost from the boosted Ventus unit when leaving battle
+  if (fenrirBattleBoostIdx !== -1) {
+    setPlayerField((prev) => {
+      const newUnits = [...prev.unitZone]
+      const unit = newUnits[fenrirBattleBoostIdx]
+      if (unit) {
+        newUnits[fenrirBattleBoostIdx] = { ...unit, currentDp: Math.max(0, unit.currentDp - 2) }
+      }
+      return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
+    })
+    setFenrirBattleBoostIdx(-1)
   }
   endTurn()
   }
@@ -3313,10 +3522,109 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
   return { ...prev, unitZone: newUnitZone, graveyard: newGraveyard }
   })
 
+            // Determine if the enemy unit was destroyed
+            const enemyUnitDestroyed = newDefenderDp <= 0 && !(
+              enemyField.ultimateZone &&
+              enemyField.ultimateZone.ability === "PROTONIX SWORD" &&
+              enemyField.ultimateZone.requiresUnit === defender.name
+            )
+
             setPlayerField((prev) => {
               const newUnitZone = [...prev.unitZone]
-              newUnitZone[attackState.attackerIndex!] = { ...attacker, hasAttacked: true }
-              return { ...prev, unitZone: newUnitZone }
+              const atkIdx = attackState.attackerIndex!
+              const currentAttacker = newUnitZone[atkIdx]
+              if (!currentAttacker) return prev
+
+              let updatedAttacker = { ...currentAttacker, hasAttacked: true }
+              const isFehnon = currentAttacker.id === "fehnon-ur" || currentAttacker.id === "fehnon-sr"
+              const isFehnUR = currentAttacker.id === "fehnon-ur"
+              const isFehnSR = currentAttacker.id === "fehnon-sr"
+              let newHand = [...prev.hand]
+              let newDeck = [...prev.deck]
+              
+              // === FEHNON HOSKIE UR: Singularidade Zero ===
+              if (isFehnUR) {
+                // +2 DP cumulative per kill until end of turn
+                if (enemyUnitDestroyed) {
+                  updatedAttacker = { ...updatedAttacker, currentDp: updatedAttacker.currentDp + 2 }
+                  setFehnonUrTurnBoost((p) => p + 2)
+                  setTimeout(() => showEffectFeedback(`Singularidade Zero: Fehnon +2 DP!`, "success"), 300)
+                }
+                
+                // Protonix Sword: can attack twice per battle phase
+                const hasProtonix = prev.ultimateZone && prev.ultimateZone.ability === "PROTONIX SWORD"
+                if (hasProtonix && !fehnonUrProtonixUsed) {
+                  updatedAttacker = { ...updatedAttacker, hasAttacked: false }
+                  setFehnonUrProtonixUsed(true)
+                  setTimeout(() => showEffectFeedback(`Protonix Sword: Fehnon pode atacar novamente!`, "success"), 600)
+                }
+              }
+
+              // === FEHNON HOSKIE SR: Fluxo de Ruptura ===
+              if (isFehnSR && enemyUnitDestroyed) {
+                setEnemyField((prevEnemy) => ({
+                  ...prevEnemy,
+                  life: Math.max(0, prevEnemy.life - 2),
+                }))
+                setTimeout(() => showEffectFeedback(`Fluxo de Ruptura: -2 LP no oponente!`, "success"), 300)
+              }
+
+              // === FEHNON UR (Ordem de Laceracao) + SR (Laceracao): Draw on attack ===
+              if (isFehnon && prev.deck.length > 0) {
+                const drawnCard = prev.deck[0]
+                newDeck = prev.deck.slice(1)
+                newHand = [...prev.hand, drawnCard]
+                
+                setTimeout(() => {
+                  showDrawAnimation(drawnCard)
+                  if (drawnCard.type === "unit") {
+                    // Extra attack granted! Unmark hasAttacked
+                    setTimeout(() => {
+                      setPlayerField((p) => {
+                        const units = [...p.unitZone]
+                        const fIdx = units.findIndex((u) => u && (u.id === "fehnon-ur" || u.id === "fehnon-sr"))
+                        if (fIdx !== -1 && units[fIdx]) {
+                          units[fIdx] = { ...units[fIdx]!, hasAttacked: false }
+                        }
+                        return { ...p, unitZone: units as (FieldCard | null)[] }
+                      })
+                      // For Fehnon UR (Ordem de Laceracao): opponent can't respond to the extra attack
+                      if (isFehnUR) {
+                        setFehnonNoResponseAttack(true)
+                      }
+                      showEffectFeedback(
+                        `${isFehnUR ? "Ordem de Laceracao" : "Laceracao"}: Comprou unidade! Ataque extra!`,
+                        "success"
+                      )
+                    }, 400)
+                  } else {
+                    showEffectFeedback(
+                      `${isFehnUR ? "Ordem de Laceracao" : "Laceracao"}: Comprou ${drawnCard.name}`,
+                      "success"
+                    )
+                  }
+                }, 800)
+              }
+              
+              newUnitZone[atkIdx] = updatedAttacker
+              
+              // ISGRIMM FENRIR: when the equipped Ventus unit attacks, boost another Ventus unit +2 DP
+              if (prev.ultimateZone && prev.ultimateZone.ability === "ISGRIMM FENRIR" && 
+                  atkIdx === fenrirEquippedUnitIdx) {
+                const otherVentusIdx = newUnitZone.findIndex((u, i) => 
+                  u !== null && u.element === "Ventus" && i !== fenrirEquippedUnitIdx
+                )
+                if (otherVentusIdx !== -1 && newUnitZone[otherVentusIdx]) {
+                  newUnitZone[otherVentusIdx] = { 
+                    ...newUnitZone[otherVentusIdx]!, 
+                    currentDp: newUnitZone[otherVentusIdx]!.currentDp + 2 
+                  }
+                  setFenrirBattleBoostIdx(otherVentusIdx)
+                  setTimeout(() => showEffectFeedback(`ISGRIMM FENRIR: ${newUnitZone[otherVentusIdx]!.name} +2 DP!`, "success"), 500)
+                }
+              }
+              
+              return { ...prev, unitZone: newUnitZone as (FieldCard | null)[], hand: newHand, deck: newDeck }
             })
           }
         } else if (attackState.targetInfo.type === "direct") {
@@ -3338,9 +3646,80 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
           }))
           setPlayerField((prev) => {
             const newUnitZone = [...prev.unitZone]
-            // Mark attacker as having attacked
-            newUnitZone[attackState.attackerIndex!] = { ...attacker, hasAttacked: true }
-            return { ...prev, unitZone: newUnitZone }
+            const atkIdx = attackState.attackerIndex!
+            const currentAttacker = newUnitZone[atkIdx]
+            if (!currentAttacker) return prev
+            
+            let updatedAttacker = { ...currentAttacker, hasAttacked: true }
+            const isFehnon = currentAttacker.id === "fehnon-ur" || currentAttacker.id === "fehnon-sr"
+            const isFehnUR = currentAttacker.id === "fehnon-ur"
+            let newHand = [...prev.hand]
+            let newDeck = [...prev.deck]
+            
+            // === FEHNON UR: Protonix Sword double attack ===
+            if (isFehnUR) {
+              const hasProtonix = prev.ultimateZone && prev.ultimateZone.ability === "PROTONIX SWORD"
+              if (hasProtonix && !fehnonUrProtonixUsed) {
+                updatedAttacker = { ...updatedAttacker, hasAttacked: false }
+                setFehnonUrProtonixUsed(true)
+                setTimeout(() => showEffectFeedback(`Protonix Sword: Fehnon pode atacar novamente!`, "success"), 600)
+              }
+            }
+            
+            // === FEHNON UR + SR: Draw on attack (Ordem de Laceracao / Laceracao) ===
+            if (isFehnon && prev.deck.length > 0) {
+              const drawnCard = prev.deck[0]
+              newDeck = prev.deck.slice(1)
+              newHand = [...prev.hand, drawnCard]
+              
+              setTimeout(() => {
+                showDrawAnimation(drawnCard)
+                if (drawnCard.type === "unit") {
+                  setTimeout(() => {
+                    setPlayerField((p) => {
+                      const units = [...p.unitZone]
+                      const fIdx = units.findIndex((u) => u && (u.id === "fehnon-ur" || u.id === "fehnon-sr"))
+                      if (fIdx !== -1 && units[fIdx]) {
+                        units[fIdx] = { ...units[fIdx]!, hasAttacked: false }
+                      }
+                      return { ...p, unitZone: units as (FieldCard | null)[] }
+                    })
+                    if (isFehnUR) {
+                      setFehnonNoResponseAttack(true)
+                    }
+                    showEffectFeedback(
+                      `${isFehnUR ? "Ordem de Laceracao" : "Laceracao"}: Comprou unidade! Ataque extra!`,
+                      "success"
+                    )
+                  }, 400)
+                } else {
+                  showEffectFeedback(
+                    `${isFehnUR ? "Ordem de Laceracao" : "Laceracao"}: Comprou ${drawnCard.name}`,
+                    "success"
+                  )
+                }
+              }, 800)
+            }
+            
+            newUnitZone[atkIdx] = updatedAttacker
+            
+            // ISGRIMM FENRIR: when the equipped Ventus unit attacks (direct), boost another Ventus unit +2 DP
+            if (prev.ultimateZone && prev.ultimateZone.ability === "ISGRIMM FENRIR" && 
+                atkIdx === fenrirEquippedUnitIdx) {
+              const otherVentusIdx = newUnitZone.findIndex((u, i) => 
+                u !== null && u.element === "Ventus" && i !== fenrirEquippedUnitIdx
+              )
+              if (otherVentusIdx !== -1 && newUnitZone[otherVentusIdx]) {
+                newUnitZone[otherVentusIdx] = { 
+                  ...newUnitZone[otherVentusIdx]!, 
+                  currentDp: newUnitZone[otherVentusIdx]!.currentDp + 2 
+                }
+                setFenrirBattleBoostIdx(otherVentusIdx)
+                setTimeout(() => showEffectFeedback(`ISGRIMM FENRIR: ${newUnitZone[otherVentusIdx]!.name} +2 DP!`, "success"), 500)
+              }
+            }
+            
+            return { ...prev, unitZone: newUnitZone as (FieldCard | null)[], hand: newHand, deck: newDeck }
           })
         }
       }
@@ -3348,7 +3727,7 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
 
     // Reset attack state regardless of whether an attack was successful
     setAttackState({ isAttacking: false, attackerIndex: null, targetInfo: null })
-  }, [attackState, playerField.unitZone, enemyField.unitZone, triggerExplosion])
+  }, [attackState, playerField.unitZone, enemyField.unitZone, enemyField.ultimateZone, triggerExplosion, fenrirEquippedUnitIdx, fehnonUrProtonixUsed])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -3556,7 +3935,10 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
             }
             // Apply passive DP bonus to matching unit if present
             if (card.requiresUnit) {
-              const matchIdx = newUnitZone.findIndex((u) => u && u.name === card.requiresUnit)
+              // Support VENTUS_ANY for Isgrimm Fenrir
+              const matchIdx = card.requiresUnit === "VENTUS_ANY"
+                ? newUnitZone.findIndex((u) => u !== null && u.element === "Ventus")
+                : newUnitZone.findIndex((u) => u && u.name === card.requiresUnit)
               if (matchIdx !== -1 && newUnitZone[matchIdx]) {
                 const unit = newUnitZone[matchIdx]!
                 let bonus = 0
@@ -3569,6 +3951,11 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
                   bonus = fireCount * 2
                 }
                 // ULLRBOGI: no immediate bonus, only during battle
+                // === GUARDIAN BONUSES ===
+                else if (card.ability === "MEFISTO FOLES") bonus = 2
+                else if (card.ability === "KENSEI IFRAID") bonus = 3
+                else if (card.ability === "NIGHTMARE ARMAGEDDON") bonus = 7
+                else if (card.ability === "ISGRIMM FENRIR") bonus = 2
                 if (bonus > 0) {
                   newUnitZone[matchIdx] = { ...unit, currentDp: unit.currentDp + bonus }
                 }
@@ -3636,13 +4023,16 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
           return prevEnemy
         })
 
-        // Bot also uses one-time UG abilities (ODEN SWORD and TWILIGH AVALON)
+        // Bot also uses one-time UG abilities (ODEN SWORD, TWILIGH AVALON, and GUARDIANS)
         setEnemyField((prevEnemy) => {
           if (!prevEnemy.ultimateZone || enemyUgAbilityUsed) return prevEnemy
           const ug = prevEnemy.ultimateZone
           const requiredUnit = ug.requiresUnit
           if (!requiredUnit) return prevEnemy
-          const hasUnit = prevEnemy.unitZone.some((u) => u && u.name === requiredUnit)
+          // Check if required unit is present (supports VENTUS_ANY)
+          const hasUnit = requiredUnit === "VENTUS_ANY" 
+            ? prevEnemy.unitZone.some((u) => u !== null && u.element === "Ventus")
+            : prevEnemy.unitZone.some((u) => u && u.name === requiredUnit)
           if (!hasUnit) return prevEnemy
 
           if (ug.ability === "ODEN SWORD") {
@@ -3678,6 +4068,68 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
               showEffectFeedback(`Bot TWILIGH AVALON: ${unit?.name} devolvida! -3 LP!`, "error")
             }
           }
+          // === BOT GUARDIAN ABILITIES ===
+          else if (ug.ability === "MEFISTO FOLES") {
+            // Bot destroys any player card (prefers strongest unit)
+            const unitIdx = playerField.unitZone.reduce((best, u, i) => {
+              if (!u) return best
+              if (best === -1) return i
+              const bestUnit = playerField.unitZone[best]
+              return bestUnit && u.currentDp > bestUnit.currentDp ? i : best
+            }, -1)
+            if (unitIdx !== -1) {
+              const targetUnit = playerField.unitZone[unitIdx]
+              setPlayerField((prev) => {
+                const newUnits = [...prev.unitZone]
+                const destroyed = newUnits[unitIdx]
+                newUnits[unitIdx] = null
+                return { ...prev, unitZone: newUnits as (FieldCard | null)[], graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard }
+              })
+              setEnemyUgAbilityUsed(true)
+              showEffectFeedback(`Bot MEFISTO FOLES: ${targetUnit?.name} destruida!`, "error")
+            }
+          } else if (ug.ability === "KENSEI IFRAID") {
+            // Bot destroys strongest player unit and deals 4 LP damage if unit
+            const unitIdx = playerField.unitZone.reduce((best, u, i) => {
+              if (!u) return best
+              if (best === -1) return i
+              const bestUnit = playerField.unitZone[best]
+              return bestUnit && u.currentDp > bestUnit.currentDp ? i : best
+            }, -1)
+            if (unitIdx !== -1) {
+              const targetUnit = playerField.unitZone[unitIdx]
+              const isUnit = targetUnit?.type === "unit" || targetUnit?.type === "troops"
+              setPlayerField((prev) => {
+                const newUnits = [...prev.unitZone]
+                const destroyed = newUnits[unitIdx]
+                newUnits[unitIdx] = null
+                return { 
+                  ...prev, 
+                  unitZone: newUnits as (FieldCard | null)[], 
+                  graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard,
+                  life: isUnit ? Math.max(0, prev.life - 4) : prev.life,
+                }
+              })
+              setEnemyUgAbilityUsed(true)
+              const dmgMsg = isUnit ? " -4 LP!" : ""
+              showEffectFeedback(`Bot KENSEI IFRAID: ${targetUnit?.name} destruida!${dmgMsg}`, "error")
+            }
+          } else if (ug.ability === "NIGHTMARE ARMAGEDDON") {
+            // Bot destroys a player unit with 3 DP or less
+            const weakIdx = playerField.unitZone.findIndex((u) => u !== null && u.currentDp <= 3)
+            if (weakIdx !== -1) {
+              const targetUnit = playerField.unitZone[weakIdx]
+              setPlayerField((prev) => {
+                const newUnits = [...prev.unitZone]
+                const destroyed = newUnits[weakIdx]
+                newUnits[weakIdx] = null
+                return { ...prev, unitZone: newUnits as (FieldCard | null)[], graveyard: destroyed ? [...prev.graveyard, destroyed] : prev.graveyard }
+              })
+              setEnemyUgAbilityUsed(true)
+              showEffectFeedback(`Bot NIGHTMARE ARMAGEDDON: ${targetUnit?.name} destruida!`, "error")
+            }
+          }
+          // Note: ISGRIMM FENRIR doesn't have a one-time ability, its effect is passive on attack
           return prevEnemy
         })
 
@@ -3794,6 +4246,22 @@ const [itemSelectionMode, setItemSelectionMode] = useState<{
 
   const endTurn = () => {
     setPhase("end")
+
+    // Remove Fehnon UR cumulative DP boost at end of turn (Singularidade Zero)
+    if (fehnonUrTurnBoost > 0) {
+      setPlayerField((prev) => {
+        const newUnits = [...prev.unitZone]
+        const fehnonIdx = newUnits.findIndex((u) => u && u.id === "fehnon-ur")
+        if (fehnonIdx !== -1 && newUnits[fehnonIdx]) {
+          const baseDp = newUnits[fehnonIdx]!.dp
+          newUnits[fehnonIdx] = { ...newUnits[fehnonIdx]!, currentDp: Math.max(baseDp, newUnits[fehnonIdx]!.currentDp - fehnonUrTurnBoost) }
+        }
+        return { ...prev, unitZone: newUnits as (FieldCard | null)[] }
+      })
+      setFehnonUrTurnBoost(0)
+    }
+    setFehnonUrProtonixUsed(false)
+    setFehnonNoResponseAttack(false)
 
     setPlayerField((prev) => ({
       ...prev,
@@ -4393,16 +4861,19 @@ const handleAllyUnitSelect = (index: number) => {
                 <div className="flex justify-center items-center gap-1.5">
                   {enemyField.functionZone.map((card, i) => {
                     const isUgTarget = ugTargetMode.active && card && (
-                      ugTargetMode.type === "oden_sword" || ugTargetMode.type === "twiligh_avalon"
+                      ugTargetMode.type === "oden_sword" || ugTargetMode.type === "twiligh_avalon" ||
+                      ugTargetMode.type === "mefisto_foles" || ugTargetMode.type === "kensei_ifraid"
                     )
                     return (
                       <div
                         key={i}
                         onClick={() => {
-                          if (ugTargetMode.active && ugTargetMode.type === "oden_sword" && card) {
-                            handleUgTargetEnemyFunction(i)
-                          } else if (ugTargetMode.active && ugTargetMode.type === "twiligh_avalon" && card) {
-                            handleUgTargetEnemyCard("function", i)
+                          if (ugTargetMode.active && card) {
+                            if (ugTargetMode.type === "oden_sword") {
+                              handleUgTargetEnemyFunction(i)
+                            } else if (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto_foles" || ugTargetMode.type === "kensei_ifraid") {
+                              handleUgTargetEnemyCard("function", i)
+                            }
                           }
                         }}
                         className={`w-14 h-20 bg-purple-900/40 border-2 rounded flex items-center justify-center relative overflow-hidden transition-all ${
@@ -4431,14 +4902,16 @@ const handleAllyUnitSelect = (index: number) => {
                     key={i}
                     data-enemy-unit={i}
                     onClick={() => {
-                      if (ugTargetMode.active && ugTargetMode.type === "twiligh_avalon" && card) {
-                        handleUgTargetEnemyCard("unit", i)
+                      if (ugTargetMode.active && card) {
+                        if (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto_foles" || ugTargetMode.type === "kensei_ifraid" || ugTargetMode.type === "nightmare_armageddon") {
+                          handleUgTargetEnemyCard("unit", i)
+                        }
                       } else if (itemSelectionMode.active && itemSelectionMode.step === "selectEnemy") {
                         handleEnemyUnitSelect(i)
                       }
                     }}
                     className={`w-14 h-20 bg-red-900/30 border-2 rounded relative overflow-hidden transition-all ${
-                      ugTargetMode.active && ugTargetMode.type === "twiligh_avalon" && card
+                      ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto_foles" || ugTargetMode.type === "kensei_ifraid" || ugTargetMode.type === "nightmare_armageddon") && card
                         ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"
                         : attackTarget?.type === "unit" && attackTarget.index === i
                           ? "border-red-500 ring-2 ring-red-400 scale-105"
@@ -4695,11 +5168,15 @@ const handleAllyUnitSelect = (index: number) => {
                         <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-center text-xs text-white font-bold py-0.5">
                           {playerField.ultimateZone.currentDp} DP
                         </div>
-                        {/* Activate button for one-time abilities (ODEN SWORD, TWILIGH AVALON) */}
+                        {/* Activate button for one-time abilities (UG + Guardians) */}
                         {isPlayerTurn && phase === "main" && !playerUgAbilityUsed && !ugTargetMode.active &&
-                          (playerField.ultimateZone.ability === "ODEN SWORD" || playerField.ultimateZone.ability === "TWILIGH AVALON") &&
+                          (playerField.ultimateZone.ability === "ODEN SWORD" || 
+                           playerField.ultimateZone.ability === "TWILIGH AVALON" ||
+                           playerField.ultimateZone.ability === "MEFISTO FOLES" ||
+                           playerField.ultimateZone.ability === "KENSEI IFRAID" ||
+                           playerField.ultimateZone.ability === "NIGHTMARE ARMAGEDDON") &&
                           playerField.ultimateZone.requiresUnit &&
-                          findUnitByName(playerField.unitZone, playerField.ultimateZone.requiresUnit) !== -1 && (
+                          findRequiredUnitIdx(playerField.unitZone, playerField.ultimateZone.requiresUnit) !== -1 && (
                           <button
                             onClick={(e) => { e.stopPropagation(); activateUgAbility() }}
                             className="absolute -top-5 left-1/2 -translate-x-1/2 bg-yellow-500 hover:bg-yellow-400 text-black text-[7px] font-bold px-1.5 py-0.5 rounded shadow-lg shadow-yellow-500/50 animate-pulse whitespace-nowrap z-10"

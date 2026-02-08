@@ -976,6 +976,29 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
 
     setMyField((prev) => {
       const newHand = prev.hand.filter((_, i) => i !== cardIndex)
+      let newUnitZone = [...prev.unitZone]
+      
+      // Apply Guardian/UG passive DP bonus to matching unit if present
+      if (card.requiresUnit) {
+        const matchIdx = card.requiresUnit === "VENTUS_ANY"
+          ? newUnitZone.findIndex((u) => u !== null && u.element === "Ventus")
+          : newUnitZone.findIndex((u) => u && u.name === card.requiresUnit)
+        if (matchIdx !== -1 && newUnitZone[matchIdx]) {
+          const unit = newUnitZone[matchIdx]!
+          let bonus = 0
+          if (card.ability === "ODEN SWORD") bonus = 4
+          else if (card.ability === "PROTONIX SWORD") bonus = 2
+          else if (card.ability === "TWILIGH AVALON") bonus = 2
+          else if (card.ability === "MEFISTO FOLES") bonus = 2
+          else if (card.ability === "KENSEI IFRAID") bonus = 3
+          else if (card.ability === "NIGHTMARE ARMAGEDDON") bonus = 7
+          else if (card.ability === "ISGRIMM FENRIR") bonus = 2
+          if (bonus > 0) {
+            newUnitZone[matchIdx] = { ...unit, currentDp: unit.currentDp + bonus }
+          }
+        }
+      }
+
       return {
         ...prev,
         ultimateZone: {
@@ -985,6 +1008,7 @@ export function OnlineDuelScreen({ roomData, onBack }: OnlineDuelScreenProps) {
           hasAttacked: false,
           canAttackTurn: turn,
         },
+        unitZone: newUnitZone as (FieldCard | null)[],
         hand: newHand,
       }
     })
