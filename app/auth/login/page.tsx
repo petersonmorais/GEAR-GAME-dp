@@ -2,15 +2,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -32,11 +24,6 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
-        options: {
-          emailRedirectTo:
-            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
-            `${window.location.origin}/`,
-        },
       })
       if (error) throw error
       router.push('/')
@@ -59,64 +46,62 @@ export default function LoginPage() {
             <p className="text-slate-400">Welcome back, duelist!</p>
           </div>
           
-          <Card className="bg-slate-900/50 border-slate-700">
-            <CardHeader>
-              <CardTitle className="text-2xl text-white">Login</CardTitle>
-              <CardDescription className="text-slate-400">
+          <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-6">
+            <div className="mb-4">
+              <h2 className="text-2xl font-bold text-white">Login</h2>
+              <p className="text-slate-400 text-sm mt-1">
                 Enter your credentials to access your account
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleLogin}>
-                <div className="flex flex-col gap-6">
-                  <div className="grid gap-2">
-                    <Label htmlFor="email" className="text-white">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="duelist@gearperks.com"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="bg-slate-800 border-slate-700 text-white"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="password" className="text-white">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="bg-slate-800 border-slate-700 text-white"
-                    />
-                  </div>
-                  {error && (
-                    <div className="p-3 text-sm text-red-400 bg-red-950/50 border border-red-900 rounded-lg">
-                      {error}
-                    </div>
-                  )}
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" 
-                    disabled={isLoading}
-                  >
-                    {isLoading ? 'Logging in...' : 'Login'}
-                  </Button>
+              </p>
+            </div>
+            <form onSubmit={handleLogin}>
+              <div className="flex flex-col gap-6">
+                <div className="grid gap-2">
+                  <label htmlFor="email" className="text-white text-sm font-medium">Email</label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="duelist@gearperks.com"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="bg-slate-800 border-slate-700 text-white"
+                  />
                 </div>
-                <div className="mt-4 text-center text-sm text-slate-400">
-                  Don&apos;t have an account?{' '}
-                  <Link
-                    href="/auth/sign-up"
-                    className="text-blue-400 hover:text-blue-300 underline underline-offset-4"
-                  >
-                    Sign up
-                  </Link>
+                <div className="grid gap-2">
+                  <label htmlFor="password" className="text-white text-sm font-medium">Password</label>
+                  <Input
+                    id="password"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="bg-slate-800 border-slate-700 text-white"
+                  />
                 </div>
-              </form>
-            </CardContent>
-          </Card>
+                {error && (
+                  <div className="p-3 text-sm text-red-400 bg-red-950/50 border border-red-900 rounded-lg">
+                    {error}
+                  </div>
+                )}
+                <Button 
+                  type="submit" 
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" 
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Logging in...' : 'Login'}
+                </Button>
+              </div>
+              <div className="mt-4 text-center text-sm text-slate-400">
+                {"Don't have an account? "}
+                <Link
+                  href="/auth/sign-up"
+                  className="text-blue-400 hover:text-blue-300 underline underline-offset-4"
+                >
+                  Sign up
+                </Link>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>

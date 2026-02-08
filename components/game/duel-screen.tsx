@@ -4752,7 +4752,7 @@ const handleAllyUnitSelect = (index: number) => {
                       } else if (itemSelectionMode.active && itemSelectionMode.step === "selectEnemy") {
                         handleEnemyUnitSelect(i)
                       }
-                    }
+                    }}
                     className={`w-14 h-20 bg-red-900/30 border-2 rounded relative overflow-hidden transition-all ${
                       ugTargetMode.active && (ugTargetMode.type === "twiligh_avalon" || ugTargetMode.type === "mefisto_foles" || ugTargetMode.type === "kensei_ifraid" || ugTargetMode.type === "nightmare_armageddon") && card
                         ? "border-yellow-400 cursor-pointer hover:bg-yellow-900/30 ring-2 ring-yellow-400/50 animate-pulse"

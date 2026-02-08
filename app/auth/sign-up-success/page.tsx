@@ -1,15 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import Link from 'next/link'
-import { Mail } from 'lucide-react'
 
 export default function SignUpSuccessPage() {
   return (
@@ -22,22 +14,23 @@ export default function SignUpSuccessPage() {
             </h1>
           </div>
           
-          <Card className="bg-slate-900/50 border-slate-700">
-            <CardHeader>
-              <div className="flex justify-center mb-4">
-                <div className="p-3 bg-green-950/50 border border-green-900 rounded-full">
-                  <Mail className="h-8 w-8 text-green-400" />
-                </div>
+          <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-6">
+            <div className="flex justify-center mb-4">
+              <div className="p-3 bg-green-950/50 border border-green-900 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-400">
+                  <rect width="20" height="16" x="2" y="4" rx="2" />
+                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                </svg>
               </div>
-              <CardTitle className="text-2xl text-white text-center">Check your email</CardTitle>
-              <CardDescription className="text-slate-400 text-center">
-                We&apos;ve sent you a confirmation email. Please click the link in the email to verify your account and start your dueling journey!
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            </div>
+            <h2 className="text-2xl font-bold text-white text-center mb-2">Check your email</h2>
+            <p className="text-slate-400 text-center text-sm mb-4">
+              {"We've sent you a confirmation email. Please click the link in the email to verify your account and start your dueling journey!"}
+            </p>
+            <div className="space-y-4">
               <div className="p-4 bg-blue-950/30 border border-blue-900 rounded-lg">
                 <p className="text-sm text-blue-300">
-                  <strong>Important:</strong> Make sure to check your spam folder if you don&apos;t see the email in your inbox.
+                  {"Make sure to check your spam folder if you don't see the email in your inbox."}
                 </p>
               </div>
               
@@ -46,8 +39,8 @@ export default function SignUpSuccessPage() {
                   Go to Login
                 </Button>
               </Link>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
     </div>

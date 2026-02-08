@@ -1,16 +1,8 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { AlertCircle } from 'lucide-react'
 import { Suspense } from 'react'
 
 function ErrorContent() {
@@ -28,19 +20,21 @@ function ErrorContent() {
             </h1>
           </div>
           
-          <Card className="bg-slate-900/50 border-slate-700">
-            <CardHeader>
-              <div className="flex justify-center mb-4">
-                <div className="p-3 bg-red-950/50 border border-red-900 rounded-full">
-                  <AlertCircle className="h-8 w-8 text-red-400" />
-                </div>
+          <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-6">
+            <div className="flex justify-center mb-4">
+              <div className="p-3 bg-red-950/50 border border-red-900 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-400">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" x2="12" y1="8" y2="12" />
+                  <line x1="12" x2="12.01" y1="16" y2="16" />
+                </svg>
               </div>
-              <CardTitle className="text-2xl text-white text-center">Authentication Error</CardTitle>
-              <CardDescription className="text-slate-400 text-center">
-                We encountered an issue while processing your request
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            </div>
+            <h2 className="text-2xl font-bold text-white text-center mb-2">Authentication Error</h2>
+            <p className="text-slate-400 text-center text-sm mb-4">
+              We encountered an issue while processing your request
+            </p>
+            <div className="space-y-4">
               <div className="p-4 bg-red-950/30 border border-red-900 rounded-lg">
                 <p className="text-sm font-medium text-red-400 mb-1">{error}</p>
                 <p className="text-sm text-red-300">{errorDescription}</p>
@@ -58,8 +52,8 @@ function ErrorContent() {
                   </Button>
                 </Link>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
     </div>
